@@ -1,5 +1,7 @@
 package parser
 
+import "slices"
+
 type lexer struct {
 	input       []rune
 	currentChar rune
@@ -15,11 +17,11 @@ func newLexer(input []rune) *lexer {
 		currentIdx: 0,
 		nextIdx:    0,
 	}
-	l.scanNext()
+	l.next()
 	return l
 }
 
-func (l *lexer) scanNext() {
+func (l *lexer) next() {
 	if l.nextIdx >= len(l.input) {
 		l.currentChar = NULLCHAR
 	} else {
@@ -29,16 +31,124 @@ func (l *lexer) scanNext() {
 	l.nextIdx++
 }
 
-func (l *lexer) scanToken() token {
+func (l *lexer) peek() rune {
+	if l.nextIdx >= len(l.input) {
+		return NULLCHAR
+	}
+	return l.input[l.nextIdx]
+}
+
+func (l *lexer) tokenize() token {
 	var tok token
 
 	l.handleWhiteSpace()
 
-	// ...
+	switch l.currentChar {
+	case NULLCHAR:
+		tok = l.handleEOF()
+	case '=':
+		tok = l.handleEqual()
+	case '.':
+		tok = l.handleDot()
+		if tok.tokenType == FLOAT {
+			// readnumber (FLOAT processor) progresses tokens already, so we want to return early here to avoid hitting the next() call at the end of the func
+			return tok
+		}
+	default:
+		if isDigit(l.currentChar) {
+			return l.readNumber()
+		} else if isLetter(l.currentChar) {
+			return l.readIdentifier()
+		} else {
+			tok = token{tokenType: ILLEGAL, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+		}
+	}
+
+	l.next()
 
 	return tok
 }
 
-func (l *lexer) handleWhiteSpace() {
+// handlers
 
+func (l *lexer) handleWhiteSpace() {
+	for slices.Contains([]rune{'\r', '\n', '\t', ' '}, l.currentChar) {
+		l.next()
+	}
+}
+
+func (l *lexer) handleEOF() token {
+	return token{
+		tokenType: EOF,
+		value:     string(l.currentChar),
+		start:     l.currentIdx,
+		end:       l.nextIdx,
+	}
+}
+
+func (l *lexer) handleEqual() token {
+	return token{
+		tokenType: EQUAL,
+		value:     string(l.currentChar),
+		start:     l.currentIdx,
+		end:       l.nextIdx,
+	}
+}
+
+func (l *lexer) handleDot() token {
+	if isDigit(l.peek()) {
+		return l.readNumber()
+	}
+	return token{
+		tokenType: DOT,
+		value:     string(l.currentChar),
+		start:     l.currentIdx,
+		end:       l.nextIdx,
+	}
+}
+
+// reader helpers
+
+func (l *lexer) readIdentifier() token {
+	start := l.currentIdx
+	for isDigit(l.currentChar) || isLetter(l.currentChar) {
+		l.next()
+	}
+	val := string(l.input[start:l.currentIdx])
+	return token{
+		tokenType: lookupTokenKeyword(val),
+		value:     val,
+		start:     start,
+		end:       l.currentIdx,
+	}
+}
+
+func (l *lexer) readNumber() token {
+	tok := token{tokenType: INT}
+	start := l.currentIdx
+	encounteredDot := false
+	for l.currentChar == '.' || isDigit(l.currentChar) {
+		if l.currentChar == '.' {
+			if !isDigit(l.peek()) || encounteredDot {
+				break
+			}
+			tok.tokenType = FLOAT
+			encounteredDot = true
+		}
+		l.next()
+	}
+	tok.start = start
+	tok.end = l.currentIdx
+	tok.value = string(l.input[tok.start:tok.end])
+	return tok
+}
+
+func isLineChar(char rune) bool {
+	return slices.Contains([]rune{'_', '-'}, char)
+}
+func isLetter(char rune) bool {
+	return ('a' <= char && char <= 'z') || ('A' <= char && char <= 'Z')
+}
+func isDigit(char rune) bool {
+	return '0' <= char && char <= '9'
 }
