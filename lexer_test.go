@@ -12,6 +12,97 @@ func TestLexEquals(t *testing.T) {
 			end:        1,
 			rangeValue: "=",
 		},
+		{
+			tokenType:  TOK_EOF,
+			value:      string(NULLCHAR),
+			start:      1,
+			end:        2,
+			rangeValue: string(NULLCHAR),
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexDot(t *testing.T) {
+	input := "."
+	tests := []testCase{
+		{
+			tokenType:  TOK_DOT,
+			value:      ".",
+			start:      0,
+			end:        1,
+			rangeValue: ".",
+		},
+		{
+			tokenType:  TOK_EOF,
+			value:      string(NULLCHAR),
+			start:      1,
+			end:        2,
+			rangeValue: string(NULLCHAR),
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexNumber(t *testing.T) {
+	input := "123 1.23 .123"
+	tests := []testCase{
+		{
+			tokenType:  TOK_INT,
+			value:      "123",
+			start:      0,
+			end:        3,
+			rangeValue: "123",
+		},
+		{
+			tokenType:  TOK_FLOAT,
+			value:      "1.23",
+			start:      4,
+			end:        8,
+			rangeValue: "1.23",
+		},
+		{
+			tokenType:  TOK_FLOAT,
+			value:      ".123",
+			start:      9,
+			end:        13,
+			rangeValue: ".123",
+		},
+		{
+			tokenType:  TOK_EOF,
+			value:      string(NULLCHAR),
+			start:      13,
+			end:        14,
+			rangeValue: string(NULLCHAR),
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexIdent(t *testing.T) {
+	input := "abc.def"
+	tests := []testCase{
+		{
+			tokenType:  TOK_IDENT,
+			value:      "abc",
+			start:      0,
+			end:        3,
+			rangeValue: "abc",
+		},
+		{
+			tokenType:  TOK_DOT,
+			value:      ".",
+			start:      3,
+			end:        4,
+			rangeValue: ".",
+		},
+		{
+			tokenType:  TOK_IDENT,
+			value:      "def",
+			start:      4,
+			end:        7,
+			rangeValue: "def",
+		},
 	}
 	checkLexTestCase(t, input, tests)
 }

@@ -37,3 +37,12 @@ type expressionStatement struct {
 	tok        token
 	expression expression
 }
+
+func (es *expressionStatement) statementNode() {}
+func (es *expressionStatement) string() string {
+	if es.expression != nil {
+		return es.expression.string()
+	}
+	return ""
+}
+func (es *expressionStatement) token() token { return es.tok }
