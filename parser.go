@@ -9,8 +9,6 @@ type parser struct {
 	currentToken token
 	peekToken    token
 
-	prevNode node
-
 	errors []error
 }
 
@@ -28,14 +26,14 @@ func newParser(l *lexer) *parser {
 func (p *parser) next() {
 	p.currentToken = p.peekToken
 	p.peekToken = p.lexer.tokenize()
-	if p.isCurrentToken(ILLEGAL) {
+	if p.isCurrentToken(TOK_ILLEGAL) {
 		p.err("illegal token", p.currentToken.start)
 	}
 }
 
 func (p *parser) parseProgram() (*program, error) {
 	program := &program{statements: []statement{}}
-	for !p.isCurrentToken(EOF) && !p.isCurrentToken(ILLEGAL) {
+	for !p.isCurrentToken(TOK_EOF) && !p.isCurrentToken(TOK_ILLEGAL) {
 		statement := p.parseStatement()
 		program.statements = append(program.statements, statement)
 		p.next()
@@ -51,8 +49,19 @@ func (p *parser) parseStatement() statement {
 	switch p.currentToken.tokenType {
 
 	default:
-
+		return p.parseExpressionStatement()
 	}
+}
+
+func (p *parser) parseExpression(precedence int) expression {
+
+}
+
+func (p *parser) parseExpressionStatement() *expressionStatement {
+	ret := &expressionStatement{tok: p.currentToken}
+	ret.expression = p.parseExpression(LOWEST)
+
+	return ret
 }
 
 func (p *parser) isCurrentToken(t tokenType) bool {

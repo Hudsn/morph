@@ -13,24 +13,24 @@ type token struct {
 type tokenType string
 
 const (
-	IDENT tokenType = "IDENT"
+	TOK_IDENT tokenType = "IDENT"
 
-	INT   tokenType = "INT"
-	FLOAT tokenType = "FLOAT"
+	TOK_INT   tokenType = "INT"
+	TOK_FLOAT tokenType = "FLOAT"
 
-	DOT tokenType = "."
+	TOK_DOT tokenType = "."
 
-	EQUAL tokenType = "="
+	TOK_EQUAL tokenType = "="
 
 	//keywords
-	WHEN tokenType = "WHEN"
+	TOK_WHEN tokenType = "WHEN"
 
-	EOF     tokenType = "EOF"
-	ILLEGAL tokenType = "ILLEGAL"
+	TOK_EOF     tokenType = "EOF"
+	TOK_ILLEGAL tokenType = "ILLEGAL"
 )
 
 var keywordMap = map[string]tokenType{
-	"when": WHEN,
+	"when": TOK_WHEN,
 }
 
 func lookupTokenKeyword(ident string) tokenType {
@@ -38,7 +38,7 @@ func lookupTokenKeyword(ident string) tokenType {
 	if ret, ok := keywordMap[ident]; ok {
 		return ret
 	}
-	return IDENT
+	return TOK_IDENT
 }
 
 func lineAndCol(input []rune, targetIdx int) (int, int) {

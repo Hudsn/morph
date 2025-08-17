@@ -32,3 +32,8 @@ func (p *program) string() string {
 	}
 	return strings.Join(strs, "\n")
 }
+
+type expressionStatement struct {
+	tok        token
+	expression expression
+}

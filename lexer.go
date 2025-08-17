@@ -50,7 +50,7 @@ func (l *lexer) tokenize() token {
 		tok = l.handleEqual()
 	case '.':
 		tok = l.handleDot()
-		if tok.tokenType == FLOAT {
+		if tok.tokenType == TOK_FLOAT {
 			// readnumber (FLOAT processor) progresses tokens already, so we want to return early here to avoid hitting the next() call at the end of the func
 			return tok
 		}
@@ -60,7 +60,7 @@ func (l *lexer) tokenize() token {
 		} else if isLetter(l.currentChar) {
 			return l.readIdentifier()
 		} else {
-			tok = token{tokenType: ILLEGAL, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+			tok = token{tokenType: TOK_ILLEGAL, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
 		}
 	}
 
@@ -79,7 +79,7 @@ func (l *lexer) handleWhiteSpace() {
 
 func (l *lexer) handleEOF() token {
 	return token{
-		tokenType: EOF,
+		tokenType: TOK_EOF,
 		value:     string(l.currentChar),
 		start:     l.currentIdx,
 		end:       l.nextIdx,
@@ -88,7 +88,7 @@ func (l *lexer) handleEOF() token {
 
 func (l *lexer) handleEqual() token {
 	return token{
-		tokenType: EQUAL,
+		tokenType: TOK_EQUAL,
 		value:     string(l.currentChar),
 		start:     l.currentIdx,
 		end:       l.nextIdx,
@@ -100,7 +100,7 @@ func (l *lexer) handleDot() token {
 		return l.readNumber()
 	}
 	return token{
-		tokenType: DOT,
+		tokenType: TOK_DOT,
 		value:     string(l.currentChar),
 		start:     l.currentIdx,
 		end:       l.nextIdx,
@@ -124,7 +124,7 @@ func (l *lexer) readIdentifier() token {
 }
 
 func (l *lexer) readNumber() token {
-	tok := token{tokenType: INT}
+	tok := token{tokenType: TOK_INT}
 	start := l.currentIdx
 	encounteredDot := false
 	for l.currentChar == '.' || isDigit(l.currentChar) {
@@ -132,7 +132,7 @@ func (l *lexer) readNumber() token {
 			if !isDigit(l.peek()) || encounteredDot {
 				break
 			}
-			tok.tokenType = FLOAT
+			tok.tokenType = TOK_FLOAT
 			encounteredDot = true
 		}
 		l.next()

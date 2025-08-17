@@ -6,7 +6,7 @@ func TestLexEquals(t *testing.T) {
 	input := "="
 	tests := []testCase{
 		{
-			tokenType:  EQUAL,
+			tokenType:  TOK_EQUAL,
 			value:      "=",
 			start:      0,
 			end:        1,
