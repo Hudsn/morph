@@ -8,11 +8,11 @@ const (
 	_ int = iota
 	LOWEST
 	ASSIGN
-	WHEN
 	EQUALITY
 	SUM
 	PRODUCT
-	DOT_CALL_INDEX
+	PREFIX
+	FIELD_CALL_INDEX
 )
 
 type prefixFunc func() expression
@@ -97,6 +97,13 @@ func (p *parser) parseExpressionStatement() *expressionStatement {
 	ret := &expressionStatement{tok: p.currentToken}
 	ret.expression = p.parseExpression(LOWEST)
 
+	return ret
+}
+
+func (p *parser) parsePrefixExpression() expression {
+	ret := &prefixExpression{tok: p.currentToken, operator: p.currentToken.value}
+	p.next()
+	ret.right = p.parseExpression(PREFIX)
 	return ret
 }
 

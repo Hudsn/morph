@@ -54,6 +54,10 @@ func (l *lexer) tokenize() token {
 			// readnumber (FLOAT processor) progresses tokens already, so we want to return early here to avoid hitting the next() call at the end of the func
 			return tok
 		}
+	case '-':
+		tok = l.handleMinus()
+	case '!':
+		tok = l.handleExclamation()
 	default:
 		if isDigit(l.currentChar) {
 			return l.readNumber()
@@ -102,6 +106,24 @@ func (l *lexer) handleDot() token {
 	return token{
 		tokenType: TOK_DOT,
 		value:     string(l.currentChar),
+		start:     l.currentIdx,
+		end:       l.nextIdx,
+	}
+}
+
+func (l *lexer) handleMinus() token {
+	return token{
+		tokenType: TOK_MINUS,
+		value:     string(l.input[l.currentIdx:l.nextIdx]),
+		start:     l.currentIdx,
+		end:       l.nextIdx,
+	}
+}
+
+func (l *lexer) handleExclamation() token {
+	return token{
+		tokenType: TOK_EXCLAMATION,
+		value:     string(l.input[l.currentIdx:l.nextIdx]),
 		start:     l.currentIdx,
 		end:       l.nextIdx,
 	}

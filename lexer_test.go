@@ -115,6 +115,50 @@ type testCase struct {
 	rangeValue string // the literal value captured by the start and end markers; for ex in a string "asdf", it would include the quotes as well even though the value is just asdf
 }
 
+func TestLexMinux(t *testing.T) {
+	input := "-5"
+	tests := []testCase{
+		{
+			tokenType:  TOK_MINUS,
+			value:      "-",
+			rangeValue: "-",
+			start:      0,
+			end:        1,
+		},
+		{
+			tokenType:  TOK_INT,
+			value:      "5",
+			rangeValue: "5",
+			start:      1,
+			end:        2,
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexExclamation(t *testing.T) {
+	input := "!5"
+	tests := []testCase{
+		{
+			tokenType:  TOK_EXCLAMATION,
+			value:      "!",
+			rangeValue: "!",
+			start:      0,
+			end:        1,
+		},
+		{
+			tokenType:  TOK_INT,
+			value:      "5",
+			rangeValue: "5",
+			start:      1,
+			end:        2,
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+//helepr
+
 func checkLexTestCase(t *testing.T, input string, cases []testCase) {
 	lexer := newLexer([]rune(input))
 	for idx, tt := range cases {

@@ -20,7 +20,9 @@ const (
 
 	TOK_DOT tokenType = "."
 
-	TOK_EQUAL tokenType = "="
+	TOK_EQUAL       tokenType = "="
+	TOK_MINUS       tokenType = "-"
+	TOK_EXCLAMATION tokenType = "!"
 
 	//keywords
 	TOK_WHEN tokenType = "WHEN"

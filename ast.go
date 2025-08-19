@@ -1,6 +1,9 @@
 package parser
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type node interface {
 	token() token
@@ -46,3 +49,15 @@ func (es *expressionStatement) string() string {
 	return ""
 }
 func (es *expressionStatement) token() token { return es.tok }
+
+type prefixExpression struct {
+	tok      token
+	operator string
+	right    expression
+}
+
+func (pe *prefixExpression) expressionNode() {}
+func (pe *prefixExpression) token() token    { return pe.tok }
+func (pe *prefixExpression) string() string {
+	return fmt.Sprintf("%s%s", pe.operator, pe.right.string())
+}
