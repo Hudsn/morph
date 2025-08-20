@@ -92,7 +92,7 @@ func (l *lexer) handleEOF() token {
 
 func (l *lexer) handleEqual() token {
 	return token{
-		tokenType: TOK_EQUAL,
+		tokenType: TOK_ASSIGN,
 		value:     string(l.currentChar),
 		start:     l.currentIdx,
 		end:       l.nextIdx,

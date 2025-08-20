@@ -2,11 +2,32 @@ package parser
 
 import "testing"
 
-func TestLexEquals(t *testing.T) {
+func TestLexBoolean(t *testing.T) {
+	input := "true false"
+	tests := []testCase{
+		{
+			tokenType:  TOK_TRUE,
+			value:      "true",
+			start:      0,
+			end:        4,
+			rangeValue: "true",
+		},
+		{
+			tokenType:  TOK_FALSE,
+			value:      "false",
+			start:      5,
+			end:        10,
+			rangeValue: "false",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexAssign(t *testing.T) {
 	input := "="
 	tests := []testCase{
 		{
-			tokenType:  TOK_EQUAL,
+			tokenType:  TOK_ASSIGN,
 			value:      "=",
 			start:      0,
 			end:        1,

@@ -1,7 +1,5 @@
 package parser
 
-import "strings"
-
 type token struct {
 	tokenType tokenType
 	value     string
@@ -18,25 +16,54 @@ const (
 	TOK_INT   tokenType = "INT"
 	TOK_FLOAT tokenType = "FLOAT"
 
-	TOK_DOT tokenType = "."
+	TOK_DOT   tokenType = "."
+	TOK_COLON tokenType = ":"
 
-	TOK_EQUAL       tokenType = "="
-	TOK_MINUS       tokenType = "-"
+	TOK_LPAREN tokenType = "("
+	TOK_RPAREN tokenType = ")"
+	TOK_LCURLY tokenType = "{"
+	TOK_RCURLY tokenType = "}"
+
+	TOK_ASSIGN tokenType = "="
+
+	// operations
 	TOK_EXCLAMATION tokenType = "!"
+	TOK_PLUS        tokenType = "+"
+	TOK_MINUS       tokenType = "-"
+	TOK_ASTERISK    tokenType = "*"
+	TOK_SLASH       tokenType = "/"
+	TOK_MOD         tokenType = "%"
+	TOK_PIPE        tokenType = "|"
+
+	// (in)equality
+	TOK_EQUAL     tokenType = "=="
+	TOK_NOT_EQUAL tokenType = "!="
+	TOK_LT        tokenType = "<"
+	TOK_LTEQ      tokenType = "<="
+	TOK_GT        tokenType = ">"
+	TOK_GTEQ      tokenType = ">="
 
 	//keywords
-	TOK_WHEN tokenType = "WHEN"
+	TOK_WHEN  tokenType = "WHEN"
+	TOK_SET   tokenType = "SET"
+	TOK_TRUE  tokenType = "TRUE"
+	TOK_FALSE tokenType = "FALSE"
 
 	TOK_EOF     tokenType = "EOF"
 	TOK_ILLEGAL tokenType = "ILLEGAL"
 )
 
 var keywordMap = map[string]tokenType{
-	"when": TOK_WHEN,
+	"when":  TOK_WHEN,
+	"WHEN":  TOK_WHEN,
+	"set":   TOK_SET,
+	"SET":   TOK_SET,
+	"true":  TOK_TRUE,
+	"false": TOK_FALSE,
 }
 
 func lookupTokenKeyword(ident string) tokenType {
-	ident = strings.ToLower(ident)
+	// ident = strings.ToLower(ident)
 	if ret, ok := keywordMap[ident]; ok {
 		return ret
 	}

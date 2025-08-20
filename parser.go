@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 )
 
 const (
@@ -14,6 +15,14 @@ const (
 	PREFIX
 	FIELD_CALL_INDEX
 )
+
+var precedenceMap = map[tokenType]int{
+	TOK_MINUS:    SUM,
+	TOK_PLUS:     SUM,
+	TOK_ASTERISK: PRODUCT,
+	TOK_SLASH:    PRODUCT,
+	TOK_MOD:      PRODUCT,
+}
 
 type prefixFunc func() expression
 type infixFunc func(expression) expression
@@ -42,6 +51,15 @@ func newParser(l *lexer) *parser {
 	return p
 }
 
+func (p *parser) registerFuncs() {
+	p.registerPrefixFunc(TOK_MINUS, p.parsePrefixExpression)
+	p.registerPrefixFunc(TOK_EXCLAMATION, p.parsePrefixExpression)
+	p.registerPrefixFunc(TOK_INT, p.parseIntegerLiteral)
+	p.registerPrefixFunc(TOK_FLOAT, p.parseFloatLiteral)
+	p.registerPrefixFunc(TOK_TRUE, p.parseBooleanLiteral)
+	p.registerPrefixFunc(TOK_FALSE, p.parseBooleanLiteral)
+}
+
 func (p *parser) next() {
 	p.currentToken = p.peekToken
 	p.peekToken = p.lexer.tokenize()
@@ -66,7 +84,10 @@ func (p *parser) parseProgram() (*program, error) {
 
 func (p *parser) parseStatement() statement {
 	switch p.currentToken.tokenType {
-
+	//TODO: SET
+	case TOK_SET:
+		return p.parseSetStatement()
+	//TODO: WHEN
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -93,19 +114,88 @@ func (p *parser) parseExpression(precedence int) expression {
 	return leftExp
 }
 
-func (p *parser) parseExpressionStatement() *expressionStatement {
-	ret := &expressionStatement{tok: p.currentToken}
-	ret.expression = p.parseExpression(LOWEST)
-
-	return ret
-}
-
 func (p *parser) parsePrefixExpression() expression {
 	ret := &prefixExpression{tok: p.currentToken, operator: p.currentToken.value}
 	p.next()
 	ret.right = p.parseExpression(PREFIX)
 	return ret
 }
+
+// specific expression parsers
+
+func (p *parser) parseIntegerLiteral() expression {
+	ret := &integerLiteral{tok: p.currentToken}
+
+	num, err := strconv.ParseInt(p.currentToken.value, 10, 64)
+	if err != nil {
+		msg := fmt.Sprintf("invalid integer: %s", p.currentToken.value)
+		p.err(msg, p.currentToken.start)
+	}
+	ret.value = num
+	return ret
+}
+
+func (p *parser) parseFloatLiteral() expression {
+	ret := &floatLiteral{tok: p.currentToken}
+
+	num, err := strconv.ParseFloat(p.currentToken.value, 64)
+	if err != nil {
+		msg := fmt.Sprintf("invalid float: %s", p.currentToken.value)
+		p.err(msg, p.currentToken.start)
+	}
+	ret.value = num
+	return ret
+}
+
+func (p *parser) parseBooleanLiteral() expression {
+	ret := &booleanLiteral{tok: p.currentToken}
+	switch p.currentToken.value {
+	case "true":
+		ret.value = true
+	case "false":
+		ret.value = false
+	default:
+		msg := fmt.Sprintf("invalid boolean: %s", p.currentToken.value)
+		p.err(msg, p.currentToken.start)
+		return nil
+	}
+	return ret
+}
+
+//
+
+// specific statement parsers
+
+func (p *parser) parseSetStatement() *setStatement {
+	ret := &setStatement{tok: p.currentToken}
+	start := p.currentToken.start
+	if !p.mustNextToken(TOK_IDENT) { // ident is fine here since paths always start with ident
+		return nil
+	}
+	potentialTarget := p.parseExpression(LOWEST)
+	target, ok := potentialTarget.(assignable)
+	if !ok {
+		sequence := p.rawStringFromStartEnd(start, p.currentToken.end)
+		msg := fmt.Sprintf("SET statement should be followed by an assignable expression. instead got: %s", sequence)
+		p.err(msg, p.currentToken.start)
+		return nil
+	}
+	ret.target = target
+	if !p.mustNextToken(TOK_ASSIGN) {
+		return nil
+	}
+	p.next()
+	ret.value = p.parseExpression(LOWEST)
+	return ret
+}
+
+func (p *parser) parseExpressionStatement() *expressionStatement {
+	ret := &expressionStatement{tok: p.currentToken}
+	ret.expression = p.parseExpression(LOWEST)
+	return ret
+}
+
+// helpers
 
 func (p *parser) isCurrentToken(t tokenType) bool {
 	return p.currentToken.tokenType == t
@@ -133,10 +223,6 @@ func (p *parser) rawStringFromStartEnd(start, end int) string {
 	return string(p.lexer.input[start:end])
 }
 
-func (p *parser) registerFuncs() {
-
-}
-
 func (p *parser) registerPrefixFunc(t tokenType, fn prefixFunc) {
 	p.prefixFuncMap[t] = fn
 }
@@ -147,8 +233,6 @@ func (p *parser) registerInfixFunc(t tokenType, fn infixFunc) {
 func (p *parser) peekPrecedence() int {
 	return lookupPrecedence(p.peekToken.tokenType)
 }
-
-var precedenceMap = map[tokenType]int{}
 
 func lookupPrecedence(t tokenType) int {
 	if precedence, ok := precedenceMap[t]; ok {
