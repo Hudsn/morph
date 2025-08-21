@@ -16,15 +16,19 @@ const (
 	TOK_INT   tokenType = "INT"
 	TOK_FLOAT tokenType = "FLOAT"
 
-	TOK_DOT   tokenType = "."
-	TOK_COLON tokenType = ":"
+	// separators
+	TOK_ASSIGN       tokenType = "="
+	TOK_DOT          tokenType = "."
+	TOK_COLON        tokenType = ":"
+	TOK_DOUBLE_COLON tokenType = "::"
 
-	TOK_LPAREN tokenType = "("
-	TOK_RPAREN tokenType = ")"
-	TOK_LCURLY tokenType = "{"
-	TOK_RCURLY tokenType = "}"
-
-	TOK_ASSIGN tokenType = "="
+	// containers
+	TOK_LPAREN  tokenType = "("
+	TOK_RPAREN  tokenType = ")"
+	TOK_LCURLY  tokenType = "{"
+	TOK_RCURLY  tokenType = "}"
+	TOK_LSQUARE tokenType = "["
+	TOK_RSQUARE tokenType = "]"
 
 	// operations
 	TOK_EXCLAMATION tokenType = "!"
@@ -35,7 +39,7 @@ const (
 	TOK_MOD         tokenType = "%"
 	TOK_PIPE        tokenType = "|"
 
-	// (in)equality
+	// (in)equality checks
 	TOK_EQUAL     tokenType = "=="
 	TOK_NOT_EQUAL tokenType = "!="
 	TOK_LT        tokenType = "<"

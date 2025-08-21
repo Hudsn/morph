@@ -2,6 +2,34 @@ package parser
 
 import "testing"
 
+func TestLexColon(t *testing.T) {
+	input := ": :: :"
+	tests := []testCase{
+		{
+			tokenType:  TOK_COLON,
+			start:      0,
+			end:        1,
+			value:      ":",
+			rangeValue: ":",
+		},
+		{
+			tokenType:  TOK_DOUBLE_COLON,
+			start:      2,
+			end:        4,
+			value:      "::",
+			rangeValue: "::",
+		},
+		{
+			tokenType:  TOK_COLON,
+			start:      5,
+			end:        6,
+			value:      ":",
+			rangeValue: ":",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
 func TestLexBoolean(t *testing.T) {
 	input := "true false"
 	tests := []testCase{

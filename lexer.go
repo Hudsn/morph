@@ -54,6 +54,8 @@ func (l *lexer) tokenize() token {
 			// readnumber (FLOAT processor) progresses tokens already, so we want to return early here to avoid hitting the next() call at the end of the func
 			return tok
 		}
+	case ':':
+		tok = l.handleColon()
 	case '-':
 		tok = l.handleMinus()
 	case '!':
@@ -129,11 +131,26 @@ func (l *lexer) handleExclamation() token {
 	}
 }
 
+func (l *lexer) handleColon() token {
+	start := l.currentIdx
+	tok := token{
+		tokenType: TOK_COLON,
+		start:     start,
+	}
+	if l.peek() == ':' {
+		tok.tokenType = TOK_DOUBLE_COLON
+		l.next()
+	}
+	tok.value = string(l.input[start:l.nextIdx])
+	tok.end = l.nextIdx
+	return tok
+}
+
 // reader helpers
 
 func (l *lexer) readIdentifier() token {
 	start := l.currentIdx
-	for isDigit(l.currentChar) || isLetter(l.currentChar) {
+	for isDigit(l.currentChar) || isLetter(l.currentChar) || isLineChar(l.currentChar) {
 		l.next()
 	}
 	val := string(l.input[start:l.currentIdx])

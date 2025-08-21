@@ -22,6 +22,7 @@ var precedenceMap = map[tokenType]int{
 	TOK_ASTERISK: PRODUCT,
 	TOK_SLASH:    PRODUCT,
 	TOK_MOD:      PRODUCT,
+	TOK_DOT:      FIELD_CALL_INDEX,
 }
 
 type prefixFunc func() expression
@@ -54,10 +55,13 @@ func newParser(l *lexer) *parser {
 func (p *parser) registerFuncs() {
 	p.registerPrefixFunc(TOK_MINUS, p.parsePrefixExpression)
 	p.registerPrefixFunc(TOK_EXCLAMATION, p.parsePrefixExpression)
+	p.registerPrefixFunc(TOK_IDENT, p.parseIdentiferExpression)
 	p.registerPrefixFunc(TOK_INT, p.parseIntegerLiteral)
 	p.registerPrefixFunc(TOK_FLOAT, p.parseFloatLiteral)
 	p.registerPrefixFunc(TOK_TRUE, p.parseBooleanLiteral)
 	p.registerPrefixFunc(TOK_FALSE, p.parseBooleanLiteral)
+
+	p.registerInfixFunc(TOK_DOT, p.parsePathExpression)
 }
 
 func (p *parser) next() {
@@ -84,10 +88,10 @@ func (p *parser) parseProgram() (*program, error) {
 
 func (p *parser) parseStatement() statement {
 	switch p.currentToken.tokenType {
-	//TODO: SET
 	case TOK_SET:
 		return p.parseSetStatement()
-	//TODO: WHEN
+	case TOK_WHEN:
+		return p.parseWhenStatement()
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -103,14 +107,13 @@ func (p *parser) parseExpression(precedence int) expression {
 	leftExp := prefixFn()
 
 	for precedence < p.peekPrecedence() {
-		infixFn := p.infixFuncMap[p.currentToken.tokenType]
+		infixFn := p.infixFuncMap[p.peekToken.tokenType]
 		if infixFn == nil {
 			return leftExp
 		}
 		p.next()
 		leftExp = infixFn(leftExp)
 	}
-
 	return leftExp
 }
 
@@ -122,6 +125,17 @@ func (p *parser) parsePrefixExpression() expression {
 }
 
 // specific expression parsers
+
+func (p *parser) parsePathExpression(expr expression) expression {
+	ret := &pathExpression{tok: p.currentToken, name: expr}
+	p.next()
+	ret.item = p.parseExpression(LOWEST)
+	return ret
+}
+
+func (p *parser) parseIdentiferExpression() expression {
+	return &identifierExpression{tok: p.currentToken, value: p.currentToken.value}
+}
 
 func (p *parser) parseIntegerLiteral() expression {
 	ret := &integerLiteral{tok: p.currentToken}
@@ -180,12 +194,25 @@ func (p *parser) parseSetStatement() *setStatement {
 		p.err(msg, p.currentToken.start)
 		return nil
 	}
+
 	ret.target = target
 	if !p.mustNextToken(TOK_ASSIGN) {
 		return nil
 	}
 	p.next()
 	ret.value = p.parseExpression(LOWEST)
+	return ret
+}
+
+func (p *parser) parseWhenStatement() *whenStatement {
+	ret := &whenStatement{tok: p.currentToken}
+	p.next() // to expr
+	ret.condition = p.parseExpression(LOWEST)
+	if !p.mustNextToken(TOK_DOUBLE_COLON) {
+		return nil
+	}
+	p.next()
+	ret.consequence = p.parseStatement()
 	return ret
 }
 
@@ -208,7 +235,7 @@ func (p *parser) mustNextToken(t tokenType) bool {
 		p.next()
 		return true
 	}
-	msg := fmt.Sprintf("unexpected token type: %s", p.peekToken.tokenType)
+	msg := fmt.Sprintf("unexpected token type. expected=%q got=%q", t, p.peekToken.tokenType)
 	p.err(msg, p.peekToken.start)
 	return false
 }

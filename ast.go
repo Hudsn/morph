@@ -32,6 +32,12 @@ type assignable interface {
 	assignableNode()
 }
 
+// nodes that can be part of a valid path. ex: ident, pathExpression, string, indexExpression
+type pathPart interface {
+	node
+	pathPartNode()
+}
+
 type program struct {
 	tok        token
 	statements []statement
@@ -79,6 +85,26 @@ func (s *setStatement) position() position {
 	return position{
 		start: s.target.position().start,
 		end:   s.value.position().end,
+	}
+}
+
+//
+
+type whenStatement struct {
+	tok         token
+	condition   expression
+	consequence statement
+}
+
+func (ws *whenStatement) statementNode() {}
+func (ws *whenStatement) token() token   { return ws.tok }
+func (ws *whenStatement) string() string {
+	return fmt.Sprintf("%s %s :: %s", ws.tok.value, ws.condition.string(), ws.consequence.string())
+}
+func (ws *whenStatement) position() position {
+	return position{
+		start: ws.tok.start,
+		end:   ws.consequence.position().end,
 	}
 }
 
@@ -153,7 +179,7 @@ func (ie *identifierExpression) position() position {
 
 type pathExpression struct {
 	tok  token
-	left expression
+	name expression
 	item expression
 }
 
@@ -161,11 +187,11 @@ func (pe *pathExpression) expressionNode() {}
 func (pe *pathExpression) assignableNode() {}
 func (pe *pathExpression) token() token    { return pe.tok }
 func (pe *pathExpression) string() string {
-	return fmt.Sprintf("%s.%s", pe.left.string(), pe.item.string())
+	return fmt.Sprintf("%s.%s", pe.name.string(), pe.item.string())
 }
 func (pe *pathExpression) position() position {
 	return position{
-		start: pe.left.position().start,
+		start: pe.name.position().start,
 		end:   pe.item.position().end,
 	}
 }
