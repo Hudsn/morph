@@ -3,7 +3,7 @@ package morph
 import "testing"
 
 func TestDataFromBytes(t *testing.T) {
-	b := []byte(`{5}`)
+	b := []byte(`5`)
 	data, err := newDataFromBytes(b)
 	if err != nil {
 		t.Fatal(err.Error())
