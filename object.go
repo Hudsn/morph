@@ -1,6 +1,9 @@
 package morph
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type objectType string
 
@@ -14,10 +17,34 @@ const (
 	T_FLOAT   objectType = "FLOAT"
 	T_BOOLEAN objectType = "BOOLEAN"
 
+	T_MAP objectType = "MAP"
+
 	T_ERROR   objectType = "ERROR"
 	T_SIGTERM objectType = "SIGTERM"
 	T_NULL    objectType = "NULL"
 )
+
+//
+//object impls
+
+type objectMapPair struct {
+	key   string
+	value object
+}
+
+type objectMap struct {
+	kvPairs map[string]objectMapPair
+}
+
+func (m *objectMap) getType() objectType { return T_MAP }
+func (m *objectMap) inspect() string {
+	pairs := []string{}
+	for _, pair := range m.kvPairs {
+		pairString := fmt.Sprintf("%s: %s", pair.key, pair.value.inspect())
+		pairs = append(pairs, pairString)
+	}
+	return fmt.Sprintf("{%s}", strings.Join(pairs, ", "))
+}
 
 //
 
