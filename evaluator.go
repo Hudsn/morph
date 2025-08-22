@@ -1,20 +1,10 @@
-package parser
+package morph
 
 var (
 	OBJ_GLOBAL_NULL  = &objectNull{}
 	OBJ_GLOBAL_TRUE  = &objectBoolean{value: true}
 	OBJ_GLOBAL_FALSE = &objectBoolean{value: false}
 )
-
-// TODO
-func runProgram(program program, env *environment) {
-
-}
-
-// TODO
-func runExpression(statement expressionStatement, env *environment) object {
-	return nil
-}
 
 func eval(astNode node, env *environment) object {
 	switch astNode := astNode.(type) {

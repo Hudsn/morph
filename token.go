@@ -1,4 +1,4 @@
-package parser
+package morph
 
 type token struct {
 	tokenType tokenType

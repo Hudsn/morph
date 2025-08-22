@@ -1,7 +1,6 @@
-package parser
+package morph
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -31,9 +30,10 @@ func TestParseSetStatement(t *testing.T) {
 	checkParserStatementType(t, program.statements[0], SET_STATEMENT)
 	stmt := program.statements[0].(*setStatement)
 	ident, ok := stmt.target.(*identifierExpression)
-	if ok {
-		testIdentifierExpression(t, ident, "myvar")
+	if !ok {
+		t.Errorf("stmt.target is not *identifierExpression. got=%T", stmt.target)
 	}
+	testIdentifierExpression(t, ident, "myvar")
 
 	input = "SET my.path.var = true"
 	program = setupParserTest(t, input)
@@ -41,9 +41,15 @@ func TestParseSetStatement(t *testing.T) {
 	checkParserStatementType(t, program.statements[0], SET_STATEMENT)
 	stmt = program.statements[0].(*setStatement)
 	path, ok := stmt.target.(*pathExpression)
-	if ok {
-		testPathExpression(t, path, "my.path.var")
+	if !ok {
+		t.Errorf("stmt.target is not *pathExpression. got=%T", stmt.target)
 	}
+	want := []interface{}{
+		"my",
+		"path",
+		"var",
+	}
+	testPathExpression(t, path, want)
 
 }
 
@@ -130,7 +136,10 @@ func testLiteralExpression(t *testing.T, expr expression, value interface{}) boo
 		return testFloatLiteral(t, expr, v)
 	case bool:
 		return testBooleanLiteral(t, expr, v)
+	case string:
+		return testIdentifierExpression(t, expr, v)
 	default:
+		t.Errorf("testLiteralExpression type not supported. got=%T", value)
 		return false
 	}
 }
@@ -183,38 +192,32 @@ func testIdentifierExpression(t *testing.T, expr expression, want string) bool {
 		return false
 	}
 	if ident.value != want {
-		t.Errorf("expected identifier string to be equal to %s. got=%s", want, ident.value)
+		t.Errorf("expected identifier string to be equal to %q. got=%q", want, ident.value)
 		return false
 	}
 	return true
 }
 
-func testPathExpression(t *testing.T, expr expression, want string) bool {
+func testPathExpression(t *testing.T, expr expression, wantList []interface{}) bool {
 	path, ok := expr.(*pathExpression)
+
 	if !ok {
 		t.Errorf("expression is not of type *pathExpression. got=%T", expr)
 		return false
 	}
-	pathSplit := strings.Split(want, ".")
-	if len(pathSplit) < 2 {
-		t.Fatalf("want is not a valid path. got=%s", want)
+	if len(wantList) != len(path.parts) {
+		t.Fatalf("wrong length of path parts. expected=%d got=%d", len(wantList), len(path.parts))
 		return false
 	}
 
-	var currentNode expression = path
-	var gotPath string
-	for idx, wantPath := range pathSplit {
-		switch v := currentNode.(type) {
-		case *pathExpression:
-			gotPath = v.name.string()
-			currentNode = v.item
-		default:
-			gotPath = v.string()
-		}
-		if gotPath != wantPath {
-			t.Errorf("expected path part at index %d to be %q. got=%q", idx, wantPath, gotPath)
+	for idx, wantVal := range wantList {
+		gotPart := path.parts[idx]
+		gotExpr, ok := gotPart.(expression)
+		if !ok {
+			t.Fatalf("testPathExpression case idx=%d gotPart is not of type expression. got=%T", idx, gotPart)
 			return false
 		}
+		testLiteralExpression(t, gotExpr, wantVal)
 	}
 	return true
 }

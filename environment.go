@@ -1,4 +1,4 @@
-package parser
+package morph
 
 type environment struct {
 	store map[string]object

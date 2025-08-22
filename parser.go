@@ -1,4 +1,4 @@
-package parser
+package morph
 
 import (
 	"fmt"
@@ -61,7 +61,6 @@ func (p *parser) registerFuncs() {
 	p.registerPrefixFunc(TOK_TRUE, p.parseBooleanLiteral)
 	p.registerPrefixFunc(TOK_FALSE, p.parseBooleanLiteral)
 
-	p.registerInfixFunc(TOK_DOT, p.parsePathExpression)
 }
 
 func (p *parser) next() {
@@ -126,15 +125,41 @@ func (p *parser) parsePrefixExpression() expression {
 
 // specific expression parsers
 
-func (p *parser) parsePathExpression(expr expression) expression {
-	ret := &pathExpression{tok: p.currentToken, name: expr}
-	p.next()
-	ret.item = p.parseExpression(LOWEST)
-	return ret
+func (p *parser) parseIdentiferExpression() expression {
+	ident := &identifierExpression{tok: p.currentToken, value: p.currentToken.value}
+	return p.maybeParsePathExpression(ident)
 }
 
-func (p *parser) parseIdentiferExpression() expression {
-	return &identifierExpression{tok: p.currentToken, value: p.currentToken.value}
+// call this for any expression that satisfies
+func (p *parser) maybeParsePathExpression(left expression) expression {
+	// just return the original expression if we dont have a dot up next.
+	if !p.isPeekToken(TOK_DOT) {
+		return left
+	}
+
+	part, ok := left.(pathPart)
+	if !ok {
+		msg := fmt.Sprintf("invalid path part: %s", left.string())
+		p.err(msg, left.position().start)
+	}
+	ret := &pathExpression{tok: p.peekToken, parts: []pathPart{part}}
+
+	p.next() // to dot
+	p.next() // to next path part
+	rest := p.parseExpression(LOWEST)
+	part, ok = rest.(pathPart)
+	if !ok {
+		msg := fmt.Sprintf("invalid path part: %s", rest.string())
+		p.err(msg, rest.position().start)
+	}
+	switch v := part.(type) {
+	case *pathExpression:
+		ret.parts = append(ret.parts, v.parts...)
+	default:
+		ret.parts = append(ret.parts, v)
+	}
+
+	return ret
 }
 
 func (p *parser) parseIntegerLiteral() expression {

@@ -1,4 +1,4 @@
-package parser
+package morph
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ type expression interface {
 	expressionNode()
 }
 
-// things like an identifier or path. ex: myIdent or myobj.mypath
+// things like an identifier or path. ex: myIdent or myobj.mypath or myArr[0]
 type assignable interface {
 	node
 	assignableNode()
@@ -166,6 +166,7 @@ type identifierExpression struct {
 
 func (ie *identifierExpression) expressionNode() {}
 func (ie *identifierExpression) assignableNode() {}
+func (ie *identifierExpression) pathPartNode()   {}
 func (ie *identifierExpression) token() token    { return ie.tok }
 func (ie *identifierExpression) string() string  { return ie.value }
 func (ie *identifierExpression) position() position {
@@ -178,18 +179,46 @@ func (ie *identifierExpression) position() position {
 //
 
 type pathExpression struct {
+	tok   token
+	parts []pathPart
+}
+
+func (pe *pathExpression) expressionNode() {}
+func (pe *pathExpression) assignableNode() {}
+func (pe *pathExpression) pathPartNode()   {}
+func (pe *pathExpression) token() token    { return pe.tok }
+func (pe *pathExpression) position() position {
+	if len(pe.parts) < 1 {
+		return position{start: pe.tok.start, end: pe.tok.end}
+	}
+	return position{
+		start: pe.parts[0].position().start,
+		end:   pe.parts[len(pe.parts)-1].position().end,
+	}
+}
+func (pe *pathExpression) string() string {
+	partStrings := []string{}
+	for _, entry := range pe.parts {
+		partStrings = append(partStrings, entry.string())
+	}
+	return strings.Join(partStrings, ".")
+}
+
+//
+
+type pathExpressionOld struct {
 	tok  token
 	name expression
 	item expression
 }
 
-func (pe *pathExpression) expressionNode() {}
-func (pe *pathExpression) assignableNode() {}
-func (pe *pathExpression) token() token    { return pe.tok }
-func (pe *pathExpression) string() string {
+func (pe *pathExpressionOld) expressionNode() {}
+func (pe *pathExpressionOld) assignableNode() {}
+func (pe *pathExpressionOld) token() token    { return pe.tok }
+func (pe *pathExpressionOld) string() string {
 	return fmt.Sprintf("%s.%s", pe.name.string(), pe.item.string())
 }
-func (pe *pathExpression) position() position {
+func (pe *pathExpressionOld) position() position {
 	return position{
 		start: pe.name.position().start,
 		end:   pe.item.position().end,
