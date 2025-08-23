@@ -4,16 +4,16 @@ import (
 	"testing"
 )
 
-func TestDataFromBytes(t *testing.T) {
+func TestDataObjectFromBytes(t *testing.T) {
 	b := []byte(`{"key": 5}`)
-	data, err := newDataFromBytes(b)
+	obj, err := newObjectFromBytes(b)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 	want := map[string]interface{}{
 		"key": 5,
 	}
-	testDataObject(t, data.contents, want)
+	testDataObject(t, obj, want)
 }
 
 func testDataObject(t *testing.T, data object, want interface{}) bool {
