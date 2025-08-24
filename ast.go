@@ -26,15 +26,27 @@ type expression interface {
 	expressionNode()
 }
 
-// things like an identifier or path. ex: myIdent or myobj.mypath or myArr[0]
+// things like an identifier or path. ex: myIdent or myobj.mypath or "my spaced string"
 type assignable interface {
-	node
-	assignableNode()
+	expression
+	assignPathSteps(isFirst bool) []assignStep
+}
+type assignStepType string
+
+const (
+	ASSIGN_STEP_ENV     = "ENV"
+	ASSIGN_STEP_MAP_KEY = "MAPKEY"
+	ASSIGN_STEP_INVALID = "INVALID" // things like index expressions. eg: we don't want to be able to directly assign indexes like item[99] = "abc"
+)
+
+type assignStep struct {
+	stepType assignStepType
+	name     string
 }
 
-// nodes that can be part of a valid path. ex: ident, pathExpression, string, indexExpression
-type pathPart interface {
-	node
+// nodes that can be part of a valid path to fetch data. ex: ident, string, indexExpression, or another pathexpression
+type pathPartExpression interface {
+	expression
 	pathPartNode()
 }
 
@@ -165,7 +177,6 @@ type identifierExpression struct {
 }
 
 func (ie *identifierExpression) expressionNode() {}
-func (ie *identifierExpression) assignableNode() {}
 func (ie *identifierExpression) pathPartNode()   {}
 func (ie *identifierExpression) token() token    { return ie.tok }
 func (ie *identifierExpression) string() string  { return ie.value }
@@ -175,33 +186,55 @@ func (ie *identifierExpression) position() position {
 		end:   ie.tok.end,
 	}
 }
+func (ie *identifierExpression) assignPathSteps(isFirst bool) []assignStep {
+	return []assignStep{
+		{ASSIGN_STEP_ENV, ie.value},
+	}
+}
 
 //
 
 type pathExpression struct {
-	tok   token
-	parts []pathPart
+	left      pathPartExpression
+	tok       token
+	attribute pathPartExpression
 }
 
 func (pe *pathExpression) expressionNode() {}
-func (pe *pathExpression) assignableNode() {}
 func (pe *pathExpression) pathPartNode()   {}
 func (pe *pathExpression) token() token    { return pe.tok }
 func (pe *pathExpression) position() position {
-	if len(pe.parts) < 1 {
-		return position{start: pe.tok.start, end: pe.tok.end}
-	}
 	return position{
-		start: pe.parts[0].position().start,
-		end:   pe.parts[len(pe.parts)-1].position().end,
+		start: pe.left.position().start,
+		end:   pe.attribute.position().end,
 	}
 }
 func (pe *pathExpression) string() string {
-	partStrings := []string{}
-	for _, entry := range pe.parts {
-		partStrings = append(partStrings, entry.string())
+	return fmt.Sprintf("%s.%s", pe.left.string(), pe.attribute.string())
+}
+func (pe *pathExpression) assignPathSteps(isFirst bool) []assignStep {
+	ret := []assignStep{}
+	switch v := pe.attribute.(type) {
+	case *identifierExpression:
+		toAdd := assignStep{stepType: ASSIGN_STEP_MAP_KEY, name: v.value}
+		if isFirst {
+			toAdd.stepType = ASSIGN_STEP_ENV
+		}
+		ret = append(ret, toAdd)
+	default:
+		ret = append(ret, assignStep{ASSIGN_STEP_INVALID, fmt.Sprintf("%d:%d: not a valid assignable attribute: %s", pe.attribute.position().start, pe.attribute.position().end, pe.attribute.string())})
 	}
-	return strings.Join(partStrings, ".")
+
+	nextPath, ok := pe.left.(assignable)
+	if !ok {
+		// just bubble up an invalid + preformatted error message if the left side is not assignable
+		return append([]assignStep{{ASSIGN_STEP_INVALID, fmt.Sprintf("%d:%d: not a valid assignable attribute: %s", pe.left.position().start, pe.left.position().end, pe.left.string())}}, ret...)
+	}
+	//otherwise, we recurse and prepend since we're starting from the right-most side of the path. ex: in "a.b.c" we'd want "a" first even though we start with "c" in our expression
+	toPrepend := nextPath.assignPathSteps(false)
+	ret = append(toPrepend, ret...)
+
+	return ret
 }
 
 //

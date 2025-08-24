@@ -200,24 +200,33 @@ func testIdentifierExpression(t *testing.T, expr expression, want string) bool {
 
 func testPathExpression(t *testing.T, expr expression, wantList []interface{}) bool {
 	path, ok := expr.(*pathExpression)
-
 	if !ok {
 		t.Errorf("expression is not of type *pathExpression. got=%T", expr)
 		return false
 	}
-	if len(wantList) != len(path.parts) {
-		t.Fatalf("wrong length of path parts. expected=%d got=%d", len(wantList), len(path.parts))
-		return false
-	}
-
-	for idx, wantVal := range wantList {
-		gotPart := path.parts[idx]
-		gotExpr, ok := gotPart.(expression)
+	idx := 0
+	for i := len(wantList) - 1; i >= 0; i-- {
+		wantVal := wantList[i]
+		gotAttr, ok := path.attribute.(expression)
 		if !ok {
-			t.Fatalf("testPathExpression case idx=%d gotPart is not of type expression. got=%T", idx, gotPart)
+			t.Fatalf("testPathExpression case idx=%d path.attribute is not of type expression. got=%T", idx, path.attribute)
 			return false
 		}
-		testLiteralExpression(t, gotExpr, wantVal)
+		testLiteralExpression(t, gotAttr, wantVal)
+		idx++
+		if _, ok := path.left.(*pathExpression); ok {
+			path = path.left.(*pathExpression)
+			continue
+		}
+		// if we get here, out left node is NOT a path expr so we are probably at the first path part like an ident, string, or indexExprssion
+		i--
+		wantVal = wantList[i]
+		final, ok := path.left.(expression)
+		if !ok {
+			t.Fatalf("testPathExpression case idx=%d path.left is not of type expression. got=%T", idx, path.attribute)
+			return false
+		}
+		testLiteralExpression(t, final, wantVal)
 	}
 	return true
 }
