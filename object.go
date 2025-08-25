@@ -19,9 +19,9 @@ const (
 
 	T_MAP objectType = "MAP"
 
-	T_ERROR   objectType = "ERROR"
-	T_SIGTERM objectType = "SIGTERM"
-	T_NULL    objectType = "NULL"
+	T_ERROR objectType = "ERROR"
+	T_TERM  objectType = "TERMINATE"
+	T_NULL  objectType = "NULL"
 )
 
 //
@@ -92,7 +92,7 @@ func (e *objectError) inspect() string     { return "ERROR: " + e.message }
 //
 
 // returned by builtin funcs when signaling to halt further processing and return the env values as-is.
-type objectSigterm struct{}
+type objectTerm struct{}
 
-func (s *objectSigterm) getType() objectType { return T_SIGTERM }
-func (s *objectSigterm) inspect() string     { return "SIGTERM" }
+func (t *objectTerm) getType() objectType { return T_TERM }
+func (t *objectTerm) inspect() string     { return "TERMINATE" }

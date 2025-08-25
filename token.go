@@ -1,5 +1,7 @@
 package morph
 
+import "fmt"
+
 type token struct {
 	tokenType tokenType
 	value     string
@@ -72,6 +74,10 @@ func lookupTokenKeyword(ident string) tokenType {
 		return ret
 	}
 	return TOK_IDENT
+}
+
+func lineColString(line int, col int) string {
+	return fmt.Sprintf("%d:%d", line, col)
 }
 
 func lineAndCol(input []rune, targetIdx int) (int, int) {

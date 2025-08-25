@@ -2,6 +2,7 @@ package morph
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -29,7 +30,7 @@ type expression interface {
 // things like an identifier or path. ex: myIdent or myobj.mypath or "my spaced string"
 type assignable interface {
 	expression
-	assignPathSteps(isFirst bool) []assignStep
+	assignPathSteps() []assignStep
 }
 type assignStepType string
 
@@ -186,7 +187,7 @@ func (ie *identifierExpression) position() position {
 		end:   ie.tok.end,
 	}
 }
-func (ie *identifierExpression) assignPathSteps(isFirst bool) []assignStep {
+func (ie *identifierExpression) assignPathSteps() []assignStep {
 	return []assignStep{
 		{ASSIGN_STEP_ENV, ie.value},
 	}
@@ -212,49 +213,35 @@ func (pe *pathExpression) position() position {
 func (pe *pathExpression) string() string {
 	return fmt.Sprintf("%s.%s", pe.left.string(), pe.attribute.string())
 }
-func (pe *pathExpression) assignPathSteps(isFirst bool) []assignStep {
+func (pe *pathExpression) assignPathSteps() []assignStep {
 	ret := []assignStep{}
-	switch v := pe.attribute.(type) {
-	case *identifierExpression:
-		toAdd := assignStep{stepType: ASSIGN_STEP_MAP_KEY, name: v.value}
-		if isFirst {
-			toAdd.stepType = ASSIGN_STEP_ENV
+	var current pathPartExpression = pe
+	shouldContinue := true
+	for shouldContinue {
+		switch v := current.(type) {
+		case *pathExpression:
+			ret = append(ret, handlePathStepAttribute(v.attribute))
+			current = v.left // recurse here since a pathexpression is an infix expr. So we must have a left to recurse to.
+		case *identifierExpression:
+			firstEntry := assignStep{ASSIGN_STEP_ENV, v.value}
+			ret = append(ret, firstEntry)
+			shouldContinue = false // we reached the first/leftmost entry, so we're done.
+		default: // unsupported path = add invalid to trigger an error in the parsing step. so we're done here as well.
+			invalidEntry := assignStep{ASSIGN_STEP_INVALID, ""}
+			ret = append(ret, invalidEntry)
+			shouldContinue = false
 		}
-		ret = append(ret, toAdd)
-	default:
-		ret = append(ret, assignStep{ASSIGN_STEP_INVALID, fmt.Sprintf("%d:%d: not a valid assignable attribute: %s", pe.attribute.position().start, pe.attribute.position().end, pe.attribute.string())})
 	}
-
-	nextPath, ok := pe.left.(assignable)
-	if !ok {
-		// just bubble up an invalid + preformatted error message if the left side is not assignable
-		return append([]assignStep{{ASSIGN_STEP_INVALID, fmt.Sprintf("%d:%d: not a valid assignable attribute: %s", pe.left.position().start, pe.left.position().end, pe.left.string())}}, ret...)
-	}
-	//otherwise, we recurse and prepend since we're starting from the right-most side of the path. ex: in "a.b.c" we'd want "a" first even though we start with "c" in our expression
-	toPrepend := nextPath.assignPathSteps(false)
-	ret = append(toPrepend, ret...)
-
+	slices.Reverse(ret)
 	return ret
 }
 
-//
-
-type pathExpressionOld struct {
-	tok  token
-	name expression
-	item expression
-}
-
-func (pe *pathExpressionOld) expressionNode() {}
-func (pe *pathExpressionOld) assignableNode() {}
-func (pe *pathExpressionOld) token() token    { return pe.tok }
-func (pe *pathExpressionOld) string() string {
-	return fmt.Sprintf("%s.%s", pe.name.string(), pe.item.string())
-}
-func (pe *pathExpressionOld) position() position {
-	return position{
-		start: pe.name.position().start,
-		end:   pe.item.position().end,
+func handlePathStepAttribute(attr pathPartExpression) assignStep {
+	switch v := attr.(type) {
+	case *identifierExpression:
+		return assignStep{ASSIGN_STEP_MAP_KEY, v.value}
+	default:
+		return assignStep{ASSIGN_STEP_INVALID, ""}
 	}
 }
 

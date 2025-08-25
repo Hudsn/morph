@@ -40,6 +40,20 @@ func TestParseSetStatement(t *testing.T) {
 	checkParserProgramLength(t, program, 1)
 	checkParserStatementType(t, program.statements[0], SET_STATEMENT)
 	stmt = program.statements[0].(*setStatement)
+	steps := stmt.target.assignPathSteps()
+	wantSteps := []assignStep{
+		{ASSIGN_STEP_ENV, "my"},
+		{ASSIGN_STEP_MAP_KEY, "path"},
+		{ASSIGN_STEP_MAP_KEY, "var"},
+	}
+	if len(steps) != len(wantSteps) {
+		t.Fatalf("expected len assignment steps to be %d. got=%d", len(wantSteps), len(steps))
+	}
+	for idx, wantStep := range wantSteps {
+		if wantStep != steps[idx] {
+			t.Errorf("wrong value for assign step at step index %d: want=%v, got=%v", idx, wantStep, steps[idx])
+		}
+	}
 	path, ok := stmt.target.(*pathExpression)
 	if !ok {
 		t.Errorf("stmt.target is not *pathExpression. got=%T", stmt.target)
