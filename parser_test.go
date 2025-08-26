@@ -1,6 +1,7 @@
 package morph
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -40,19 +41,30 @@ func TestParseSetStatement(t *testing.T) {
 	checkParserProgramLength(t, program, 1)
 	checkParserStatementType(t, program.statements[0], SET_STATEMENT)
 	stmt = program.statements[0].(*setStatement)
-	steps := stmt.target.assignPathSteps()
-	wantSteps := []assignStep{
+	assignPath := stmt.target.toAssignPath()
+	// steps := stmt.target.assignPathSteps()
+	wantSteps := []struct {
+		stepType assignStepType
+		partName string
+	}{
 		{ASSIGN_STEP_ENV, "my"},
 		{ASSIGN_STEP_MAP_KEY, "path"},
 		{ASSIGN_STEP_MAP_KEY, "var"},
 	}
-	if len(steps) != len(wantSteps) {
-		t.Fatalf("expected len assignment steps to be %d. got=%d", len(wantSteps), len(steps))
-	}
-	for idx, wantStep := range wantSteps {
-		if wantStep != steps[idx] {
-			t.Errorf("wrong value for assign step at step index %d: want=%v, got=%v", idx, wantStep, steps[idx])
+	curPath := assignPath
+	for idx := 0; curPath != nil; idx++ {
+		fmt.Printf("%+v\n\n", curPath)
+		if idx >= len(wantSteps) {
+			t.Fatalf("too many path parts. expected=%d got=%d", len(wantSteps), idx+1)
 		}
+		want := wantSteps[idx]
+		if want.stepType != curPath.stepType {
+			t.Errorf("wrong path stepType at test index %d: want=%s got=%s", idx, want.stepType, curPath.stepType)
+		}
+		if want.partName != curPath.partName {
+			t.Errorf("wrong path part name at test index %d: want=%s got=%s", idx, want.partName, curPath.partName)
+		}
+		curPath = curPath.next
 	}
 	path, ok := stmt.target.(*pathExpression)
 	if !ok {

@@ -36,9 +36,70 @@ func (e *evaluator) eval(astNode node, env *environment) object {
 	return nil
 }
 
-func (e *evaluator) evalSetStatement(whenStmt *setStatement, env *environment) object {
-	//TODO
-	return nil
+func (e *evaluator) evalSetStatement(setStmt *setStatement, env *environment) object {
+	valToSet := e.eval(setStmt.value, env)
+	if objectIsError(valToSet) {
+		return valToSet
+	}
+	var objHandle object // reference to object at current path. may be unused in instances where we're just assigning a regular variable without dot-path syntax
+	nextPath := setStmt.target.toAssignPath()
+	for nextPath != nil {
+		currentPath := nextPath
+		nextPath = currentPath.next
+
+		switch currentPath.stepType {
+		case ASSIGN_STEP_ENV:
+			objHandle = e.setStatementHandleENV(objHandle, currentPath, valToSet, env)
+		case ASSIGN_STEP_MAP_KEY:
+			objHandle = e.setStatementHandleMAP(objHandle, currentPath, valToSet, setStmt.target)
+			if objectIsError(objHandle) {
+				return objHandle
+			}
+		default:
+			return objectNewErr("%s: invalid path part for SET statement", e.lineColForNode(setStmt.target))
+		}
+	}
+	return OBJ_GLOBAL_NULL
+}
+
+func (e *evaluator) setStatementHandleENV(objHandle object, current *assignPath, valToSet object, env *environment) object {
+	if current.next == nil {
+		env.set(current.partName, valToSet)
+		return OBJ_GLOBAL_NULL
+	}
+	existing, ok := env.get(current.partName)
+	if !ok {
+		newMap := &objectMap{kvPairs: make(map[string]objectMapPair)}
+		env.set(current.partName, newMap)
+		return newMap
+	} else {
+		return existing
+	}
+}
+func (e *evaluator) setStatementHandleMAP(objHandle object, current *assignPath, valToSet object, setTarget assignable) object {
+	mapObj, ok := objHandle.(*objectMap)
+	if !ok {
+		return objectNewErr("%s: invalid path part for SET statement: cannot use a path expression on a non-map object", e.lineColForNode(setTarget))
+	}
+	if current.next == nil {
+		pair := objectMapPair{
+			key:   current.partName,
+			value: valToSet,
+		}
+		mapObj.kvPairs[current.partName] = pair
+		return OBJ_GLOBAL_NULL
+	}
+	existing, ok := mapObj.kvPairs[current.partName]
+	if !ok {
+		newMap := &objectMap{kvPairs: make(map[string]objectMapPair)}
+		pair := objectMapPair{
+			key:   current.partName,
+			value: newMap,
+		}
+		mapObj.kvPairs[current.partName] = pair
+		return newMap
+	}
+	return existing.value
 }
 
 func (e *evaluator) evalIdentifierExpression(identExpr *identifierExpression, env *environment) object {

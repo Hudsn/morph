@@ -2,7 +2,6 @@ package morph
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 )
 
@@ -25,30 +24,6 @@ type statement interface {
 type expression interface {
 	node
 	expressionNode()
-}
-
-// things like an identifier or path. ex: myIdent or myobj.mypath or "my spaced string"
-type assignable interface {
-	expression
-	assignPathSteps() []assignStep
-}
-type assignStepType string
-
-const (
-	ASSIGN_STEP_ENV     = "ENV"
-	ASSIGN_STEP_MAP_KEY = "MAPKEY"
-	ASSIGN_STEP_INVALID = "INVALID" // things like index expressions. eg: we don't want to be able to directly assign indexes like item[99] = "abc"
-)
-
-type assignStep struct {
-	stepType assignStepType
-	name     string
-}
-
-// nodes that can be part of a valid path to fetch data. ex: ident, string, indexExpression, or another pathexpression
-type pathPartExpression interface {
-	expression
-	pathPartNode()
 }
 
 type program struct {
@@ -83,6 +58,25 @@ type setStatement struct {
 	tok    token
 	target assignable
 	value  expression
+}
+
+type assignable interface {
+	expression
+	toAssignPath() *assignPath
+}
+
+type assignStepType string
+
+const (
+	ASSIGN_STEP_ENV     assignStepType = "ENV"
+	ASSIGN_STEP_MAP_KEY assignStepType = "MAPKEY"
+	ASSIGN_STEP_INVALID assignStepType = "INVALID" // things like index expressions. eg: we don't want to be able to directly assign indexes like item[99] = "abc"
+)
+
+type assignPath struct {
+	stepType assignStepType
+	partName string
+	next     *assignPath
 }
 
 func (s *setStatement) statementNode() {}
@@ -187,13 +181,17 @@ func (ie *identifierExpression) position() position {
 		end:   ie.tok.end,
 	}
 }
-func (ie *identifierExpression) assignPathSteps() []assignStep {
-	return []assignStep{
-		{ASSIGN_STEP_ENV, ie.value},
-	}
+func (ie *identifierExpression) toAssignPath() *assignPath {
+	return &assignPath{stepType: ASSIGN_STEP_ENV, partName: ie.value, next: nil}
 }
 
 //
+
+// nodes that can be part of a valid path to fetch data. ex: ident, string, indexExpression, or another pathexpression
+type pathPartExpression interface {
+	expression
+	pathPartNode()
+}
 
 type pathExpression struct {
 	left      pathPartExpression
@@ -213,35 +211,30 @@ func (pe *pathExpression) position() position {
 func (pe *pathExpression) string() string {
 	return fmt.Sprintf("%s.%s", pe.left.string(), pe.attribute.string())
 }
-func (pe *pathExpression) assignPathSteps() []assignStep {
-	ret := []assignStep{}
-	var current pathPartExpression = pe
-	shouldContinue := true
-	for shouldContinue {
-		switch v := current.(type) {
-		case *pathExpression:
-			ret = append(ret, handlePathStepAttribute(v.attribute))
-			current = v.left // recurse here since a pathexpression is an infix expr. So we must have a left to recurse to.
-		case *identifierExpression:
-			firstEntry := assignStep{ASSIGN_STEP_ENV, v.value}
-			ret = append(ret, firstEntry)
-			shouldContinue = false // we reached the first/leftmost entry, so we're done.
-		default: // unsupported path = add invalid to trigger an error in the parsing step. so we're done here as well.
-			invalidEntry := assignStep{ASSIGN_STEP_INVALID, ""}
-			ret = append(ret, invalidEntry)
-			shouldContinue = false
-		}
+func (pe *pathExpression) toAssignPath() *assignPath {
+	return pe.toAssignPathRe(pe, nil)
+}
+func (pe *pathExpression) toAssignPathRe(current pathPartExpression, next *assignPath) *assignPath {
+	ret := &assignPath{next: next}
+	switch v := current.(type) {
+	case *identifierExpression:
+		ret.stepType = ASSIGN_STEP_ENV
+		ret.partName = v.value
+	case *pathExpression:
+		ret.stepType, ret.partName = handlePathStepAttribute(v.attribute)
+		return pe.toAssignPathRe(v.left, ret)
+	default:
+		ret.stepType = ASSIGN_STEP_INVALID
+		ret.partName = ""
 	}
-	slices.Reverse(ret)
 	return ret
 }
-
-func handlePathStepAttribute(attr pathPartExpression) assignStep {
+func handlePathStepAttribute(attr pathPartExpression) (assignStepType, string) {
 	switch v := attr.(type) {
 	case *identifierExpression:
-		return assignStep{ASSIGN_STEP_MAP_KEY, v.value}
+		return ASSIGN_STEP_MAP_KEY, v.value
 	default:
-		return assignStep{ASSIGN_STEP_INVALID, ""}
+		return ASSIGN_STEP_INVALID, ""
 	}
 }
 
