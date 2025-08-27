@@ -1,9 +1,50 @@
 package morph
 
 import (
-	"fmt"
 	"testing"
 )
+
+func TestEvalSetExpression(t *testing.T) {
+	evaluator := setupEvalTest("SET my.path.var = 5")
+	program := evaluator.parser.parseStatement()
+	if len(evaluator.parser.errors) > 0 {
+		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	}
+	env := newEnvironment()
+	got := evaluator.eval(program, env)
+	if objectIsError(got) {
+		errObj := got.(*objectError)
+		t.Fatal(errObj.message)
+	}
+	objRoot, ok := env.get("my")
+	if !ok {
+		t.Fatalf("expected env to have an item at %q", "my")
+	}
+	objRootMap, ok := objRoot.(*objectMap)
+	if !ok {
+		t.Fatalf("expected env my.path to be an *objectMap. got=%T", objRoot)
+	}
+	attrPathObj, ok := objRootMap.kvPairs["path"]
+	if !ok {
+		t.Fatal("expected my.path to exist")
+	}
+	attrPathMap, ok := attrPathObj.value.(*objectMap)
+	if !ok {
+		t.Fatalf("expected my.path to be an *objectMap. got=%T", attrPathObj.value)
+	}
+	attrVarObj, ok := attrPathMap.kvPairs["var"]
+	if !ok {
+		t.Fatal("expected my.path.var to exist")
+	}
+	attrVarInt, ok := attrVarObj.value.(*objectInteger)
+	if !ok {
+		t.Fatalf("expected my.path.var to be an integer. got=%T", attrVarObj.value)
+	}
+
+	if attrVarInt.value != 5 {
+		t.Errorf("expected my.path.var to be equal to 5. got=%d", attrVarInt.value)
+	}
+}
 
 func TestEvalPathExpression(t *testing.T) {
 	env := newEnvironment()
@@ -23,7 +64,6 @@ func TestEvalPathExpression(t *testing.T) {
 	}
 	got := evaluator.eval(program, env)
 	if got.getType() != T_INTEGER {
-		fmt.Printf("%+v", got)
 		t.Fatalf("expected result type to be %s. got=%s", T_INTEGER, got.getType())
 	}
 	asInt := got.(*objectInteger)

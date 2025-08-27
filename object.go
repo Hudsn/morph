@@ -10,6 +10,8 @@ type objectType string
 type object interface {
 	getType() objectType
 	inspect() string
+	// clone() object // used for deep copying so we don't allow mutates on env variables to retroactively affect other variables they're assigned to.  ex: in pseudocode "x = 1; y = x; x = 5;" y shold be equal to 1, *NOT* 5.
+	// *NOTE* objects that aren't assignable should return an error object when clone is called.
 }
 
 const (

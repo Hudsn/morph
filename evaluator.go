@@ -38,18 +38,16 @@ func (e *evaluator) eval(astNode node, env *environment) object {
 
 func (e *evaluator) evalSetStatement(setStmt *setStatement, env *environment) object {
 	valToSet := e.eval(setStmt.value, env)
+	// TODO: cloning should happen here to prevent indirect mutation
 	if objectIsError(valToSet) {
 		return valToSet
 	}
 	var objHandle object // reference to object at current path. may be unused in instances where we're just assigning a regular variable without dot-path syntax
-	nextPath := setStmt.target.toAssignPath()
-	for nextPath != nil {
-		currentPath := nextPath
-		nextPath = currentPath.next
-
+	currentPath := setStmt.target.toAssignPath()
+	for currentPath != nil {
 		switch currentPath.stepType {
 		case ASSIGN_STEP_ENV:
-			objHandle = e.setStatementHandleENV(objHandle, currentPath, valToSet, env)
+			objHandle = e.setStatementHandleENV(currentPath, valToSet, env)
 		case ASSIGN_STEP_MAP_KEY:
 			objHandle = e.setStatementHandleMAP(objHandle, currentPath, valToSet, setStmt.target)
 			if objectIsError(objHandle) {
@@ -58,11 +56,12 @@ func (e *evaluator) evalSetStatement(setStmt *setStatement, env *environment) ob
 		default:
 			return objectNewErr("%s: invalid path part for SET statement", e.lineColForNode(setStmt.target))
 		}
+		currentPath = currentPath.next
 	}
 	return OBJ_GLOBAL_NULL
 }
 
-func (e *evaluator) setStatementHandleENV(objHandle object, current *assignPath, valToSet object, env *environment) object {
+func (e *evaluator) setStatementHandleENV(current *assignPath, valToSet object, env *environment) object {
 	if current.next == nil {
 		env.set(current.partName, valToSet)
 		return OBJ_GLOBAL_NULL
