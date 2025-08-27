@@ -20,25 +20,70 @@ func (e *evaluator) eval(astNode node, env *environment) object {
 	switch astNode := astNode.(type) {
 	case *setStatement:
 		return e.evalSetStatement(astNode, env)
+	case *whenStatement:
+		return e.evalWhenStatement(astNode, env)
 	case *expressionStatement:
 		return e.eval(astNode.expression, env)
 	case *pathExpression:
 		return e.evalPathExpression(astNode, env)
 	case *identifierExpression:
 		return e.evalIdentifierExpression(astNode, env)
+	case *prefixExpression:
+		return e.evalPrefixExpression(astNode, env)
+		// case *infixExpression:
+		// TODO
+		return nil
 	case *integerLiteral:
 		return &objectInteger{value: astNode.value}
 	case *floatLiteral:
 		return &objectFloat{value: astNode.value}
 	case *booleanLiteral:
-		return &objectBoolean{value: astNode.value}
+		if astNode.value {
+			return OBJ_GLOBAL_TRUE
+		} else {
+			return OBJ_GLOBAL_FALSE
+		}
+	default:
+		return OBJ_GLOBAL_NULL
 	}
-	return nil
+}
+
+func (e *evaluator) evalPrefixExpression(prefix *prefixExpression, env *environment) object {
+	switch prefix.operator {
+	case "!":
+		return e.handlePrefixExclamation(prefix.right, env)
+	case "-":
+		return e.handlePrefixMinus(prefix.right, env)
+	default:
+		return objectNewErr("%s: unknown operator: %s", e.lineColForNode(prefix), prefix.operator)
+	}
+}
+func (e *evaluator) handlePrefixExclamation(right expression, env *environment) object {
+	rightObj := e.eval(right, env)
+	switch rightObj {
+	case OBJ_GLOBAL_FALSE:
+		return OBJ_GLOBAL_TRUE
+	case OBJ_GLOBAL_TRUE:
+		return OBJ_GLOBAL_FALSE
+	default:
+		return objectNewErr("%s: incompatible non-boolean right-side exprssion for operator: !%s", e.lineColForNode(right), right.string())
+	}
+}
+func (e *evaluator) handlePrefixMinus(right expression, env *environment) object {
+	rightObj := e.eval(right, env)
+	switch v := rightObj.(type) {
+	case *objectInteger:
+		return &objectInteger{value: -v.value}
+	case *objectFloat:
+		return &objectFloat{value: -v.value}
+	default:
+		return objectNewErr("%s: incompatible non-numeric right-side expression for operator: -%s", e.lineColForNode(right), right.string())
+	}
 }
 
 func (e *evaluator) evalSetStatement(setStmt *setStatement, env *environment) object {
 	valToSet := e.eval(setStmt.value, env)
-	// TODO: cloning should happen here to prevent indirect mutation
+	valToSet = valToSet.clone()
 	if objectIsError(valToSet) {
 		return valToSet
 	}
@@ -48,6 +93,9 @@ func (e *evaluator) evalSetStatement(setStmt *setStatement, env *environment) ob
 		switch currentPath.stepType {
 		case ASSIGN_STEP_ENV:
 			objHandle = e.setStatementHandleENV(currentPath, valToSet, env)
+			if objectIsError(objHandle) {
+				return objHandle
+			}
 		case ASSIGN_STEP_MAP_KEY:
 			objHandle = e.setStatementHandleMAP(objHandle, currentPath, valToSet, setStmt.target)
 			if objectIsError(objHandle) {
@@ -69,8 +117,7 @@ func (e *evaluator) setStatementHandleENV(current *assignPath, valToSet object, 
 	existing, ok := env.get(current.partName)
 	if !ok {
 		newMap := &objectMap{kvPairs: make(map[string]objectMapPair)}
-		env.set(current.partName, newMap)
-		return newMap
+		return env.set(current.partName, newMap)
 	} else {
 		return existing
 	}
@@ -99,6 +146,17 @@ func (e *evaluator) setStatementHandleMAP(objHandle object, current *assignPath,
 		return newMap
 	}
 	return existing.value
+}
+
+func (e *evaluator) evalWhenStatement(whenStmt *whenStatement, env *environment) object {
+	conditionObj := e.eval(whenStmt.condition, env)
+	if objectIsError(conditionObj) {
+		return conditionObj
+	}
+	if conditionObj.isTruthy() {
+		e.eval(whenStmt.consequence, env)
+	}
+	return OBJ_GLOBAL_NULL
 }
 
 func (e *evaluator) evalIdentifierExpression(identExpr *identifierExpression, env *environment) object {
@@ -149,5 +207,4 @@ func objectIsError(obj object) bool {
 
 func (e *evaluator) lineColForNode(n node) string {
 	return lineColString(lineAndCol(e.parser.lexer.input, n.position().start))
-
 }

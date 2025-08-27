@@ -1,8 +1,66 @@
 package morph
 
 import (
+	"fmt"
 	"testing"
 )
+
+func TestEvalPrefixExpression(t *testing.T) {
+	env := newEnvironment()
+	evaluator := setupEvalTest("!false")
+	if len(evaluator.parser.errors) > 0 {
+		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	}
+	program := evaluator.parser.parseStatement()
+	got := evaluator.eval(program, env)
+	if got.getType() != T_BOOLEAN {
+		fmt.Printf("%+v\n", got)
+		t.Fatalf("expected result type to be %s. got=%s", T_BOOLEAN, got.getType())
+	}
+	gotBool := got.(*objectBoolean)
+	if gotBool.value != true {
+		t.Errorf("wrong value for exclamation prefix. want=%t got=%t", true, gotBool.value)
+	}
+
+	env = newEnvironment()
+	evaluator = setupEvalTest("-.123")
+	if len(evaluator.parser.errors) > 0 {
+		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	}
+	program = evaluator.parser.parseStatement()
+	got = evaluator.eval(program, env)
+	if got.getType() != T_FLOAT {
+		t.Fatalf("expected result type to be %s. got=%s", T_FLOAT, got.getType())
+	}
+	gotFloat := got.(*objectFloat)
+	if gotFloat.value != -.123 {
+		t.Errorf("wrong value for exclamation prefix. want=%f got=%f", -.123, gotFloat.value)
+	}
+}
+
+func TestEvalWhenStatement(t *testing.T) {
+	env := newEnvironment()
+	evaluator := setupEvalTest("WHEN true :: SET my.path.var = 10")
+	if len(evaluator.parser.errors) > 0 {
+		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	}
+	program := evaluator.parser.parseStatement()
+	evaluator.eval(program, env)
+
+	evaluator = setupEvalTest("my.path.var")
+	program = evaluator.parser.parseStatement()
+	if len(evaluator.parser.errors) > 0 {
+		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	}
+	got := evaluator.eval(program, env)
+	if got.getType() != T_INTEGER {
+		t.Fatalf("expected result type to be %s. got=%s", T_INTEGER, got.getType())
+	}
+	asInt := got.(*objectInteger)
+	if asInt.value != 10 {
+		t.Errorf("expected integer val to be 10. got=%d", asInt.value)
+	}
+}
 
 func TestEvalSetExpression(t *testing.T) {
 	evaluator := setupEvalTest("SET my.path.var = 5")

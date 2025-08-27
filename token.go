@@ -69,7 +69,6 @@ var keywordMap = map[string]tokenType{
 }
 
 func lookupTokenKeyword(ident string) tokenType {
-	// ident = strings.ToLower(ident)
 	if ret, ok := keywordMap[ident]; ok {
 		return ret
 	}

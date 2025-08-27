@@ -284,7 +284,7 @@ func (bl *booleanLiteral) token() token    { return bl.tok }
 func (bl *booleanLiteral) string() string  { return bl.tok.value }
 func (bl *booleanLiteral) position() position {
 	return position{
-		start: bl.position().start,
-		end:   bl.position().end,
+		start: bl.tok.start,
+		end:   bl.tok.end,
 	}
 }

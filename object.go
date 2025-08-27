@@ -10,8 +10,9 @@ type objectType string
 type object interface {
 	getType() objectType
 	inspect() string
-	// clone() object // used for deep copying so we don't allow mutates on env variables to retroactively affect other variables they're assigned to.  ex: in pseudocode "x = 1; y = x; x = 5;" y shold be equal to 1, *NOT* 5.
+	clone() object // used for deep copying so we don't allow mutates on env variables to retroactively affect other variables they're assigned to.  ex: in pseudocode "x = 1; y = x; x = 5;" y shold be equal to 1, *NOT* 5.
 	// *NOTE* objects that aren't assignable should return an error object when clone is called.
+	isTruthy() bool
 }
 
 const (
@@ -21,9 +22,9 @@ const (
 
 	T_MAP objectType = "MAP"
 
-	T_ERROR objectType = "ERROR"
-	T_TERM  objectType = "TERMINATE"
-	T_NULL  objectType = "NULL"
+	T_ERROR     objectType = "ERROR"
+	T_TERMINATE objectType = "TERMINATE"
+	T_NULL      objectType = "NULL"
 )
 
 //
@@ -47,6 +48,19 @@ func (m *objectMap) inspect() string {
 	}
 	return fmt.Sprintf("{%s}", strings.Join(pairs, ", "))
 }
+func (m *objectMap) clone() object {
+	ret := &objectMap{
+		kvPairs: make(map[string]objectMapPair),
+	}
+	for key, pair := range m.kvPairs {
+		ret.kvPairs[key] = objectMapPair{
+			key:   pair.key,
+			value: pair.value.clone(),
+		}
+	}
+	return ret
+}
+func (m *objectMap) isTruthy() bool { return len(m.kvPairs) > 0 }
 
 //
 
@@ -56,6 +70,10 @@ type objectInteger struct {
 
 func (i *objectInteger) getType() objectType { return T_INTEGER }
 func (i *objectInteger) inspect() string     { return fmt.Sprintf("%d", i.value) }
+func (i *objectInteger) clone() object {
+	return &objectInteger{value: i.value}
+}
+func (i *objectInteger) isTruthy() bool { return i.value != 0 }
 
 //
 
@@ -65,6 +83,10 @@ type objectFloat struct {
 
 func (f *objectFloat) getType() objectType { return T_FLOAT }
 func (f *objectFloat) inspect() string     { return fmt.Sprintf("%f", f.value) }
+func (f *objectFloat) clone() object {
+	return &objectFloat{value: f.value}
+}
+func (i *objectFloat) isTruthy() bool { return i.value != 0 }
 
 //
 
@@ -74,6 +96,10 @@ type objectBoolean struct {
 
 func (b *objectBoolean) getType() objectType { return T_BOOLEAN }
 func (b *objectBoolean) inspect() string     { return fmt.Sprintf("%t", b.value) }
+func (b *objectBoolean) clone() object {
+	return &objectBoolean{value: b.value}
+}
+func (b *objectBoolean) isTruthy() bool { return b.value }
 
 //
 
@@ -81,6 +107,10 @@ type objectNull struct{}
 
 func (n *objectNull) getType() objectType { return T_NULL }
 func (n *objectNull) inspect() string     { return "null" }
+func (n *objectNull) clone() object {
+	return n
+}
+func (n *objectNull) isTruthy() bool { return false }
 
 //
 
@@ -90,11 +120,19 @@ type objectError struct {
 
 func (e *objectError) getType() objectType { return T_ERROR }
 func (e *objectError) inspect() string     { return "ERROR: " + e.message }
+func (e *objectError) clone() object {
+	return &objectError{message: e.message}
+}
+func (e *objectError) isTruthy() bool { return false }
 
 //
 
 // returned by builtin funcs when signaling to halt further processing and return the env values as-is.
-type objectTerm struct{}
+type objectTerminate struct{}
 
-func (t *objectTerm) getType() objectType { return T_TERM }
-func (t *objectTerm) inspect() string     { return "TERMINATE" }
+func (t *objectTerminate) getType() objectType { return T_TERMINATE }
+func (t *objectTerminate) inspect() string     { return "TERMINATE" }
+func (t *objectTerminate) clone() object {
+	return objectNewErr("invalid target of SET statement")
+}
+func (t *objectTerminate) isTruthy() bool { return false }
