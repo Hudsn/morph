@@ -1,21 +1,37 @@
 package morph
 
-import "slices"
+import (
+	"slices"
+)
 
 type lexer struct {
 	input       []rune
 	currentChar rune
 	currentIdx  int
 	nextIdx     int
+
+	bracketDepth int
+	context      lexContext
 }
+
+type lexContext int
+
+const (
+	_ lexContext = iota
+	LEX_DEFAULT
+	LEX_DOUBLE_QUOTE
+	LEX_SINGLE_QUOTE
+)
 
 const NULLCHAR = rune(0)
 
 func newLexer(input []rune) *lexer {
 	l := &lexer{
-		input:      input,
-		currentIdx: 0,
-		nextIdx:    0,
+		input:        input,
+		currentIdx:   0,
+		nextIdx:      0,
+		context:      LEX_DEFAULT,
+		bracketDepth: 0,
 	}
 	l.next()
 	return l
@@ -60,6 +76,10 @@ func (l *lexer) tokenize() token {
 		tok = l.handleMinus()
 	case '!':
 		tok = l.handleExclamation()
+	case '\'':
+		l.next() // step inside quote; useful for mode switching so we can only worry about having to check for a closing ' rather than risking advancing as the first action inside the function where we could accidentally go from a closed template literal to a quote, and miss the end quote. For example: 'hello ${world}'  could pick up the string parsing again after the }, and if we called next inside the handler with it starting on ', and then skip it.
+		tok = l.handleSingleQuote()
+		return tok
 	default:
 		if isDigit(l.currentChar) {
 			return l.readNumber()
@@ -144,6 +164,72 @@ func (l *lexer) handleColon() token {
 	tok.value = string(l.input[start:l.nextIdx])
 	tok.end = l.nextIdx
 	return tok
+}
+
+func (l *lexer) handleSingleQuote() token {
+	start := l.currentIdx
+	str := []rune{}
+	tok := token{
+		tokenType: TOK_STRING,
+		start:     start,
+	}
+	if l.currentChar == '\'' {
+		l.next()
+	}
+	for l.currentChar != '\'' && l.currentChar != NULLCHAR {
+		toAdd := l.currentChar
+
+		if l.currentChar == '\\' {
+			var err error
+			toAdd, err = l.handleEscapeString('\'')
+			if err != nil {
+				tok.tokenType = TOK_ILLEGAL
+				tok.value = "invalid escape sequence"
+				tok.end = l.nextIdx
+				return tok
+			}
+		}
+		if l.currentChar == '$' && l.peek() == '{' {
+			l.context = LEX_SINGLE_QUOTE
+			l.bracketDepth = 1
+			break
+		}
+
+		str = append(str, rune(toAdd))
+		l.next()
+	}
+	tok.value = string(str)
+	tok.end = l.currentIdx
+	return tok
+}
+
+func (l *lexer) handleEscapeString(quoteChar rune) (rune, error) {
+	var ret rune
+	var err error
+	switch l.peek() {
+	case '\\':
+		ret = '\\'
+	case 't':
+		ret = '\t'
+	case 'n':
+		ret = '\n'
+	case quoteChar:
+		ret = quoteChar
+	default:
+		return NULLCHAR, err
+	}
+	l.next()
+	return ret, err
+}
+
+func (l *lexer) handleDoubleQuote() token {
+	// if l.currentChar == '\n' {
+	// 		tok.tokenType = TOK_ILLEGAL
+	// 		tok.value = "string literal not terminated"
+	// 		tok.end = l.nextIdx
+	// 		return tok
+	// 	}
+	return token{}
 }
 
 // reader helpers
