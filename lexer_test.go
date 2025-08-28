@@ -2,6 +2,49 @@ package morph
 
 import "testing"
 
+func TestLexSingleQuoteInterp(t *testing.T) {
+
+}
+func TestLexSingleQuoteEscapeError(t *testing.T) {
+	input := `'mystring\v'`
+	tests := []testCase{
+		{
+			tokenType:  TOK_ILLEGAL,
+			start:      0,
+			end:        12,
+			value:      "invalid escape sequence",
+			rangeValue: "'mystring\\v'",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+func TestLexSingleQuoteEscape(t *testing.T) {
+	input := `'mystring\n\t'`
+	tests := []testCase{
+		{
+			tokenType:  TOK_STRING,
+			start:      0,
+			end:        14,
+			value:      "mystring\n\t",
+			rangeValue: "'mystring\\n\\t'",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+func TestLexSingleQuote(t *testing.T) {
+	input := "'mystring'"
+	tests := []testCase{
+		{
+			tokenType:  TOK_STRING,
+			start:      0,
+			end:        10,
+			value:      "mystring",
+			rangeValue: "'mystring'",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
 func TestLexColon(t *testing.T) {
 	input := ": :: :"
 	tests := []testCase{

@@ -15,10 +15,9 @@ type tokenType string
 const (
 	TOK_IDENT tokenType = "IDENT"
 
-	TOK_INT             tokenType = "INT"
-	TOK_FLOAT           tokenType = "FLOAT"
-	TOK_STRING          tokenType = "STRING"
-	TOK_STRING_TEMPLATE tokenType = "STRING_TEMPLATE"
+	TOK_INT    tokenType = "INT"
+	TOK_FLOAT  tokenType = "FLOAT"
+	TOK_STRING tokenType = "STRING"
 
 	// separators
 	TOK_ASSIGN       tokenType = "="
@@ -27,12 +26,13 @@ const (
 	TOK_DOUBLE_COLON tokenType = "::"
 
 	// containers
-	TOK_LPAREN  tokenType = "("
-	TOK_RPAREN  tokenType = ")"
-	TOK_LCURLY  tokenType = "{"
-	TOK_RCURLY  tokenType = "}"
-	TOK_LSQUARE tokenType = "["
-	TOK_RSQUARE tokenType = "]"
+	TOK_TEMPLATE_START tokenType = "${"
+	TOK_LPAREN         tokenType = "("
+	TOK_RPAREN         tokenType = ")"
+	TOK_LCURLY         tokenType = "{"
+	TOK_RCURLY         tokenType = "}"
+	TOK_LSQUARE        tokenType = "["
+	TOK_RSQUARE        tokenType = "]"
 
 	// operations
 	TOK_EXCLAMATION tokenType = "!"

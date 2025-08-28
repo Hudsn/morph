@@ -10,28 +10,24 @@ type lexer struct {
 	currentIdx  int
 	nextIdx     int
 
-	bracketDepth int
-	context      lexContext
+	currentContext *lexContext
+	contextStack   []*lexContext
 }
 
-type lexContext int
-
-const (
-	_ lexContext = iota
-	LEX_DEFAULT
-	LEX_DOUBLE_QUOTE
-	LEX_SINGLE_QUOTE
-)
+type lexContext struct {
+	outerHandler func() token
+	depthCounter int
+}
 
 const NULLCHAR = rune(0)
 
 func newLexer(input []rune) *lexer {
 	l := &lexer{
-		input:        input,
-		currentIdx:   0,
-		nextIdx:      0,
-		context:      LEX_DEFAULT,
-		bracketDepth: 0,
+		input:          input,
+		currentIdx:     0,
+		nextIdx:        0,
+		currentContext: nil,
+		contextStack:   []*lexContext{},
 	}
 	l.next()
 	return l
@@ -54,10 +50,34 @@ func (l *lexer) peek() rune {
 	return l.input[l.nextIdx]
 }
 
+func newLexContext(callback func() token) *lexContext {
+	return &lexContext{callback, 1}
+}
+func (l *lexer) pushNewContext(callbackFn func() token) {
+	l.pushContext(newLexContext(callbackFn))
+}
+func (l *lexer) pushContext(c *lexContext) {
+	l.contextStack = append(l.contextStack, l.currentContext)
+	l.currentContext = c
+}
+func (l *lexer) popContext() {
+	if len(l.contextStack) == 0 {
+		l.currentContext = nil
+		return
+	}
+	l.currentContext = l.contextStack[0]
+	l.contextStack = l.contextStack[1:]
+}
+
 func (l *lexer) tokenize() token {
 	var tok token
 
 	l.handleWhiteSpace()
+	if l.currentContext != nil && l.currentContext.depthCounter == 0 {
+		nextTokHandler := l.currentContext.outerHandler
+		l.popContext()
+		return nextTokHandler()
+	}
 
 	switch l.currentChar {
 	case NULLCHAR:
@@ -77,9 +97,16 @@ func (l *lexer) tokenize() token {
 	case '!':
 		tok = l.handleExclamation()
 	case '\'':
+		start := l.currentIdx
 		l.next() // step inside quote; useful for mode switching so we can only worry about having to check for a closing ' rather than risking advancing as the first action inside the function where we could accidentally go from a closed template literal to a quote, and miss the end quote. For example: 'hello ${world}'  could pick up the string parsing again after the }, and if we called next inside the handler with it starting on ', and then skip it.
 		tok = l.handleSingleQuote()
-		return tok
+		tok.start = start
+	case '{':
+		return l.handleLCurly()
+	case '}':
+		return l.handleRCurly()
+	case '$':
+		return l.handleDollarSign()
 	default:
 		if isDigit(l.currentChar) {
 			return l.readNumber()
@@ -173,39 +200,43 @@ func (l *lexer) handleSingleQuote() token {
 		tokenType: TOK_STRING,
 		start:     start,
 	}
-	if l.currentChar == '\'' {
-		l.next()
-	}
 	for l.currentChar != '\'' && l.currentChar != NULLCHAR {
 		toAdd := l.currentChar
 
 		if l.currentChar == '\\' {
-			var err error
-			toAdd, err = l.handleEscapeString('\'')
-			if err != nil {
+
+			toAdd = l.handleEscapeString('\'')
+			if toAdd == NULLCHAR {
 				tok.tokenType = TOK_ILLEGAL
 				tok.value = "invalid escape sequence"
+				l.next()
 				tok.end = l.nextIdx
 				return tok
 			}
 		}
 		if l.currentChar == '$' && l.peek() == '{' {
-			l.context = LEX_SINGLE_QUOTE
-			l.bracketDepth = 1
-			break
+			l.pushNewContext(l.handleSingleQuote)
+			tok.end = l.currentIdx
+			tok.value = string(str)
+			return tok
 		}
-
-		str = append(str, rune(toAdd))
 		l.next()
+		str = append(str, toAdd)
+
+	}
+	if l.currentChar == NULLCHAR {
+		tok.tokenType = TOK_ILLEGAL
+		tok.value = "string literal not terminated"
+		tok.end = l.nextIdx
+		return tok
 	}
 	tok.value = string(str)
-	tok.end = l.currentIdx
+	tok.end = l.nextIdx
 	return tok
 }
 
-func (l *lexer) handleEscapeString(quoteChar rune) (rune, error) {
+func (l *lexer) handleEscapeString(quoteChar rune) rune {
 	var ret rune
-	var err error
 	switch l.peek() {
 	case '\\':
 		ret = '\\'
@@ -215,11 +246,13 @@ func (l *lexer) handleEscapeString(quoteChar rune) (rune, error) {
 		ret = '\n'
 	case quoteChar:
 		ret = quoteChar
+	case NULLCHAR:
+		return NULLCHAR
 	default:
-		return NULLCHAR, err
+		ret = NULLCHAR
 	}
 	l.next()
-	return ret, err
+	return ret
 }
 
 func (l *lexer) handleDoubleQuote() token {
@@ -230,6 +263,35 @@ func (l *lexer) handleDoubleQuote() token {
 	// 		return tok
 	// 	}
 	return token{}
+}
+
+func (l *lexer) handleDollarSign() token {
+	if l.peek() != '{' {
+		return token{
+			tokenType: TOK_ILLEGAL,
+			value:     "invalid template expression syntax",
+			start:     l.currentIdx,
+			end:       l.nextIdx,
+		}
+	}
+	tok := token{tokenType: TOK_TEMPLATE_START, start: l.currentIdx, value: "${"}
+	l.next()
+	tok.end = l.nextIdx
+	return tok
+}
+
+func (l *lexer) handleRCurly() token {
+	if l.currentContext != nil {
+		l.currentContext.depthCounter = max(l.currentContext.depthCounter-1, 0)
+	}
+	return token{tokenType: TOK_RCURLY, value: "}", start: l.currentIdx, end: l.nextIdx}
+}
+
+func (l *lexer) handleLCurly() token {
+	if l.currentContext != nil {
+		l.currentContext.depthCounter++
+	}
+	return token{tokenType: TOK_LCURLY, value: "{", start: l.currentIdx, end: l.nextIdx}
 }
 
 // reader helpers
