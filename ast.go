@@ -68,9 +68,9 @@ type assignable interface {
 type assignStepType string
 
 const (
-	ASSIGN_STEP_ENV     assignStepType = "ENV"
-	ASSIGN_STEP_MAP_KEY assignStepType = "MAPKEY"
-	ASSIGN_STEP_INVALID assignStepType = "INVALID" // things like index expressions. eg: we don't want to be able to directly assign indexes like item[99] = "abc"
+	assign_step_env     assignStepType = "ENV"
+	assign_step_map_key assignStepType = "MAPKEY"
+	assign_step_invalid assignStepType = "INVALID" // things like index expressions. eg: we don't want to be able to directly assign indexes like item[99] = "abc"
 )
 
 type assignPath struct {
@@ -182,7 +182,7 @@ func (ie *identifierExpression) position() position {
 	}
 }
 func (ie *identifierExpression) toAssignPath() *assignPath {
-	return &assignPath{stepType: ASSIGN_STEP_ENV, partName: ie.value, next: nil}
+	return &assignPath{stepType: assign_step_env, partName: ie.value, next: nil}
 }
 
 //
@@ -218,13 +218,13 @@ func (pe *pathExpression) toAssignPathRe(current pathPartExpression, next *assig
 	ret := &assignPath{next: next}
 	switch v := current.(type) {
 	case *identifierExpression:
-		ret.stepType = ASSIGN_STEP_ENV
+		ret.stepType = assign_step_env
 		ret.partName = v.value
 	case *pathExpression:
 		ret.stepType, ret.partName = handlePathStepAttribute(v.attribute)
 		return pe.toAssignPathRe(v.left, ret)
 	default:
-		ret.stepType = ASSIGN_STEP_INVALID
+		ret.stepType = assign_step_invalid
 		ret.partName = ""
 	}
 	return ret
@@ -232,9 +232,9 @@ func (pe *pathExpression) toAssignPathRe(current pathPartExpression, next *assig
 func handlePathStepAttribute(attr pathPartExpression) (assignStepType, string) {
 	switch v := attr.(type) {
 	case *identifierExpression:
-		return ASSIGN_STEP_MAP_KEY, v.value
+		return assign_step_map_key, v.value
 	default:
-		return ASSIGN_STEP_INVALID, ""
+		return assign_step_invalid, ""
 	}
 }
 
@@ -287,4 +287,50 @@ func (bl *booleanLiteral) position() position {
 		start: bl.tok.start,
 		end:   bl.tok.end,
 	}
+}
+
+//
+
+type stringLiteral struct {
+	tok   token
+	value string
+}
+
+func (sl *stringLiteral) expressionNode() {}
+func (sl *stringLiteral) token() token    { return sl.tok }
+func (sl *stringLiteral) string() string  { return sl.value }
+func (sl *stringLiteral) position() position {
+	return position{
+		start: sl.tok.start,
+		end:   sl.tok.end,
+	}
+}
+
+//
+
+type templateExpression struct {
+	tok   token
+	parts []expression
+}
+
+func (te *templateExpression) expressionNode() {}
+func (te *templateExpression) token() token    { return te.tok }
+func (te *templateExpression) position() position {
+	if len(te.parts) < 1 {
+		return position{
+			start: te.tok.start,
+			end:   te.tok.end,
+		}
+	}
+	return position{
+		start: te.parts[0].position().start,
+		end:   te.parts[len(te.parts)-1].position().end,
+	}
+}
+func (te *templateExpression) string() string {
+	ret := []string{}
+	for _, part := range te.parts {
+		ret = append(ret, part.string())
+	}
+	return strings.Join(ret, "")
 }

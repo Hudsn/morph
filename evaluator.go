@@ -3,9 +3,9 @@ package morph
 import "fmt"
 
 var (
-	OBJ_GLOBAL_NULL  = &objectNull{}
-	OBJ_GLOBAL_TRUE  = &objectBoolean{value: true}
-	OBJ_GLOBAL_FALSE = &objectBoolean{value: false}
+	obj_global_null  = &objectNull{}
+	obj_global_true  = &objectBoolean{value: true}
+	obj_global_false = &objectBoolean{value: false}
 )
 
 type evaluator struct {
@@ -39,12 +39,12 @@ func (e *evaluator) eval(astNode node, env *environment) object {
 		return &objectFloat{value: astNode.value}
 	case *booleanLiteral:
 		if astNode.value {
-			return OBJ_GLOBAL_TRUE
+			return obj_global_true
 		} else {
-			return OBJ_GLOBAL_FALSE
+			return obj_global_false
 		}
 	default:
-		return OBJ_GLOBAL_NULL
+		return obj_global_null
 	}
 }
 
@@ -61,10 +61,10 @@ func (e *evaluator) evalPrefixExpression(prefix *prefixExpression, env *environm
 func (e *evaluator) handlePrefixExclamation(right expression, env *environment) object {
 	rightObj := e.eval(right, env)
 	switch rightObj {
-	case OBJ_GLOBAL_FALSE:
-		return OBJ_GLOBAL_TRUE
-	case OBJ_GLOBAL_TRUE:
-		return OBJ_GLOBAL_FALSE
+	case obj_global_false:
+		return obj_global_true
+	case obj_global_true:
+		return obj_global_false
 	default:
 		return objectNewErr("%s: incompatible non-boolean right-side exprssion for operator: !%s", e.lineColForNode(right), right.string())
 	}
@@ -91,12 +91,12 @@ func (e *evaluator) evalSetStatement(setStmt *setStatement, env *environment) ob
 	currentPath := setStmt.target.toAssignPath()
 	for currentPath != nil {
 		switch currentPath.stepType {
-		case ASSIGN_STEP_ENV:
+		case assign_step_env:
 			objHandle = e.setStatementHandleENV(currentPath, valToSet, env)
 			if objectIsError(objHandle) {
 				return objHandle
 			}
-		case ASSIGN_STEP_MAP_KEY:
+		case assign_step_map_key:
 			objHandle = e.setStatementHandleMAP(objHandle, currentPath, valToSet, setStmt.target)
 			if objectIsError(objHandle) {
 				return objHandle
@@ -106,13 +106,13 @@ func (e *evaluator) evalSetStatement(setStmt *setStatement, env *environment) ob
 		}
 		currentPath = currentPath.next
 	}
-	return OBJ_GLOBAL_NULL
+	return obj_global_null
 }
 
 func (e *evaluator) setStatementHandleENV(current *assignPath, valToSet object, env *environment) object {
 	if current.next == nil {
 		env.set(current.partName, valToSet)
-		return OBJ_GLOBAL_NULL
+		return obj_global_null
 	}
 	existing, ok := env.get(current.partName)
 	if !ok {
@@ -133,7 +133,7 @@ func (e *evaluator) setStatementHandleMAP(objHandle object, current *assignPath,
 			value: valToSet,
 		}
 		mapObj.kvPairs[current.partName] = pair
-		return OBJ_GLOBAL_NULL
+		return obj_global_null
 	}
 	existing, ok := mapObj.kvPairs[current.partName]
 	if !ok {
@@ -156,7 +156,7 @@ func (e *evaluator) evalWhenStatement(whenStmt *whenStatement, env *environment)
 	if conditionObj.isTruthy() {
 		e.eval(whenStmt.consequence, env)
 	}
-	return OBJ_GLOBAL_NULL
+	return obj_global_null
 }
 
 func (e *evaluator) evalIdentifierExpression(identExpr *identifierExpression, env *environment) object {

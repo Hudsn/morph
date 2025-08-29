@@ -10,24 +10,17 @@ type lexer struct {
 	currentIdx  int
 	nextIdx     int
 
-	currentContext *lexContext
-	contextStack   []*lexContext
+	context *lexContext
 }
 
-type lexContext struct {
-	outerHandler func() token
-	depthCounter int
-}
-
-const NULLCHAR = rune(0)
+const nullchar = rune(0)
 
 func newLexer(input []rune) *lexer {
 	l := &lexer{
-		input:          input,
-		currentIdx:     0,
-		nextIdx:        0,
-		currentContext: nil,
-		contextStack:   []*lexContext{},
+		input:      input,
+		currentIdx: 0,
+		nextIdx:    0,
+		context:    defaultLexContext,
 	}
 	l.next()
 	return l
@@ -35,58 +28,42 @@ func newLexer(input []rune) *lexer {
 
 func (l *lexer) next() {
 	if l.nextIdx >= len(l.input) {
-		l.currentChar = NULLCHAR
+		l.currentChar = nullchar
 	} else {
 		l.currentChar = l.input[l.nextIdx]
 	}
-	l.currentIdx = l.nextIdx
-	l.nextIdx++
+	// NOTE: use of max to safely handle progression to avoid oob errors.
+	l.currentIdx = min(l.nextIdx, len(l.input)-1)
+	l.nextIdx = min(l.nextIdx+1, len(l.input))
 }
 
 func (l *lexer) peek() rune {
 	if l.nextIdx >= len(l.input) {
-		return NULLCHAR
+		return nullchar
 	}
 	return l.input[l.nextIdx]
-}
-
-func newLexContext(callback func() token) *lexContext {
-	return &lexContext{callback, 1}
-}
-func (l *lexer) pushNewContext(callbackFn func() token) {
-	l.pushContext(newLexContext(callbackFn))
-}
-func (l *lexer) pushContext(c *lexContext) {
-	l.contextStack = append(l.contextStack, l.currentContext)
-	l.currentContext = c
-}
-func (l *lexer) popContext() {
-	if len(l.contextStack) == 0 {
-		l.currentContext = nil
-		return
-	}
-	l.currentContext = l.contextStack[0]
-	l.contextStack = l.contextStack[1:]
 }
 
 func (l *lexer) tokenize() token {
 	var tok token
 
-	l.handleWhiteSpace()
-	if l.currentContext != nil && l.currentContext.depthCounter == 0 {
-		nextTokHandler := l.currentContext.outerHandler
-		l.popContext()
-		return nextTokHandler()
+	if l.context.outer != nil && l.context.depthCounter == 0 {
+		handlerFn := lexerContextTypeToHandlerFn(l, l.context.contextType)
+		l.context = l.context.outer
+		tok = handlerFn()
+		return tok
 	}
 
+	l.handleWhiteSpace() // must come after context handling since string contexts want to include whitespace rather than "eat" it
+
 	switch l.currentChar {
-	case NULLCHAR:
+	case nullchar:
 		tok = l.handleEOF()
 	case '=':
 		tok = l.handleEqual()
 	case '.':
 		tok = l.handleDot()
-		if tok.tokenType == TOK_FLOAT {
+		if tok.tokenType == tok_float {
 			// readnumber (FLOAT processor) progresses tokens already, so we want to return early here to avoid hitting the next() call at the end of the func
 			return tok
 		}
@@ -101,17 +78,26 @@ func (l *lexer) tokenize() token {
 		l.next() // step inside quote; useful for mode switching so we can only worry about having to check for a closing ' rather than risking advancing as the first action inside the function where we could accidentally go from a closed template literal to a quote, and miss the end quote. For example: 'hello ${world}'  could pick up the string parsing again after the }, and if we called next inside the handler with it starting on ', and then skip it.
 		tok = l.handleSingleQuote()
 		tok.start = start
+		return tok
+	case '"':
+		start := l.currentIdx
+		l.next()
+		tok = l.handleDoubleQuote()
+		tok.start = start
+		return tok
 	case '{':
-		return l.handleLCurly()
+		tok = l.handleLCurly()
 	case '}':
-		return l.handleRCurly()
+		tok = l.handleRCurly()
 	case '$':
-		return l.handleDollarSign()
+		tok = l.handleDollarSign()
 	default:
 		if isDigit(l.currentChar) {
-			return l.readNumber()
+			tok = l.readNumber()
+			return tok
 		} else if isLetter(l.currentChar) {
-			return l.readIdentifier()
+			tok = l.readIdentifier()
+			return tok
 		} else {
 			tok = token{tokenType: TOK_ILLEGAL, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
 		}
@@ -141,7 +127,7 @@ func (l *lexer) handleEOF() token {
 
 func (l *lexer) handleEqual() token {
 	return token{
-		tokenType: TOK_ASSIGN,
+		tokenType: tok_assign,
 		value:     string(l.currentChar),
 		start:     l.currentIdx,
 		end:       l.nextIdx,
@@ -193,20 +179,24 @@ func (l *lexer) handleColon() token {
 	return tok
 }
 
-func (l *lexer) handleSingleQuote() token {
+func (l *lexer) handleDoubleQuote() token {
 	start := l.currentIdx
-	str := []rune{}
 	tok := token{
-		tokenType: TOK_STRING,
+		tokenType: tok_string,
 		start:     start,
 	}
-	for l.currentChar != '\'' && l.currentChar != NULLCHAR {
+	str := []rune{}
+	for l.currentChar != '"' {
+		if l.currentChar == nullchar || l.currentChar == '\n' {
+			tok.tokenType = TOK_ILLEGAL
+			tok.end = l.currentIdx
+			tok.value = "string literal not terminated"
+			return tok
+		}
 		toAdd := l.currentChar
-
 		if l.currentChar == '\\' {
-
-			toAdd = l.handleEscapeString('\'')
-			if toAdd == NULLCHAR {
+			toAdd = l.handleEscapeString('"')
+			if toAdd == nullchar {
 				tok.tokenType = TOK_ILLEGAL
 				tok.value = "invalid escape sequence"
 				l.next()
@@ -214,8 +204,39 @@ func (l *lexer) handleSingleQuote() token {
 				return tok
 			}
 		}
+		l.next()
+		str = append(str, toAdd)
+	}
+	tok.value = string(str)
+	l.next()
+	tok.end = l.currentIdx
+	return tok
+}
+
+func (l *lexer) handleSingleQuote() token {
+	start := l.currentIdx
+	str := []rune{}
+	tok := token{
+		tokenType: tok_string,
+		start:     start,
+	}
+	for l.currentChar != '\'' && l.currentChar != nullchar {
+		toAdd := l.currentChar
+
+		if l.currentChar == '\\' {
+
+			toAdd = l.handleEscapeString('\'')
+			if toAdd == nullchar {
+				tok.tokenType = TOK_ILLEGAL
+				tok.value = "invalid escape sequence"
+				l.next()
+				tok.end = l.nextIdx
+				return tok
+			}
+		}
+
 		if l.currentChar == '$' && l.peek() == '{' {
-			l.pushNewContext(l.handleSingleQuote)
+			l.newEnclosedContext(lex_ctx_single_quote, TOK_LCURLY, TOK_RCURLY, 1)
 			tok.end = l.currentIdx
 			tok.value = string(str)
 			return tok
@@ -224,14 +245,19 @@ func (l *lexer) handleSingleQuote() token {
 		str = append(str, toAdd)
 
 	}
-	if l.currentChar == NULLCHAR {
+	if l.currentChar == nullchar {
 		tok.tokenType = TOK_ILLEGAL
 		tok.value = "string literal not terminated"
 		tok.end = l.nextIdx
 		return tok
 	}
 	tok.value = string(str)
-	tok.end = l.nextIdx
+
+	l.next()               // we're now at current idx is 1 after the quote
+	tok.end = l.currentIdx // in most cases this works
+	// need to account for when the quote is the last or 2nd to last char?
+	// if ?????{}
+
 	return tok
 }
 
@@ -246,23 +272,11 @@ func (l *lexer) handleEscapeString(quoteChar rune) rune {
 		ret = '\n'
 	case quoteChar:
 		ret = quoteChar
-	case NULLCHAR:
-		return NULLCHAR
 	default:
-		ret = NULLCHAR
+		ret = nullchar
 	}
 	l.next()
 	return ret
-}
-
-func (l *lexer) handleDoubleQuote() token {
-	// if l.currentChar == '\n' {
-	// 		tok.tokenType = TOK_ILLEGAL
-	// 		tok.value = "string literal not terminated"
-	// 		tok.end = l.nextIdx
-	// 		return tok
-	// 	}
-	return token{}
 }
 
 func (l *lexer) handleDollarSign() token {
@@ -281,16 +295,12 @@ func (l *lexer) handleDollarSign() token {
 }
 
 func (l *lexer) handleRCurly() token {
-	if l.currentContext != nil {
-		l.currentContext.depthCounter = max(l.currentContext.depthCounter-1, 0)
-	}
+	l.maybeIncrDecrContext(TOK_RCURLY)
 	return token{tokenType: TOK_RCURLY, value: "}", start: l.currentIdx, end: l.nextIdx}
 }
 
 func (l *lexer) handleLCurly() token {
-	if l.currentContext != nil {
-		l.currentContext.depthCounter++
-	}
+	l.maybeIncrDecrContext(TOK_LCURLY)
 	return token{tokenType: TOK_LCURLY, value: "{", start: l.currentIdx, end: l.nextIdx}
 }
 
@@ -311,7 +321,7 @@ func (l *lexer) readIdentifier() token {
 }
 
 func (l *lexer) readNumber() token {
-	tok := token{tokenType: TOK_INT}
+	tok := token{tokenType: tok_ident}
 	start := l.currentIdx
 	encounteredDot := false
 	for l.currentChar == '.' || isDigit(l.currentChar) {
@@ -319,13 +329,13 @@ func (l *lexer) readNumber() token {
 			if !isDigit(l.peek()) || encounteredDot {
 				break
 			}
-			tok.tokenType = TOK_FLOAT
+			tok.tokenType = tok_float
 			encounteredDot = true
 		}
 		l.next()
 	}
 	tok.start = start
-	tok.end = l.currentIdx
+	tok.end = l.nextIdx
 	tok.value = string(l.input[tok.start:tok.end])
 	return tok
 }
@@ -338,4 +348,56 @@ func isLetter(char rune) bool {
 }
 func isDigit(char rune) bool {
 	return '0' <= char && char <= '9'
+}
+
+// context helpers
+
+type lexContextType string
+
+const (
+	lex_ctx_single_quote lexContextType = "SINGLE_QUOTE"
+	lex_ctx_default      lexContextType = "DEFAULT"
+)
+
+func lexerContextTypeToHandlerFn(l *lexer, t lexContextType) func() token {
+	switch t {
+	case lex_ctx_single_quote:
+		return l.handleSingleQuote
+	default:
+		return l.tokenize
+	}
+}
+
+type lexContext struct {
+	outer            *lexContext // nil means we're at the top level
+	contextType      lexContextType
+	incrTriggerToken tokenType
+	decrTriggerToken tokenType
+	depthCounter     int
+	stackLength      int
+}
+
+var defaultLexContext *lexContext = &lexContext{
+	outer:       nil,
+	contextType: lex_ctx_default,
+}
+
+func (l *lexer) newEnclosedContext(t lexContextType, incr tokenType, decr tokenType, initCounter int) {
+	new := &lexContext{
+		outer:            l.context,
+		contextType:      t,
+		incrTriggerToken: incr,
+		decrTriggerToken: decr,
+		depthCounter:     initCounter,
+		stackLength:      l.context.stackLength + 1,
+	}
+	l.context = new
+}
+func (l *lexer) maybeIncrDecrContext(tt tokenType) {
+	if tt == l.context.decrTriggerToken {
+		l.context.depthCounter = max(l.context.depthCounter-1, 0)
+	}
+	if tt == l.context.incrTriggerToken {
+		l.context.depthCounter++
+	}
 }

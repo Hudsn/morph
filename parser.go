@@ -55,13 +55,15 @@ func newParser(l *lexer) *parser {
 func (p *parser) registerFuncs() {
 	p.registerPrefixFunc(TOK_MINUS, p.parsePrefixExpression)
 	p.registerPrefixFunc(TOK_EXCLAMATION, p.parsePrefixExpression)
-	p.registerPrefixFunc(TOK_IDENT, p.parseIdentiferExpression)
-	p.registerPrefixFunc(TOK_INT, p.parseIntegerLiteral)
-	p.registerPrefixFunc(TOK_FLOAT, p.parseFloatLiteral)
+	p.registerPrefixFunc(tok_ident, p.parseIdentiferExpression)
+	p.registerPrefixFunc(tok_int, p.parseIntegerLiteral)
+	p.registerPrefixFunc(tok_float, p.parseFloatLiteral)
 	p.registerPrefixFunc(TOK_TRUE, p.parseBooleanLiteral)
 	p.registerPrefixFunc(TOK_FALSE, p.parseBooleanLiteral)
+	p.registerPrefixFunc(tok_string, p.parseStringLiteral)
 
 	p.registerInfixFunc(TOK_DOT, p.parsePathExpression)
+	// p.registerInfixFunc(TOK_TEMPLATE_START, p.parseTemplateExpression)
 
 }
 
@@ -148,7 +150,6 @@ func (p *parser) parsePathExpression(left expression) expression {
 
 func (p *parser) parseIdentiferExpression() expression {
 	return &identifierExpression{tok: p.currentToken, value: p.currentToken.value}
-
 }
 
 func (p *parser) parseIntegerLiteral() expression {
@@ -190,6 +191,10 @@ func (p *parser) parseBooleanLiteral() expression {
 	return ret
 }
 
+func (p *parser) parseStringLiteral() expression {
+	return &stringLiteral{tok: p.currentToken, value: p.currentToken.value}
+}
+
 //
 
 // specific statement parsers
@@ -197,7 +202,7 @@ func (p *parser) parseBooleanLiteral() expression {
 func (p *parser) parseSetStatement() *setStatement {
 	ret := &setStatement{tok: p.currentToken}
 	start := p.currentToken.start
-	if !p.mustNextToken(TOK_IDENT) { // ident is fine here since paths always start with ident
+	if !p.mustNextToken(tok_ident) { // ident is fine here since paths always start with ident
 		return nil
 	}
 	potentialTarget := p.parseExpression(LOWEST)
@@ -210,7 +215,7 @@ func (p *parser) parseSetStatement() *setStatement {
 	}
 
 	ret.target = target
-	if !p.mustNextToken(TOK_ASSIGN) {
+	if !p.mustNextToken(tok_assign) {
 		return nil
 	}
 	p.next()
@@ -261,6 +266,8 @@ func (p *parser) err(message string, position int) {
 }
 
 func (p *parser) rawStringFromStartEnd(start, end int) string {
+	fmt.Println(start, end)
+	fmt.Println(string(p.lexer.input[start]))
 	return string(p.lexer.input[start:end])
 }
 

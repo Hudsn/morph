@@ -1,9 +1,159 @@
 package morph
 
-import "testing"
+import (
+	"testing"
+)
+
+func TestLexDoubleQuoteEscapeError(t *testing.T) {
+	input := `"my\ncool\"string\v"`
+	tests := []testCase{
+		{
+			tokenType:  TOK_ILLEGAL,
+			start:      0,
+			end:        20,
+			value:      "invalid escape sequence",
+			rangeValue: `"my\ncool\"string\v"`,
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexDoubleQuoteNewlineError(t *testing.T) {
+	input := `"my
+	string`
+	tests := []testCase{
+		{
+			tokenType:  TOK_ILLEGAL,
+			start:      0,
+			end:        3,
+			value:      "string literal not terminated",
+			rangeValue: `"my`,
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexDoubleQuote(t *testing.T) {
+	input := `"my string"`
+	tests := []testCase{
+		{
+			tokenType:  tok_string,
+			start:      0,
+			end:        11,
+			value:      "my string",
+			rangeValue: `"my string"`,
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
 
 func TestLexSingleQuoteInterp(t *testing.T) {
-
+	input := "'mystring ${myvar} nest ${'nest string ${nest_var}!'}'"
+	tests := []testCase{
+		{
+			tokenType:  tok_string,
+			start:      0,
+			end:        10,
+			value:      "mystring ",
+			rangeValue: "'mystring ",
+		},
+		{
+			tokenType:  TOK_TEMPLATE_START,
+			start:      10,
+			end:        12,
+			value:      "${",
+			rangeValue: "${",
+		},
+		{
+			tokenType:  tok_ident,
+			start:      12,
+			end:        17,
+			value:      "myvar",
+			rangeValue: "myvar",
+		},
+		{
+			tokenType:  TOK_RCURLY,
+			start:      17,
+			end:        18,
+			value:      "}",
+			rangeValue: "}",
+		},
+		{
+			tokenType:  tok_string,
+			start:      18,
+			end:        24,
+			value:      " nest ",
+			rangeValue: " nest ",
+		},
+		{
+			tokenType:  TOK_TEMPLATE_START,
+			start:      24,
+			end:        26,
+			value:      "${",
+			rangeValue: "${",
+		},
+		{
+			tokenType:  tok_string,
+			start:      26,
+			end:        39,
+			value:      "nest string ",
+			rangeValue: "'nest string ",
+		},
+		{
+			tokenType:  TOK_TEMPLATE_START,
+			start:      39,
+			end:        41,
+			value:      "${",
+			rangeValue: "${",
+		},
+		{
+			tokenType:  tok_ident,
+			start:      41,
+			end:        49,
+			value:      "nest_var",
+			rangeValue: "nest_var",
+		},
+		{
+			tokenType:  TOK_RCURLY,
+			start:      49,
+			end:        50,
+			value:      "}",
+			rangeValue: "}",
+		},
+		{
+			tokenType:  tok_string,
+			start:      50,
+			end:        52,
+			value:      "!",
+			rangeValue: "!'",
+		},
+		{
+			tokenType:  TOK_RCURLY,
+			start:      52,
+			end:        53,
+			value:      "}",
+			rangeValue: "}",
+		},
+		{
+			tokenType:  tok_string,
+			start:      53,
+			end:        54,
+			value:      "",
+			rangeValue: "'",
+		},
+		{
+			tokenType:  TOK_EOF,
+			start:      54,
+			end:        54,
+			value:      string(nullchar),
+			rangeValue: "",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+	l := newLexer([]rune(input))
+	for range tests {
+		l.tokenize()
+	}
 }
 func TestLexSingleQuoteEscapeError(t *testing.T) {
 	input := `'mystring\v'`
@@ -22,7 +172,7 @@ func TestLexSingleQuoteEscape(t *testing.T) {
 	input := `'mystring\n\t'`
 	tests := []testCase{
 		{
-			tokenType:  TOK_STRING,
+			tokenType:  tok_string,
 			start:      0,
 			end:        14,
 			value:      "mystring\n\t",
@@ -35,7 +185,7 @@ func TestLexSingleQuote(t *testing.T) {
 	input := "'mystring'"
 	tests := []testCase{
 		{
-			tokenType:  TOK_STRING,
+			tokenType:  tok_string,
 			start:      0,
 			end:        10,
 			value:      "mystring",
@@ -98,7 +248,7 @@ func TestLexAssign(t *testing.T) {
 	input := "="
 	tests := []testCase{
 		{
-			tokenType:  TOK_ASSIGN,
+			tokenType:  tok_assign,
 			value:      "=",
 			start:      0,
 			end:        1,
@@ -106,10 +256,10 @@ func TestLexAssign(t *testing.T) {
 		},
 		{
 			tokenType:  TOK_EOF,
-			value:      string(NULLCHAR),
+			value:      string(nullchar),
 			start:      1,
 			end:        2,
-			rangeValue: string(NULLCHAR),
+			rangeValue: string(nullchar),
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -127,10 +277,10 @@ func TestLexDot(t *testing.T) {
 		},
 		{
 			tokenType:  TOK_EOF,
-			value:      string(NULLCHAR),
+			value:      string(nullchar),
 			start:      1,
 			end:        2,
-			rangeValue: string(NULLCHAR),
+			rangeValue: string(nullchar),
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -140,21 +290,21 @@ func TestLexNumber(t *testing.T) {
 	input := "123 1.23 .123"
 	tests := []testCase{
 		{
-			tokenType:  TOK_INT,
+			tokenType:  tok_ident,
 			value:      "123",
 			start:      0,
 			end:        3,
 			rangeValue: "123",
 		},
 		{
-			tokenType:  TOK_FLOAT,
+			tokenType:  tok_float,
 			value:      "1.23",
 			start:      4,
 			end:        8,
 			rangeValue: "1.23",
 		},
 		{
-			tokenType:  TOK_FLOAT,
+			tokenType:  tok_float,
 			value:      ".123",
 			start:      9,
 			end:        13,
@@ -162,10 +312,10 @@ func TestLexNumber(t *testing.T) {
 		},
 		{
 			tokenType:  TOK_EOF,
-			value:      string(NULLCHAR),
+			value:      string(nullchar),
 			start:      13,
 			end:        14,
-			rangeValue: string(NULLCHAR),
+			rangeValue: string(nullchar),
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -175,7 +325,7 @@ func TestLexIdent(t *testing.T) {
 	input := "abc.def"
 	tests := []testCase{
 		{
-			tokenType:  TOK_IDENT,
+			tokenType:  tok_ident,
 			value:      "abc",
 			start:      0,
 			end:        3,
@@ -189,7 +339,7 @@ func TestLexIdent(t *testing.T) {
 			rangeValue: ".",
 		},
 		{
-			tokenType:  TOK_IDENT,
+			tokenType:  tok_ident,
 			value:      "def",
 			start:      4,
 			end:        7,
@@ -207,7 +357,7 @@ type testCase struct {
 	rangeValue string // the literal value captured by the start and end markers; for ex in a string "asdf", it would include the quotes as well even though the value is just asdf
 }
 
-func TestLexMinux(t *testing.T) {
+func TestLexMinus(t *testing.T) {
 	input := "-5"
 	tests := []testCase{
 		{
@@ -218,7 +368,7 @@ func TestLexMinux(t *testing.T) {
 			end:        1,
 		},
 		{
-			tokenType:  TOK_INT,
+			tokenType:  tok_int,
 			value:      "5",
 			rangeValue: "5",
 			start:      1,
@@ -239,7 +389,7 @@ func TestLexExclamation(t *testing.T) {
 			end:        1,
 		},
 		{
-			tokenType:  TOK_INT,
+			tokenType:  tok_int,
 			value:      "5",
 			rangeValue: "5",
 			start:      1,

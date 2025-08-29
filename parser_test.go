@@ -1,9 +1,17 @@
 package morph
 
 import (
-	"fmt"
 	"testing"
 )
+
+func TestParseStringLiteral(t *testing.T) {
+	input := "hello world!"
+	program := setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+	stmt := program.statements[0].(*expressionStatement)
+	testLiteralExpression(t, stmt.expression, "hello world!")
+}
 
 func TestParseWhenStatement(t *testing.T) {
 	input := "WHEN true :: SET myvar = 5"
@@ -47,13 +55,12 @@ func TestParseSetStatement(t *testing.T) {
 		stepType assignStepType
 		partName string
 	}{
-		{ASSIGN_STEP_ENV, "my"},
-		{ASSIGN_STEP_MAP_KEY, "path"},
-		{ASSIGN_STEP_MAP_KEY, "var"},
+		{assign_step_env, "my"},
+		{assign_step_map_key, "path"},
+		{assign_step_map_key, "var"},
 	}
 	curPath := assignPath
 	for idx := 0; curPath != nil; idx++ {
-		fmt.Printf("%+v\n\n", curPath)
 		if idx >= len(wantSteps) {
 			t.Fatalf("too many path parts. expected=%d got=%d", len(wantSteps), idx+1)
 		}
@@ -163,11 +170,32 @@ func testLiteralExpression(t *testing.T, expr expression, value interface{}) boo
 	case bool:
 		return testBooleanLiteral(t, expr, v)
 	case string:
-		return testIdentifierExpression(t, expr, v)
+		switch expr.(type) {
+		case *identifierExpression:
+			return testIdentifierExpression(t, expr, v)
+		case *stringLiteral:
+			return testStringLiteral(t, expr, v)
+		default:
+			t.Errorf("testLiteral expression type not supported for string. got=%T", value)
+			return false
+		}
 	default:
 		t.Errorf("testLiteralExpression type not supported. got=%T", value)
 		return false
 	}
+}
+
+func testStringLiteral(t *testing.T, expr expression, want string) bool {
+	strLit, ok := expr.(*stringLiteral)
+	if !ok {
+		t.Errorf("expression is not of type *floatLiteral. got=%T", expr)
+		return false
+	}
+	if strLit.value != want {
+		t.Errorf("expected float expression to be equal to %s. got=%s", want, strLit.value)
+		return false
+	}
+	return true
 }
 
 func testFloatLiteral(t *testing.T, expr expression, want float64) bool {

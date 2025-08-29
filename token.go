@@ -13,14 +13,14 @@ type token struct {
 type tokenType string
 
 const (
-	TOK_IDENT tokenType = "IDENT"
+	tok_ident tokenType = "IDENT"
 
-	TOK_INT    tokenType = "INT"
-	TOK_FLOAT  tokenType = "FLOAT"
-	TOK_STRING tokenType = "STRING"
+	tok_int    tokenType = "INT"
+	tok_float  tokenType = "FLOAT"
+	tok_string tokenType = "STRING"
 
 	// separators
-	TOK_ASSIGN       tokenType = "="
+	tok_assign       tokenType = "="
 	TOK_DOT          tokenType = "."
 	TOK_COLON        tokenType = ":"
 	TOK_DOUBLE_COLON tokenType = "::"
@@ -74,7 +74,7 @@ func lookupTokenKeyword(ident string) tokenType {
 	if ret, ok := keywordMap[ident]; ok {
 		return ret
 	}
-	return TOK_IDENT
+	return tok_ident
 }
 
 func lineColString(line int, col int) string {
