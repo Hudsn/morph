@@ -142,9 +142,9 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			rangeValue: "'",
 		},
 		{
-			tokenType:  TOK_EOF,
-			start:      54,
-			end:        54,
+			tokenType:  tok_eof,
+			start:      0,
+			end:        0,
 			value:      string(nullchar),
 			rangeValue: "",
 		},
@@ -181,8 +181,8 @@ func TestLexSingleQuoteEscape(t *testing.T) {
 	}
 	checkLexTestCase(t, input, tests)
 }
-func TestLexSingleQuote(t *testing.T) {
-	input := "'mystring'"
+func TestLexSingleQuoteBase(t *testing.T) {
+	input := "'mystring' 'endstring'"
 	tests := []testCase{
 		{
 			tokenType:  tok_string,
@@ -190,6 +190,13 @@ func TestLexSingleQuote(t *testing.T) {
 			end:        10,
 			value:      "mystring",
 			rangeValue: "'mystring'",
+		},
+		{
+			tokenType:  tok_string,
+			start:      11,
+			end:        22,
+			value:      "endstring",
+			rangeValue: "'endstring'",
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -255,11 +262,11 @@ func TestLexAssign(t *testing.T) {
 			rangeValue: "=",
 		},
 		{
-			tokenType:  TOK_EOF,
+			tokenType:  tok_eof,
 			value:      string(nullchar),
-			start:      1,
-			end:        2,
-			rangeValue: string(nullchar),
+			start:      0,
+			end:        0,
+			rangeValue: "",
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -276,11 +283,11 @@ func TestLexDot(t *testing.T) {
 			rangeValue: ".",
 		},
 		{
-			tokenType:  TOK_EOF,
+			tokenType:  tok_eof,
 			value:      string(nullchar),
-			start:      1,
-			end:        2,
-			rangeValue: string(nullchar),
+			start:      0,
+			end:        0,
+			rangeValue: "",
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -290,7 +297,7 @@ func TestLexNumber(t *testing.T) {
 	input := "123 1.23 .123"
 	tests := []testCase{
 		{
-			tokenType:  tok_ident,
+			tokenType:  tok_int,
 			value:      "123",
 			start:      0,
 			end:        3,
@@ -311,11 +318,11 @@ func TestLexNumber(t *testing.T) {
 			rangeValue: ".123",
 		},
 		{
-			tokenType:  TOK_EOF,
+			tokenType:  tok_eof,
 			value:      string(nullchar),
-			start:      13,
-			end:        14,
-			rangeValue: string(nullchar),
+			start:      0,
+			end:        0,
+			rangeValue: "",
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -417,8 +424,8 @@ func checkLexTestCase(t *testing.T, input string, cases []testCase) {
 		if tok.end != tt.end {
 			t.Errorf("case %d: wrong token end index: want=%d, got=%d", idx+1, tt.end, tok.end)
 		}
-		if tt.rangeValue != string(lexer.input[tok.start:tok.end]) {
-			t.Errorf("case %d: wrong token literal derived from range: want=%s, got=%s", idx+1, tt.rangeValue, string(lexer.input[tok.start:tok.end]))
+		if tt.rangeValue != lexer.stringFromToken(tok) {
+			t.Errorf("case %d: wrong token literal derived from range: want=%s, got=%s", idx+1, tt.rangeValue, lexer.stringFromToken(tok))
 		}
 	}
 }

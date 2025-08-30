@@ -9,6 +9,7 @@ type lexer struct {
 	currentChar rune
 	currentIdx  int
 	nextIdx     int
+	isEnd       bool
 
 	context *lexContext
 }
@@ -27,8 +28,9 @@ func newLexer(input []rune) *lexer {
 }
 
 func (l *lexer) next() {
-	if l.nextIdx >= len(l.input) {
+	if l.nextIdx >= len(l.input) || l.isEnd {
 		l.currentChar = nullchar
+		l.isEnd = true
 	} else {
 		l.currentChar = l.input[l.nextIdx]
 	}
@@ -84,7 +86,6 @@ func (l *lexer) tokenize() token {
 		l.next()
 		tok = l.handleDoubleQuote()
 		tok.start = start
-		return tok
 	case '{':
 		tok = l.handleLCurly()
 	case '}':
@@ -118,10 +119,10 @@ func (l *lexer) handleWhiteSpace() {
 
 func (l *lexer) handleEOF() token {
 	return token{
-		tokenType: TOK_EOF,
+		tokenType: tok_eof,
 		value:     string(l.currentChar),
-		start:     l.currentIdx,
-		end:       l.nextIdx,
+		start:     0,
+		end:       0,
 	}
 }
 
@@ -208,8 +209,8 @@ func (l *lexer) handleDoubleQuote() token {
 		str = append(str, toAdd)
 	}
 	tok.value = string(str)
+	tok.end = l.nextIdx
 	l.next()
-	tok.end = l.currentIdx
 	return tok
 }
 
@@ -252,12 +253,8 @@ func (l *lexer) handleSingleQuote() token {
 		return tok
 	}
 	tok.value = string(str)
-
-	l.next()               // we're now at current idx is 1 after the quote
-	tok.end = l.currentIdx // in most cases this works
-	// need to account for when the quote is the last or 2nd to last char?
-	// if ?????{}
-
+	tok.end = l.nextIdx
+	l.next()
 	return tok
 }
 
@@ -304,6 +301,15 @@ func (l *lexer) handleLCurly() token {
 	return token{tokenType: TOK_LCURLY, value: "{", start: l.currentIdx, end: l.nextIdx}
 }
 
+// formatting helprs
+
+func (l *lexer) stringFromToken(t token) string {
+	if l.isEnd && t.tokenType == tok_eof {
+		return ""
+	}
+	return string(l.input[t.start:t.end])
+}
+
 // reader helpers
 
 func (l *lexer) readIdentifier() token {
@@ -311,17 +317,21 @@ func (l *lexer) readIdentifier() token {
 	for isDigit(l.currentChar) || isLetter(l.currentChar) || isLineChar(l.currentChar) {
 		l.next()
 	}
-	val := string(l.input[start:l.currentIdx])
+	endIdx := l.currentIdx
+	if l.isEnd {
+		endIdx = l.nextIdx
+	}
+	val := string(l.input[start:endIdx])
 	return token{
 		tokenType: lookupTokenKeyword(val),
 		value:     val,
 		start:     start,
-		end:       l.currentIdx,
+		end:       endIdx,
 	}
 }
 
 func (l *lexer) readNumber() token {
-	tok := token{tokenType: tok_ident}
+	tok := token{tokenType: tok_int}
 	start := l.currentIdx
 	encounteredDot := false
 	for l.currentChar == '.' || isDigit(l.currentChar) {
@@ -335,7 +345,10 @@ func (l *lexer) readNumber() token {
 		l.next()
 	}
 	tok.start = start
-	tok.end = l.nextIdx
+	tok.end = l.currentIdx
+	if l.isEnd {
+		tok.end = l.nextIdx
+	}
 	tok.value = string(l.input[tok.start:tok.end])
 	return tok
 }

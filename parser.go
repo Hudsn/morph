@@ -77,7 +77,7 @@ func (p *parser) next() {
 
 func (p *parser) parseProgram() (*program, error) {
 	program := &program{statements: []statement{}}
-	for !p.isCurrentToken(TOK_EOF) && !p.isCurrentToken(TOK_ILLEGAL) {
+	for !p.isCurrentToken(tok_float) && !p.isCurrentToken(TOK_ILLEGAL) {
 		statement := p.parseStatement()
 		program.statements = append(program.statements, statement)
 		p.next()

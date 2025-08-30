@@ -57,7 +57,7 @@ const (
 	TOK_TRUE  tokenType = "TRUE"
 	TOK_FALSE tokenType = "FALSE"
 
-	TOK_EOF     tokenType = "EOF"
+	tok_eof     tokenType = "EOF"
 	TOK_ILLEGAL tokenType = "ILLEGAL"
 )
 
