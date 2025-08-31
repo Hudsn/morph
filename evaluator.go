@@ -1,6 +1,9 @@
 package morph
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 var (
 	obj_global_null  = &objectNull{}
@@ -28,11 +31,15 @@ func (e *evaluator) eval(astNode node, env *environment) object {
 		return e.evalPathExpression(astNode, env)
 	case *identifierExpression:
 		return e.evalIdentifierExpression(astNode, env)
+	case *templateExpression:
+		return e.evalTemplateExpression(astNode, env)
 	case *prefixExpression:
 		return e.evalPrefixExpression(astNode, env)
 		// case *infixExpression:
 		// TODO
 		return nil
+	case *stringLiteral:
+		return &objectString{value: astNode.value}
 	case *integerLiteral:
 		return &objectInteger{value: astNode.value}
 	case *floatLiteral:
@@ -163,8 +170,15 @@ func (e *evaluator) evalIdentifierExpression(identExpr *identifierExpression, en
 	if res, ok := env.get(identExpr.value); ok {
 		return res
 	}
-
 	return objectNewErr("%s: identifier not found: %s", e.lineColForNode(identExpr), identExpr.value)
+}
+
+func (e *evaluator) evalTemplateExpression(templateExpr *templateExpression, env *environment) object {
+	stringParts := []string{}
+	for _, entry := range templateExpr.parts {
+		stringParts = append(stringParts, e.eval(entry, env).inspect())
+	}
+	return &objectString{value: strings.Join(stringParts, "")}
 }
 
 func (e *evaluator) evalPathExpression(pathExpr *pathExpression, env *environment) object {
@@ -198,7 +212,7 @@ func objectNewErr(format string, a ...interface{}) *objectError {
 
 func objectIsError(obj object) bool {
 	if obj != nil {
-		return obj.getType() == T_ERROR
+		return obj.getType() == t_error
 	}
 	return false
 }

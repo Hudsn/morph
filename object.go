@@ -16,15 +16,16 @@ type object interface {
 }
 
 const (
-	T_INTEGER objectType = "INTEGER"
-	T_FLOAT   objectType = "FLOAT"
-	T_BOOLEAN objectType = "BOOLEAN"
+	t_integer objectType = "INTEGER"
+	t_float   objectType = "FLOAT"
+	t_boolean objectType = "BOOLEAN"
+	t_string  objectType = "STRING"
 
-	T_MAP objectType = "MAP"
+	t_map objectType = "MAP"
 
-	T_ERROR     objectType = "ERROR"
-	T_TERMINATE objectType = "TERMINATE"
-	T_NULL      objectType = "NULL"
+	t_error     objectType = "ERROR"
+	t_terminate objectType = "TERMINATE"
+	t_null      objectType = "NULL"
 )
 
 //
@@ -39,7 +40,7 @@ type objectMap struct {
 	kvPairs map[string]objectMapPair
 }
 
-func (m *objectMap) getType() objectType { return T_MAP }
+func (m *objectMap) getType() objectType { return t_map }
 func (m *objectMap) inspect() string {
 	pairs := []string{}
 	for _, pair := range m.kvPairs {
@@ -64,11 +65,22 @@ func (m *objectMap) isTruthy() bool { return len(m.kvPairs) > 0 }
 
 //
 
+type objectString struct {
+	value string
+}
+
+func (s *objectString) getType() objectType { return t_string }
+func (s *objectString) inspect() string     { return s.value }
+func (s *objectString) clone() object       { return &objectString{value: s.value} }
+func (s *objectString) isTruthy() bool      { return len(s.value) > 0 }
+
+//
+
 type objectInteger struct {
 	value int64
 }
 
-func (i *objectInteger) getType() objectType { return T_INTEGER }
+func (i *objectInteger) getType() objectType { return t_integer }
 func (i *objectInteger) inspect() string     { return fmt.Sprintf("%d", i.value) }
 func (i *objectInteger) clone() object {
 	return &objectInteger{value: i.value}
@@ -81,7 +93,7 @@ type objectFloat struct {
 	value float64
 }
 
-func (f *objectFloat) getType() objectType { return T_FLOAT }
+func (f *objectFloat) getType() objectType { return t_float }
 func (f *objectFloat) inspect() string     { return fmt.Sprintf("%f", f.value) }
 func (f *objectFloat) clone() object {
 	return &objectFloat{value: f.value}
@@ -94,7 +106,7 @@ type objectBoolean struct {
 	value bool
 }
 
-func (b *objectBoolean) getType() objectType { return T_BOOLEAN }
+func (b *objectBoolean) getType() objectType { return t_boolean }
 func (b *objectBoolean) inspect() string     { return fmt.Sprintf("%t", b.value) }
 func (b *objectBoolean) clone() object {
 	return &objectBoolean{value: b.value}
@@ -105,7 +117,7 @@ func (b *objectBoolean) isTruthy() bool { return b.value }
 
 type objectNull struct{}
 
-func (n *objectNull) getType() objectType { return T_NULL }
+func (n *objectNull) getType() objectType { return t_null }
 func (n *objectNull) inspect() string     { return "null" }
 func (n *objectNull) clone() object {
 	return n
@@ -118,7 +130,7 @@ type objectError struct {
 	message string
 }
 
-func (e *objectError) getType() objectType { return T_ERROR }
+func (e *objectError) getType() objectType { return t_error }
 func (e *objectError) inspect() string     { return "ERROR: " + e.message }
 func (e *objectError) clone() object {
 	return &objectError{message: e.message}
@@ -130,7 +142,7 @@ func (e *objectError) isTruthy() bool { return false }
 // returned by builtin funcs when signaling to halt further processing and return the env values as-is.
 type objectTerminate struct{}
 
-func (t *objectTerminate) getType() objectType { return T_TERMINATE }
+func (t *objectTerminate) getType() objectType { return t_terminate }
 func (t *objectTerminate) inspect() string     { return "TERMINATE" }
 func (t *objectTerminate) clone() object {
 	return objectNewErr("invalid target of SET statement")
