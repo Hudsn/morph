@@ -61,6 +61,7 @@ func (p *parser) registerFuncs() {
 	p.registerPrefixFunc(TOK_TRUE, p.parseBooleanLiteral)
 	p.registerPrefixFunc(TOK_FALSE, p.parseBooleanLiteral)
 	p.registerPrefixFunc(tok_string, p.parseStringLiteral)
+	p.registerPrefixFunc(tok_template_string, p.parseTemplateExpression)
 
 	p.registerInfixFunc(TOK_DOT, p.parsePathExpression)
 	// p.registerInfixFunc(TOK_TEMPLATE_START, p.parseTemplateExpression)
@@ -77,7 +78,7 @@ func (p *parser) next() {
 
 func (p *parser) parseProgram() (*program, error) {
 	program := &program{statements: []statement{}}
-	for !p.isCurrentToken(tok_float) && !p.isCurrentToken(TOK_ILLEGAL) {
+	for !p.isCurrentToken(tok_eof) && !p.isCurrentToken(TOK_ILLEGAL) {
 		statement := p.parseStatement()
 		program.statements = append(program.statements, statement)
 		p.next()
@@ -103,8 +104,13 @@ func (p *parser) parseStatement() statement {
 func (p *parser) parseExpression(precedence int) expression {
 	prefixFn := p.prefixFuncMap[p.currentToken.tokenType]
 	if prefixFn == nil {
-		msg := fmt.Sprintf("unexpected sequence: %s", p.rawStringFromStartEnd(p.currentToken.start, p.currentToken.end))
-		p.err(msg, p.currentToken.start)
+		msg := fmt.Sprintf("unexpected sequence: %s", p.lexer.stringFromToken(p.currentToken))
+		errPos := p.currentToken.start
+		if p.isCurrentToken(tok_eof) {
+			msg = "unexpected EOF"
+			errPos = p.lexer.nextIdx
+		}
+		p.err(msg, errPos)
 		return nil
 	}
 	leftExp := prefixFn()
@@ -128,6 +134,13 @@ func (p *parser) parsePrefixExpression() expression {
 }
 
 // specific expression parsers
+
+func (p *parser) parseTemplateExpression() expression {
+	ret := &templateExpression{tok: p.currentToken, parts: []expression{}}
+	p.next()
+
+	return ret
+}
 
 func (p *parser) parsePathExpression(left expression) expression {
 	ret := &pathExpression{tok: p.currentToken}
@@ -266,8 +279,6 @@ func (p *parser) err(message string, position int) {
 }
 
 func (p *parser) rawStringFromStartEnd(start, end int) string {
-	fmt.Println(start, end)
-	fmt.Println(string(p.lexer.input[start]))
 	return string(p.lexer.input[start:end])
 }
 

@@ -218,7 +218,7 @@ func (l *lexer) handleSingleQuote() token {
 	start := l.currentIdx
 	str := []rune{}
 	tok := token{
-		tokenType: tok_string,
+		tokenType: tok_template_string,
 		start:     start,
 	}
 	for l.currentChar != '\'' && l.currentChar != nullchar {

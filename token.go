@@ -15,9 +15,10 @@ type tokenType string
 const (
 	tok_ident tokenType = "IDENT"
 
-	tok_int    tokenType = "INT"
-	tok_float  tokenType = "FLOAT"
-	tok_string tokenType = "STRING"
+	tok_int             tokenType = "INT"
+	tok_float           tokenType = "FLOAT"
+	tok_string          tokenType = "STRING"
+	tok_template_string tokenType = "TEMPLATE_STRING"
 
 	// separators
 	tok_assign       tokenType = "="

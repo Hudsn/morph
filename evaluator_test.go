@@ -1,7 +1,6 @@
 package morph
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -14,7 +13,6 @@ func TestEvalPrefixExpression(t *testing.T) {
 	program := evaluator.parser.parseStatement()
 	got := evaluator.eval(program, env)
 	if got.getType() != T_BOOLEAN {
-		fmt.Println(got.inspect())
 		t.Fatalf("expected result type to be %s. got=%s", T_BOOLEAN, got.getType())
 	}
 	gotBool := got.(*objectBoolean)

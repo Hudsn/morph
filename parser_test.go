@@ -4,8 +4,12 @@ import (
 	"testing"
 )
 
+func TestParseTemplateLiteral(t *testing.T) {
+
+}
+
 func TestParseStringLiteral(t *testing.T) {
-	input := "hello world!"
+	input := `"hello world!"`
 	program := setupParserTest(t, input)
 	checkParserProgramLength(t, program, 1)
 	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)

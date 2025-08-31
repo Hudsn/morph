@@ -316,7 +316,7 @@ type templateExpression struct {
 func (te *templateExpression) expressionNode() {}
 func (te *templateExpression) token() token    { return te.tok }
 func (te *templateExpression) position() position {
-	if len(te.parts) < 1 {
+	if len(te.parts) == 0 {
 		return position{
 			start: te.tok.start,
 			end:   te.tok.end,
@@ -328,9 +328,9 @@ func (te *templateExpression) position() position {
 	}
 }
 func (te *templateExpression) string() string {
-	ret := []string{}
-	for _, part := range te.parts {
-		ret = append(ret, part.string())
+	stringParts := []string{}
+	for _, entry := range te.parts {
+		stringParts = append(stringParts, entry.string())
 	}
-	return strings.Join(ret, "")
+	return strings.Join(stringParts, "")
 }

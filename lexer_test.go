@@ -34,7 +34,7 @@ func TestLexDoubleQuoteNewlineError(t *testing.T) {
 }
 
 func TestLexDoubleQuote(t *testing.T) {
-	input := `"my string"`
+	input := `"my string" "my other string"`
 	tests := []testCase{
 		{
 			tokenType:  tok_string,
@@ -42,6 +42,13 @@ func TestLexDoubleQuote(t *testing.T) {
 			end:        11,
 			value:      "my string",
 			rangeValue: `"my string"`,
+		},
+		{
+			tokenType:  tok_string,
+			start:      12,
+			end:        29,
+			value:      "my other string",
+			rangeValue: `"my other string"`,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -51,7 +58,7 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 	input := "'mystring ${myvar} nest ${'nest string ${nest_var}!'}'"
 	tests := []testCase{
 		{
-			tokenType:  tok_string,
+			tokenType:  tok_template_string,
 			start:      0,
 			end:        10,
 			value:      "mystring ",
@@ -79,7 +86,7 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			rangeValue: "}",
 		},
 		{
-			tokenType:  tok_string,
+			tokenType:  tok_template_string,
 			start:      18,
 			end:        24,
 			value:      " nest ",
@@ -93,7 +100,7 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			rangeValue: "${",
 		},
 		{
-			tokenType:  tok_string,
+			tokenType:  tok_template_string,
 			start:      26,
 			end:        39,
 			value:      "nest string ",
@@ -121,7 +128,7 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			rangeValue: "}",
 		},
 		{
-			tokenType:  tok_string,
+			tokenType:  tok_template_string,
 			start:      50,
 			end:        52,
 			value:      "!",
@@ -135,7 +142,7 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			rangeValue: "}",
 		},
 		{
-			tokenType:  tok_string,
+			tokenType:  tok_template_string,
 			start:      53,
 			end:        54,
 			value:      "",
@@ -172,7 +179,7 @@ func TestLexSingleQuoteEscape(t *testing.T) {
 	input := `'mystring\n\t'`
 	tests := []testCase{
 		{
-			tokenType:  tok_string,
+			tokenType:  tok_template_string,
 			start:      0,
 			end:        14,
 			value:      "mystring\n\t",
@@ -185,14 +192,14 @@ func TestLexSingleQuoteBase(t *testing.T) {
 	input := "'mystring' 'endstring'"
 	tests := []testCase{
 		{
-			tokenType:  tok_string,
+			tokenType:  tok_template_string,
 			start:      0,
 			end:        10,
 			value:      "mystring",
 			rangeValue: "'mystring'",
 		},
 		{
-			tokenType:  tok_string,
+			tokenType:  tok_template_string,
 			start:      11,
 			end:        22,
 			value:      "endstring",
