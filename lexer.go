@@ -237,7 +237,7 @@ func (l *lexer) handleSingleQuote() token {
 		}
 
 		if l.currentChar == '$' && l.peek() == '{' {
-			l.newEnclosedContext(lex_ctx_single_quote, TOK_LCURLY, TOK_RCURLY, 1)
+			l.newEnclosedContext(lex_ctx_single_quote, TOK_LCURLY, tok_rcurly, 1)
 			tok.end = l.currentIdx
 			tok.value = string(str)
 			return tok
@@ -285,15 +285,15 @@ func (l *lexer) handleDollarSign() token {
 			end:       l.nextIdx,
 		}
 	}
-	tok := token{tokenType: TOK_TEMPLATE_START, start: l.currentIdx, value: "${"}
+	tok := token{tokenType: tok_template_start, start: l.currentIdx, value: "${"}
 	l.next()
 	tok.end = l.nextIdx
 	return tok
 }
 
 func (l *lexer) handleRCurly() token {
-	l.maybeIncrDecrContext(TOK_RCURLY)
-	return token{tokenType: TOK_RCURLY, value: "}", start: l.currentIdx, end: l.nextIdx}
+	l.maybeIncrDecrContext(tok_rcurly)
+	return token{tokenType: tok_rcurly, value: "}", start: l.currentIdx, end: l.nextIdx}
 }
 
 func (l *lexer) handleLCurly() token {

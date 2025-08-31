@@ -5,7 +5,31 @@ import (
 )
 
 func TestParseTemplateLiteral(t *testing.T) {
-
+	input := `'${my_var} world ${myother_var} ${myLastVar}'`
+	program := setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+	stmt := program.statements[0].(*expressionStatement)
+	template, ok := stmt.expression.(*templateExpression)
+	if !ok {
+		t.Fatalf("stmt.expression is not of type *templateExpression. got=%T", stmt.expression)
+	}
+	wantList := []string{
+		"",
+		"my_var",
+		" world ",
+		"myother_var",
+		" ",
+		"myLastVar",
+		"",
+	}
+	if len(wantList) != len(template.parts) {
+		t.Fatalf("expected template.parts to be of len %d. got=%d", len(wantList), len(template.parts))
+	}
+	for idx, want := range wantList {
+		expr := template.parts[idx]
+		testLiteralExpression(t, expr, want)
+	}
 }
 
 func TestParseStringLiteral(t *testing.T) {

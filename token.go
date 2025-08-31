@@ -27,11 +27,11 @@ const (
 	TOK_DOUBLE_COLON tokenType = "::"
 
 	// containers
-	TOK_TEMPLATE_START tokenType = "${"
+	tok_template_start tokenType = "${"
 	TOK_LPAREN         tokenType = "("
 	TOK_RPAREN         tokenType = ")"
 	TOK_LCURLY         tokenType = "{"
-	TOK_RCURLY         tokenType = "}"
+	tok_rcurly         tokenType = "}"
 	TOK_LSQUARE        tokenType = "["
 	TOK_RSQUARE        tokenType = "]"
 

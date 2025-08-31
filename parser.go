@@ -136,10 +136,35 @@ func (p *parser) parsePrefixExpression() expression {
 // specific expression parsers
 
 func (p *parser) parseTemplateExpression() expression {
+	if !p.mustCurrentToken(tok_template_string) {
+		return nil
+	}
 	ret := &templateExpression{tok: p.currentToken, parts: []expression{}}
-	p.next()
 
+	ret.parts = append(ret.parts, &stringLiteral{tok: p.currentToken, value: p.currentToken.value})
+
+	for p.isPeekToken(tok_template_string) || p.isPeekToken(tok_template_start) {
+		p.next()
+		switch p.currentToken.tokenType {
+		case tok_template_string:
+			ret.parts = append(ret.parts, &stringLiteral{tok: p.currentToken, value: p.currentToken.value})
+		case tok_template_start:
+			if toAdd, gotExpr := p.parseTemplateInnerExpression(); gotExpr {
+				ret.parts = append(ret.parts, toAdd)
+			}
+		}
+	}
 	return ret
+}
+
+func (p *parser) parseTemplateInnerExpression() (expression, bool) {
+	p.next()
+	if p.isCurrentToken(tok_rcurly) {
+		return nil, false
+	}
+	toAdd := p.parseExpression(LOWEST)
+	p.mustNextToken(tok_rcurly)
+	return toAdd, true
 }
 
 func (p *parser) parsePathExpression(left expression) expression {
@@ -268,6 +293,14 @@ func (p *parser) mustNextToken(t tokenType) bool {
 		return true
 	}
 	msg := fmt.Sprintf("unexpected token type. expected=%q got=%q", t, p.peekToken.tokenType)
+	p.err(msg, p.peekToken.start)
+	return false
+}
+func (p *parser) mustCurrentToken(t tokenType) bool {
+	if p.isCurrentToken(t) {
+		return true
+	}
+	msg := fmt.Sprintf("unexpected token type. expected=%q got=%q", t, p.currentToken.tokenType)
 	p.err(msg, p.peekToken.start)
 	return false
 }

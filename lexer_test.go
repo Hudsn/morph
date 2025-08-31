@@ -65,7 +65,7 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			rangeValue: "'mystring ",
 		},
 		{
-			tokenType:  TOK_TEMPLATE_START,
+			tokenType:  tok_template_start,
 			start:      10,
 			end:        12,
 			value:      "${",
@@ -79,7 +79,7 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			rangeValue: "myvar",
 		},
 		{
-			tokenType:  TOK_RCURLY,
+			tokenType:  tok_rcurly,
 			start:      17,
 			end:        18,
 			value:      "}",
@@ -93,7 +93,7 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			rangeValue: " nest ",
 		},
 		{
-			tokenType:  TOK_TEMPLATE_START,
+			tokenType:  tok_template_start,
 			start:      24,
 			end:        26,
 			value:      "${",
@@ -107,7 +107,7 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			rangeValue: "'nest string ",
 		},
 		{
-			tokenType:  TOK_TEMPLATE_START,
+			tokenType:  tok_template_start,
 			start:      39,
 			end:        41,
 			value:      "${",
@@ -121,7 +121,7 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			rangeValue: "nest_var",
 		},
 		{
-			tokenType:  TOK_RCURLY,
+			tokenType:  tok_rcurly,
 			start:      49,
 			end:        50,
 			value:      "}",
@@ -135,7 +135,7 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			rangeValue: "!'",
 		},
 		{
-			tokenType:  TOK_RCURLY,
+			tokenType:  tok_rcurly,
 			start:      52,
 			end:        53,
 			value:      "}",
