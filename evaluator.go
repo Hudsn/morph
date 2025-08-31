@@ -21,6 +21,8 @@ func newEvaluator(p *parser) *evaluator {
 
 func (e *evaluator) eval(astNode node, env *environment) object {
 	switch astNode := astNode.(type) {
+	case *program:
+		return e.evalProgramStatements(astNode, env)
 	case *setStatement:
 		return e.evalSetStatement(astNode, env)
 	case *whenStatement:
@@ -53,6 +55,13 @@ func (e *evaluator) eval(astNode node, env *environment) object {
 	default:
 		return obj_global_null
 	}
+}
+
+func (e *evaluator) evalProgramStatements(programNode *program, env *environment) object {
+	for _, stmt := range programNode.statements {
+		e.eval(stmt, env)
+	}
+	return obj_global_null
 }
 
 func (e *evaluator) evalPrefixExpression(prefix *prefixExpression, env *environment) object {

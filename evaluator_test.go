@@ -5,7 +5,33 @@ import (
 )
 
 func TestEvalTemplateExpression(t *testing.T) {
+	env := newEnvironment()
+	evaluator := setupEvalTest(`
+	SET hellovar = "hello"
+	SET worldvar = "world"
+	SET helloworld = '${hellovar}
+	${worldvar}!'
+	`)
+	if len(evaluator.parser.errors) > 0 {
+		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	}
+	program, err := evaluator.parser.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	evaluator.eval(program, env)
 
+	obj, found := env.get("helloworld")
+	if !found {
+		t.Errorf("env variable not found for helloworld. expected value of %q", "hello\n\tworld!")
+	}
+	if obj.getType() != t_string {
+		t.Errorf("env variable at helloworld is not of type %s. got=%s", t_string, obj.getType())
+	}
+	objString := obj.(*objectString)
+	if objString.value != "hello\n\tworld!" {
+		t.Errorf("wrong value for env var string helloworld. want=%q got=%q", "hello\n\tworld!", objString.value)
+	}
 }
 
 func TestEvalStringLitera(t *testing.T) {
