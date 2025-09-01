@@ -5,11 +5,67 @@ import (
 )
 
 func TestEvalNumberEquality(t *testing.T) {
-
+	cases := []struct {
+		input string
+		want  bool
+	}{
+		{"1 == 1", true},
+		{"1 != 1", false},
+		{"1.1 != 1.2", true},
+		{"1.6 == 1.5", false},
+		{"0.1 > 0.001", true},
+		{"0.5 >= 0.5", true},
+		{"5 <= 2", false},
+		{"5 < 5.5", true},
+	}
+	for _, tt := range cases {
+		env := newEnvironment()
+		evaluator := *setupEvalTest(tt.input)
+		if len(evaluator.parser.errors) > 0 {
+			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+		}
+		stmt := evaluator.parser.parseExpressionStatement()
+		res := evaluator.eval(stmt, env)
+		boolRes, ok := res.(*objectBoolean)
+		if !ok {
+			t.Fatalf("expected result to be type *objectFloat. got=%T", res)
+		}
+		if boolRes.value != tt.want {
+			t.Errorf("expected float value to be %t. got=%t", tt.want, boolRes.value)
+		}
+	}
 }
 
 func TestEvalMathFloats(t *testing.T) {
-
+	cases := []struct {
+		input string
+		want  float64
+	}{
+		{"1 + 1.5", 2.5},
+		{"1.5 + 1.6", 3.1},
+		{"5 - .5", 4.5},
+		{"1.6 - 1.5", 0.1},
+		{"0.1 * 5", .5},
+		{"0.5 * 0.5", .25},
+		{"5 / 2", 2.5},
+		{"5.5 / 5.5", 1.0},
+	}
+	for _, tt := range cases {
+		env := newEnvironment()
+		evaluator := *setupEvalTest(tt.input)
+		if len(evaluator.parser.errors) > 0 {
+			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+		}
+		stmt := evaluator.parser.parseExpressionStatement()
+		res := evaluator.eval(stmt, env)
+		flRes, ok := res.(*objectFloat)
+		if !ok {
+			t.Fatalf("expected result to be type *objectFloat. got=%T", res)
+		}
+		if !isFloatEqual(flRes.value, tt.want) {
+			t.Errorf("expected float value to be %f. got=%f", tt.want, flRes.value)
+		}
+	}
 }
 
 func TestEvalMathInts(t *testing.T) {

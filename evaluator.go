@@ -75,10 +75,10 @@ func (e *evaluator) evalInfixExpression(infix *infixExpression, env *environment
 		return rightObj
 	}
 	switch {
-	case leftObj.getType() != rightObj.getType():
-		return objectNewErr("type mismatch: %s %s %s", leftObj.getType(), infix.operator, rightObj.getType())
 	case slices.Contains([]objectType{t_integer, t_float}, leftObj.getType()) && slices.Contains([]objectType{t_integer, t_float}, rightObj.getType()):
 		return e.evalNumberInfixExpression(leftObj, infix.operator, rightObj)
+	case leftObj.getType() != rightObj.getType():
+		return objectNewErr("type mismatch: %s %s %s", leftObj.getType(), infix.operator, rightObj.getType())
 	case leftObj.getType() == t_string && rightObj.getType() == t_string:
 		// TODO e.evalStringInfixExpression(left, operator, right)
 		return nil
@@ -116,20 +116,28 @@ func (e *evaluator) evalNumberInfixExpression(leftObj object, operator string, r
 	case "<":
 		return objectFromBoolean(leftNum < rightNum)
 	case "<=":
-		return objectFromBoolean(leftNum <= rightNum)
+		return objectFromBoolean(isFloatEqual(leftNum, rightNum) || leftNum <= rightNum)
 	case ">":
 		return objectFromBoolean(leftNum > rightNum)
 	case ">=":
-		return objectFromBoolean(leftNum >= rightNum)
+		return objectFromBoolean(isFloatEqual(leftNum, rightNum) || leftNum > rightNum)
 	case "==":
-		return objectFromBoolean(leftNum == rightNum)
+		return objectFromBoolean(isFloatEqual(leftNum, rightNum))
 	case "!=":
-		return objectFromBoolean(leftNum != rightNum)
+		return objectFromBoolean(!isFloatEqual(leftNum, rightNum))
 	default:
 		return objectNewErr("")
 	}
 }
+
+const float_equality_tolerance = 1e-9
+
+func isFloatEqual(a float64, b float64) bool {
+	return math.Abs(a-b) <= float_equality_tolerance
+}
+
 func objHandleMathOperation(l float64, operator string, r float64, areBothInteger bool) object {
+
 	var result float64
 	avoidInteger := false
 	switch operator {
