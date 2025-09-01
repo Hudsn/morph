@@ -93,6 +93,10 @@ func (l *lexer) tokenize() token {
 		tok = l.handleSingleQuote()
 		tok.start = start
 		return tok
+	case '&':
+		tok = l.handleAmpersand()
+	case '|':
+		tok = l.handlePipe()
 	case '"':
 		start := l.currentIdx
 		l.next()
@@ -102,6 +106,14 @@ func (l *lexer) tokenize() token {
 		tok = l.handleLCurly()
 	case '}':
 		tok = l.handleRCurly()
+	case '[':
+		tok = token{tokenType: tok_lsquare, value: "[", start: l.currentIdx, end: l.nextIdx}
+	case ']':
+		tok = token{tokenType: tok_rsquare, value: "]", start: l.currentIdx, end: l.nextIdx}
+	case '(':
+		tok = token{tokenType: tok_lparen, value: "(", start: l.currentIdx, end: l.nextIdx}
+	case ')':
+		tok = token{tokenType: tok_rparen, value: ")", start: l.currentIdx, end: l.nextIdx}
 	case '$':
 		tok = l.handleDollarSign()
 	default:
@@ -135,6 +147,44 @@ func (l *lexer) handleEOF() token {
 		value:     string(l.currentChar),
 		start:     0,
 		end:       0,
+	}
+}
+
+func (l *lexer) handleAmpersand() token {
+	if l.peek() != '&' {
+		return token{
+			tokenType: tok_illegal,
+			value:     "invalid ampersand use",
+			start:     l.currentIdx,
+			end:       l.nextIdx,
+		}
+	}
+	start := l.currentIdx
+	l.next()
+	return token{
+		tokenType: tok_binary_and,
+		value:     string(l.input[start:l.nextIdx]),
+		start:     start,
+		end:       l.nextIdx,
+	}
+}
+
+func (l *lexer) handlePipe() token {
+	start := l.currentIdx
+	if l.peek() == '|' {
+		l.next()
+		return token{
+			tokenType: tok_binary_or,
+			start:     start,
+			end:       l.nextIdx,
+			value:     string(l.input[start:l.nextIdx]),
+		}
+	}
+	return token{
+		tokenType: tok_pipe,
+		start:     start,
+		end:       l.nextIdx,
+		value:     string(l.input[start:l.nextIdx]),
 	}
 }
 

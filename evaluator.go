@@ -124,7 +124,7 @@ func (e *evaluator) evalNumberInfixExpression(leftObj object, operator string, r
 	case "<":
 		return objectFromBoolean(leftNum < rightNum)
 	case "<=":
-		return objectFromBoolean(isFloatEqual(leftNum, rightNum) || leftNum <= rightNum)
+		return objectFromBoolean(isFloatEqual(leftNum, rightNum) || leftNum < rightNum)
 	case ">":
 		return objectFromBoolean(leftNum > rightNum)
 	case ">=":

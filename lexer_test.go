@@ -4,6 +4,68 @@ import (
 	"testing"
 )
 
+func TestLexBinaryOperators(t *testing.T) {
+	input := "&& ||"
+	tests := []testCase{
+		{
+			tokenType:  tok_binary_and,
+			start:      0,
+			end:        2,
+			value:      "&&",
+			rangeValue: "&&",
+		},
+		{
+			tokenType:  tok_binary_or,
+			start:      3,
+			end:        5,
+			value:      "||",
+			rangeValue: "||",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexParentheses(t *testing.T) {
+	input := "()"
+	tests := []testCase{
+		{
+			tokenType:  tok_lparen,
+			start:      0,
+			end:        1,
+			value:      "(",
+			rangeValue: "(",
+		},
+		{
+			tokenType:  tok_rparen,
+			start:      1,
+			end:        2,
+			value:      ")",
+			rangeValue: ")",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+func TestLexSquareBrackets(t *testing.T) {
+	input := "[]"
+	tests := []testCase{
+		{
+			tokenType:  tok_lsquare,
+			start:      0,
+			end:        1,
+			value:      "[",
+			rangeValue: "[",
+		},
+		{
+			tokenType:  tok_rsquare,
+			start:      1,
+			end:        2,
+			value:      "]",
+			rangeValue: "]",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
 func TestLexGTEQ(t *testing.T) {
 	input := "5 >= 5"
 	tests := []testCase{

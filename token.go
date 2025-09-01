@@ -42,6 +42,8 @@ const (
 	tok_asterisk    tokenType = "*"
 	tok_slash       tokenType = "/"
 	tok_mod         tokenType = "%"
+	tok_binary_and  tokenType = "&&"
+	tok_binary_or   tokenType = "||"
 	tok_pipe        tokenType = "|"
 
 	// (in)equality checks

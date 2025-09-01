@@ -68,6 +68,7 @@ func (p *parser) registerFuncs() {
 	p.registerPrefixFunc(tok_false, p.parseBooleanLiteral)
 	p.registerPrefixFunc(tok_string, p.parseStringLiteral)
 	p.registerPrefixFunc(tok_template_string, p.parseTemplateExpression)
+	p.registerPrefixFunc(tok_lparen, p.parseGroupedExpression)
 
 	p.registerInfixFunc(tok_dot, p.parsePathExpression)
 	p.registerInfixFunc(tok_plus, p.parseInfixExpression)
@@ -157,6 +158,15 @@ func (p *parser) parsePrefixExpression() expression {
 }
 
 // specific expression parsers
+
+func (p *parser) parseGroupedExpression() expression {
+	p.next()
+	exp := p.parseExpression(lowest)
+	if !p.mustNextToken(tok_rparen) {
+		return nil
+	}
+	return exp
+}
 
 func (p *parser) parseTemplateExpression() expression {
 	if !p.mustCurrentToken(tok_template_string) {

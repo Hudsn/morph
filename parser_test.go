@@ -201,6 +201,46 @@ func TestParseBooleans(t *testing.T) {
 	}
 }
 
+func TestParseOperatorPrecedence(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{
+			"5 + 5",
+			"(5 + 5)",
+		},
+		{
+			"5 + 5 * 5",
+			"(5 + (5 * 5))",
+		},
+		{
+			"5 + 5 * 5 - 5 / 5 % 5",
+			"((5 + (5 * 5)) - ((5 / 5) % 5))",
+		},
+		{
+			"5 * (-5 + 5)",
+			"(5 * ((-5) + 5))",
+		},
+		{
+			"-5 * 10 <= 5.12 % 3 - 1",
+			"(((-5) * 10) <= ((5.12 % 3) - 1))",
+		},
+		{
+			"!blue != false",
+			"((!blue) != false)",
+		},
+	}
+	for _, tt := range tests {
+		program := setupParserTest(t, tt.input)
+		got := program.string()
+		if tt.want != got {
+			t.Errorf("expected=%q got=%q", tt.want, got)
+		}
+
+	}
+}
+
 // sub-parser helpers
 
 func testInfixExpression(t *testing.T, exp expression, left interface{}, operator string, right interface{}) bool {
