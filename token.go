@@ -22,53 +22,53 @@ const (
 
 	// separators
 	tok_assign       tokenType = "="
-	TOK_DOT          tokenType = "."
-	TOK_COLON        tokenType = ":"
-	TOK_DOUBLE_COLON tokenType = "::"
+	tok_dot          tokenType = "."
+	tok_colon        tokenType = ":"
+	tok_double_colon tokenType = "::"
 
 	// containers
 	tok_template_start tokenType = "${"
-	TOK_LPAREN         tokenType = "("
-	TOK_RPAREN         tokenType = ")"
-	TOK_LCURLY         tokenType = "{"
+	tok_lparen         tokenType = "("
+	tok_rparen         tokenType = ")"
+	tok_lcurly         tokenType = "{"
 	tok_rcurly         tokenType = "}"
-	TOK_LSQUARE        tokenType = "["
-	TOK_RSQUARE        tokenType = "]"
+	tok_lsquare        tokenType = "["
+	tok_rsquare        tokenType = "]"
 
 	// operations
-	TOK_EXCLAMATION tokenType = "!"
-	TOK_PLUS        tokenType = "+"
-	TOK_MINUS       tokenType = "-"
-	TOK_ASTERISK    tokenType = "*"
-	TOK_SLASH       tokenType = "/"
-	TOK_MOD         tokenType = "%"
-	TOK_PIPE        tokenType = "|"
+	tok_exclamation tokenType = "!"
+	tok_plus        tokenType = "+"
+	tok_minus       tokenType = "-"
+	tok_asterisk    tokenType = "*"
+	tok_slash       tokenType = "/"
+	tok_mod         tokenType = "%"
+	tok_pipe        tokenType = "|"
 
 	// (in)equality checks
-	TOK_EQUAL     tokenType = "=="
-	TOK_NOT_EQUAL tokenType = "!="
-	TOK_LT        tokenType = "<"
-	TOK_LTEQ      tokenType = "<="
-	TOK_GT        tokenType = ">"
-	TOK_GTEQ      tokenType = ">="
+	tok_equal     tokenType = "=="
+	tok_not_equal tokenType = "!="
+	tok_lt        tokenType = "<"
+	tok_lteq      tokenType = "<="
+	tok_gt        tokenType = ">"
+	tok_gteq      tokenType = ">="
 
 	//keywords
-	TOK_WHEN  tokenType = "WHEN"
-	TOK_SET   tokenType = "SET"
-	TOK_TRUE  tokenType = "TRUE"
-	TOK_FALSE tokenType = "FALSE"
+	tok_when  tokenType = "WHEN"
+	tok_set   tokenType = "SET"
+	tok_true  tokenType = "TRUE"
+	tok_false tokenType = "FALSE"
 
 	tok_eof     tokenType = "EOF"
-	TOK_ILLEGAL tokenType = "ILLEGAL"
+	tok_illegal tokenType = "ILLEGAL"
 )
 
 var keywordMap = map[string]tokenType{
-	"when":  TOK_WHEN,
-	"WHEN":  TOK_WHEN,
-	"set":   TOK_SET,
-	"SET":   TOK_SET,
-	"true":  TOK_TRUE,
-	"false": TOK_FALSE,
+	"when":  tok_when,
+	"WHEN":  tok_when,
+	"set":   tok_set,
+	"SET":   tok_set,
+	"true":  tok_true,
+	"false": tok_false,
 }
 
 func lookupTokenKeyword(ident string) tokenType {

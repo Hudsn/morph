@@ -63,6 +63,10 @@ func (l *lexer) tokenize() token {
 		tok = l.handleEOF()
 	case '=':
 		tok = l.handleEqual()
+	case '<':
+		tok = l.handleLT()
+	case '>':
+		tok = l.handleGT()
 	case '.':
 		tok = l.handleDot()
 		if tok.tokenType == tok_float {
@@ -71,8 +75,16 @@ func (l *lexer) tokenize() token {
 		}
 	case ':':
 		tok = l.handleColon()
+	case '+':
+		tok = token{tokenType: tok_plus, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
 	case '-':
-		tok = l.handleMinus()
+		tok = token{tokenType: tok_minus, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+	case '*':
+		tok = token{tokenType: tok_asterisk, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+	case '/':
+		tok = token{tokenType: tok_slash, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+	case '%':
+		tok = token{tokenType: tok_mod, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
 	case '!':
 		tok = l.handleExclamation()
 	case '\'':
@@ -100,7 +112,7 @@ func (l *lexer) tokenize() token {
 			tok = l.readIdentifier()
 			return tok
 		} else {
-			tok = token{tokenType: TOK_ILLEGAL, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+			tok = token{tokenType: tok_illegal, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
 		}
 	}
 
@@ -126,7 +138,55 @@ func (l *lexer) handleEOF() token {
 	}
 }
 
+func (l *lexer) handleLT() token {
+	start := l.currentIdx
+	if l.peek() == '=' {
+		l.next()
+		return token{
+			tokenType: tok_lteq,
+			start:     start,
+			end:       l.nextIdx,
+			value:     string(l.input[start:l.nextIdx]),
+		}
+	}
+	return token{
+		tokenType: tok_lt,
+		start:     start,
+		end:       l.nextIdx,
+		value:     string(l.input[start:l.nextIdx]),
+	}
+}
+
+func (l *lexer) handleGT() token {
+	start := l.currentIdx
+	if l.peek() == '=' {
+		l.next()
+		return token{
+			tokenType: tok_gteq,
+			start:     start,
+			end:       l.nextIdx,
+			value:     string(l.input[start:l.nextIdx]),
+		}
+	}
+	return token{
+		tokenType: tok_gt,
+		start:     start,
+		end:       l.nextIdx,
+		value:     string(l.input[start:l.nextIdx]),
+	}
+}
+
 func (l *lexer) handleEqual() token {
+	if l.peek() == '=' {
+		start := l.currentIdx
+		l.next()
+		return token{
+			tokenType: tok_equal,
+			value:     string(l.input[start:l.nextIdx]),
+			start:     start,
+			end:       l.nextIdx,
+		}
+	}
 	return token{
 		tokenType: tok_assign,
 		value:     string(l.currentChar),
@@ -140,25 +200,26 @@ func (l *lexer) handleDot() token {
 		return l.readNumber()
 	}
 	return token{
-		tokenType: TOK_DOT,
+		tokenType: tok_dot,
 		value:     string(l.currentChar),
 		start:     l.currentIdx,
 		end:       l.nextIdx,
 	}
 }
 
-func (l *lexer) handleMinus() token {
-	return token{
-		tokenType: TOK_MINUS,
-		value:     string(l.input[l.currentIdx:l.nextIdx]),
-		start:     l.currentIdx,
-		end:       l.nextIdx,
-	}
-}
-
 func (l *lexer) handleExclamation() token {
+	if l.peek() == '=' {
+		start := l.currentIdx
+		l.next()
+		return token{
+			tokenType: tok_not_equal,
+			value:     string(l.input[start:l.nextIdx]),
+			start:     start,
+			end:       l.nextIdx,
+		}
+	}
 	return token{
-		tokenType: TOK_EXCLAMATION,
+		tokenType: tok_exclamation,
 		value:     string(l.input[l.currentIdx:l.nextIdx]),
 		start:     l.currentIdx,
 		end:       l.nextIdx,
@@ -168,11 +229,11 @@ func (l *lexer) handleExclamation() token {
 func (l *lexer) handleColon() token {
 	start := l.currentIdx
 	tok := token{
-		tokenType: TOK_COLON,
+		tokenType: tok_colon,
 		start:     start,
 	}
 	if l.peek() == ':' {
-		tok.tokenType = TOK_DOUBLE_COLON
+		tok.tokenType = tok_double_colon
 		l.next()
 	}
 	tok.value = string(l.input[start:l.nextIdx])
@@ -189,7 +250,7 @@ func (l *lexer) handleDoubleQuote() token {
 	str := []rune{}
 	for l.currentChar != '"' {
 		if l.currentChar == nullchar || l.currentChar == '\n' {
-			tok.tokenType = TOK_ILLEGAL
+			tok.tokenType = tok_illegal
 			tok.end = l.currentIdx
 			tok.value = "string literal not terminated"
 			return tok
@@ -198,7 +259,7 @@ func (l *lexer) handleDoubleQuote() token {
 		if l.currentChar == '\\' {
 			toAdd = l.handleEscapeString('"')
 			if toAdd == nullchar {
-				tok.tokenType = TOK_ILLEGAL
+				tok.tokenType = tok_illegal
 				tok.value = "invalid escape sequence"
 				l.next()
 				tok.end = l.nextIdx
@@ -228,7 +289,7 @@ func (l *lexer) handleSingleQuote() token {
 
 			toAdd = l.handleEscapeString('\'')
 			if toAdd == nullchar {
-				tok.tokenType = TOK_ILLEGAL
+				tok.tokenType = tok_illegal
 				tok.value = "invalid escape sequence"
 				l.next()
 				tok.end = l.nextIdx
@@ -237,7 +298,7 @@ func (l *lexer) handleSingleQuote() token {
 		}
 
 		if l.currentChar == '$' && l.peek() == '{' {
-			l.newEnclosedContext(lex_ctx_single_quote, TOK_LCURLY, tok_rcurly, 1)
+			l.newEnclosedContext(lex_ctx_single_quote, tok_lcurly, tok_rcurly, 1)
 			tok.end = l.currentIdx
 			tok.value = string(str)
 			return tok
@@ -247,7 +308,7 @@ func (l *lexer) handleSingleQuote() token {
 
 	}
 	if l.currentChar == nullchar {
-		tok.tokenType = TOK_ILLEGAL
+		tok.tokenType = tok_illegal
 		tok.value = "string literal not terminated"
 		tok.end = l.nextIdx
 		return tok
@@ -279,7 +340,7 @@ func (l *lexer) handleEscapeString(quoteChar rune) rune {
 func (l *lexer) handleDollarSign() token {
 	if l.peek() != '{' {
 		return token{
-			tokenType: TOK_ILLEGAL,
+			tokenType: tok_illegal,
 			value:     "invalid template expression syntax",
 			start:     l.currentIdx,
 			end:       l.nextIdx,
@@ -297,8 +358,8 @@ func (l *lexer) handleRCurly() token {
 }
 
 func (l *lexer) handleLCurly() token {
-	l.maybeIncrDecrContext(TOK_LCURLY)
-	return token{tokenType: TOK_LCURLY, value: "{", start: l.currentIdx, end: l.nextIdx}
+	l.maybeIncrDecrContext(tok_lcurly)
+	return token{tokenType: tok_lcurly, value: "{", start: l.currentIdx, end: l.nextIdx}
 }
 
 // formatting helprs

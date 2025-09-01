@@ -7,22 +7,28 @@ import (
 
 const (
 	_ int = iota
-	LOWEST
-	ASSIGN
-	EQUALITY
-	SUM
-	PRODUCT
-	PREFIX
-	PATH
+	lowest
+	assign
+	equality
+	sum
+	product
+	prefix
+	path
 )
 
 var precedenceMap = map[tokenType]int{
-	TOK_MINUS:    SUM,
-	TOK_PLUS:     SUM,
-	TOK_ASTERISK: PRODUCT,
-	TOK_SLASH:    PRODUCT,
-	TOK_MOD:      PRODUCT,
-	TOK_DOT:      PATH,
+	tok_equal:     equality,
+	tok_not_equal: equality,
+	tok_lt:        equality,
+	tok_lteq:      equality,
+	tok_gt:        equality,
+	tok_gteq:      equality,
+	tok_minus:     sum,
+	tok_plus:      sum,
+	tok_asterisk:  product,
+	tok_slash:     product,
+	tok_mod:       product,
+	tok_dot:       path,
 }
 
 type prefixFunc func() expression
@@ -53,32 +59,41 @@ func newParser(l *lexer) *parser {
 }
 
 func (p *parser) registerFuncs() {
-	p.registerPrefixFunc(TOK_MINUS, p.parsePrefixExpression)
-	p.registerPrefixFunc(TOK_EXCLAMATION, p.parsePrefixExpression)
+	p.registerPrefixFunc(tok_minus, p.parsePrefixExpression)
+	p.registerPrefixFunc(tok_exclamation, p.parsePrefixExpression)
 	p.registerPrefixFunc(tok_ident, p.parseIdentiferExpression)
 	p.registerPrefixFunc(tok_int, p.parseIntegerLiteral)
 	p.registerPrefixFunc(tok_float, p.parseFloatLiteral)
-	p.registerPrefixFunc(TOK_TRUE, p.parseBooleanLiteral)
-	p.registerPrefixFunc(TOK_FALSE, p.parseBooleanLiteral)
+	p.registerPrefixFunc(tok_true, p.parseBooleanLiteral)
+	p.registerPrefixFunc(tok_false, p.parseBooleanLiteral)
 	p.registerPrefixFunc(tok_string, p.parseStringLiteral)
 	p.registerPrefixFunc(tok_template_string, p.parseTemplateExpression)
 
-	p.registerInfixFunc(TOK_DOT, p.parsePathExpression)
-	// p.registerInfixFunc(TOK_TEMPLATE_START, p.parseTemplateExpression)
-
+	p.registerInfixFunc(tok_dot, p.parsePathExpression)
+	p.registerInfixFunc(tok_plus, p.parseInfixExpression)
+	p.registerInfixFunc(tok_minus, p.parseInfixExpression)
+	p.registerInfixFunc(tok_asterisk, p.parseInfixExpression)
+	p.registerInfixFunc(tok_slash, p.parseInfixExpression)
+	p.registerInfixFunc(tok_mod, p.parseInfixExpression)
+	p.registerInfixFunc(tok_equal, p.parseInfixExpression)
+	p.registerInfixFunc(tok_not_equal, p.parseInfixExpression)
+	p.registerInfixFunc(tok_lt, p.parseInfixExpression)
+	p.registerInfixFunc(tok_lteq, p.parseInfixExpression)
+	p.registerInfixFunc(tok_gt, p.parseInfixExpression)
+	p.registerInfixFunc(tok_gteq, p.parseInfixExpression)
 }
 
 func (p *parser) next() {
 	p.currentToken = p.peekToken
 	p.peekToken = p.lexer.tokenize()
-	if p.isCurrentToken(TOK_ILLEGAL) {
+	if p.isCurrentToken(tok_illegal) {
 		p.err("illegal token", p.currentToken.start)
 	}
 }
 
 func (p *parser) parseProgram() (*program, error) {
 	program := &program{statements: []statement{}}
-	for !p.isCurrentToken(tok_eof) && !p.isCurrentToken(TOK_ILLEGAL) {
+	for !p.isCurrentToken(tok_eof) && !p.isCurrentToken(tok_illegal) {
 		statement := p.parseStatement()
 		program.statements = append(program.statements, statement)
 		p.next()
@@ -92,9 +107,9 @@ func (p *parser) parseProgram() (*program, error) {
 
 func (p *parser) parseStatement() statement {
 	switch p.currentToken.tokenType {
-	case TOK_SET:
+	case tok_set:
 		return p.parseSetStatement()
-	case TOK_WHEN:
+	case tok_when:
 		return p.parseWhenStatement()
 	default:
 		return p.parseExpressionStatement()
@@ -126,10 +141,18 @@ func (p *parser) parseExpression(precedence int) expression {
 	return leftExp
 }
 
+func (p *parser) parseInfixExpression(left expression) expression {
+	ret := &infixExpression{tok: p.currentToken, left: left, operator: p.currentToken.value}
+	precedence := lookupPrecedence(p.currentToken.tokenType)
+	p.next()
+	ret.right = p.parseExpression(precedence)
+	return ret
+}
+
 func (p *parser) parsePrefixExpression() expression {
 	ret := &prefixExpression{tok: p.currentToken, operator: p.currentToken.value}
 	p.next()
-	ret.right = p.parseExpression(PREFIX)
+	ret.right = p.parseExpression(prefix)
 	return ret
 }
 
@@ -162,7 +185,7 @@ func (p *parser) parseTemplateInnerExpression() (expression, bool) {
 	if p.isCurrentToken(tok_rcurly) {
 		return nil, false
 	}
-	toAdd := p.parseExpression(LOWEST)
+	toAdd := p.parseExpression(lowest)
 	p.mustNextToken(tok_rcurly)
 	return toAdd, true
 }
@@ -176,7 +199,7 @@ func (p *parser) parsePathExpression(left expression) expression {
 	}
 	ret.left = leftPart
 	p.next()
-	itemCandidate := p.parseExpression(PATH)
+	itemCandidate := p.parseExpression(path)
 	item, ok := itemCandidate.(pathPartExpression)
 	if !ok {
 		p.err(fmt.Sprintf("invalid path expression: %s", itemCandidate.string()), itemCandidate.position().start)
@@ -243,7 +266,7 @@ func (p *parser) parseSetStatement() *setStatement {
 	if !p.mustNextToken(tok_ident) { // ident is fine here since paths always start with ident
 		return nil
 	}
-	potentialTarget := p.parseExpression(LOWEST)
+	potentialTarget := p.parseExpression(lowest)
 	target, ok := potentialTarget.(assignable)
 	if !ok {
 		sequence := p.rawStringFromStartEnd(start, p.currentToken.end)
@@ -257,15 +280,15 @@ func (p *parser) parseSetStatement() *setStatement {
 		return nil
 	}
 	p.next()
-	ret.value = p.parseExpression(LOWEST)
+	ret.value = p.parseExpression(lowest)
 	return ret
 }
 
 func (p *parser) parseWhenStatement() *whenStatement {
 	ret := &whenStatement{tok: p.currentToken}
 	p.next() // to expr
-	ret.condition = p.parseExpression(LOWEST)
-	if !p.mustNextToken(TOK_DOUBLE_COLON) {
+	ret.condition = p.parseExpression(lowest)
+	if !p.mustNextToken(tok_double_colon) {
 		return nil
 	}
 	p.next()
@@ -275,7 +298,7 @@ func (p *parser) parseWhenStatement() *whenStatement {
 
 func (p *parser) parseExpressionStatement() *expressionStatement {
 	ret := &expressionStatement{tok: p.currentToken}
-	ret.expression = p.parseExpression(LOWEST)
+	ret.expression = p.parseExpression(lowest)
 	return ret
 }
 
@@ -330,5 +353,5 @@ func lookupPrecedence(t tokenType) int {
 	if precedence, ok := precedenceMap[t]; ok {
 		return precedence
 	}
-	return LOWEST
+	return lowest
 }

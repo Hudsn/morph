@@ -2,6 +2,8 @@ package morph
 
 import (
 	"fmt"
+	"math"
+	"slices"
 	"strings"
 )
 
@@ -37,9 +39,8 @@ func (e *evaluator) eval(astNode node, env *environment) object {
 		return e.evalTemplateExpression(astNode, env)
 	case *prefixExpression:
 		return e.evalPrefixExpression(astNode, env)
-		// case *infixExpression:
-		// TODO
-		return nil
+	case *infixExpression:
+		return e.evalInfixExpression(astNode, env)
 	case *stringLiteral:
 		return &objectString{value: astNode.value}
 	case *integerLiteral:
@@ -64,36 +65,135 @@ func (e *evaluator) evalProgramStatements(programNode *program, env *environment
 	return obj_global_null
 }
 
+func (e *evaluator) evalInfixExpression(infix *infixExpression, env *environment) object {
+	leftObj := e.eval(infix.left, env)
+	if objectIsError(leftObj) {
+		return leftObj
+	}
+	rightObj := e.eval(infix.right, env)
+	if objectIsError(rightObj) {
+		return rightObj
+	}
+	switch {
+	case leftObj.getType() != rightObj.getType():
+		return objectNewErr("type mismatch: %s %s %s", leftObj.getType(), infix.operator, rightObj.getType())
+	case slices.Contains([]objectType{t_integer, t_float}, leftObj.getType()) && slices.Contains([]objectType{t_integer, t_float}, rightObj.getType()):
+		return e.evalNumberInfixExpression(leftObj, infix.operator, rightObj)
+	case leftObj.getType() == t_string && rightObj.getType() == t_string:
+		// TODO e.evalStringInfixExpression(left, operator, right)
+		return nil
+	case infix.operator == "==":
+		return objectFromBoolean(leftObj == rightObj)
+	case infix.operator == "!=":
+		return objectFromBoolean(leftObj != rightObj)
+	default:
+		return objectNewErr("invalid operator for types: %s %s %s", leftObj.getType(), infix.operator, rightObj.getType())
+	}
+}
+
+func (e *evaluator) evalNumberInfixExpression(leftObj object, operator string, rightObj object) object {
+	leftNum, err := objectNumberToFloat64(leftObj)
+	if err != nil {
+		return objectNewErr("invalid type for numeric operation: %s", leftObj.getType())
+	}
+	rightNum, err := objectNumberToFloat64(rightObj)
+	if err != nil {
+		return objectNewErr("invalid type for numeric operation: %s", rightObj.getType())
+	}
+
+	areBothInteger := leftObj.getType() == t_integer && rightObj.getType() == t_integer
+	if slices.Contains([]string{"+", "-", "*", "/"}, operator) {
+		return objHandleMathOperation(leftNum, operator, rightNum, areBothInteger)
+	}
+
+	switch operator {
+	case "%":
+		if !areBothInteger {
+			return objectNewErr("invalid operator for input types: %s %s %s", leftObj.getType(), operator, rightObj.getType())
+		}
+		res := int64(leftNum) % int64(rightNum)
+		return &objectInteger{value: res}
+	case "<":
+		return objectFromBoolean(leftNum < rightNum)
+	case "<=":
+		return objectFromBoolean(leftNum <= rightNum)
+	case ">":
+		return objectFromBoolean(leftNum > rightNum)
+	case ">=":
+		return objectFromBoolean(leftNum >= rightNum)
+	case "==":
+		return objectFromBoolean(leftNum == rightNum)
+	case "!=":
+		return objectFromBoolean(leftNum != rightNum)
+	default:
+		return objectNewErr("")
+	}
+}
+func objHandleMathOperation(l float64, operator string, r float64, areBothInteger bool) object {
+	var result float64
+	avoidInteger := false
+	switch operator {
+	case "+":
+		result = l + r
+	case "-":
+		result = l - r
+	case "*":
+		result = l * r
+	case "/":
+		result = l / r
+		if result != math.Trunc(result) {
+			avoidInteger = true
+		}
+	}
+	if areBothInteger && !avoidInteger {
+		return &objectInteger{value: int64(result)}
+	}
+	return &objectFloat{value: result}
+}
+
+func objectNumberToFloat64(obj object) (float64, error) {
+	switch v := obj.(type) {
+	case *objectInteger:
+		return float64(v.value), nil
+	case *objectFloat:
+		return v.value, nil
+	default:
+		return 0, fmt.Errorf("not a valid number object")
+	}
+}
+
 func (e *evaluator) evalPrefixExpression(prefix *prefixExpression, env *environment) object {
+	rightObj := e.eval(prefix.right, env)
+	if objectIsError(rightObj) {
+		return rightObj
+	}
 	switch prefix.operator {
 	case "!":
-		return e.handlePrefixExclamation(prefix.right, env)
+		return e.handlePrefixExclamation(prefix, rightObj)
 	case "-":
-		return e.handlePrefixMinus(prefix.right, env)
+		return e.handlePrefixMinus(prefix, rightObj)
 	default:
 		return objectNewErr("%s: unknown operator: %s", e.lineColForNode(prefix), prefix.operator)
 	}
 }
-func (e *evaluator) handlePrefixExclamation(right expression, env *environment) object {
-	rightObj := e.eval(right, env)
+func (e *evaluator) handlePrefixExclamation(rightExpr *prefixExpression, rightObj object) object {
 	switch rightObj {
 	case obj_global_false:
 		return obj_global_true
 	case obj_global_true:
 		return obj_global_false
 	default:
-		return objectNewErr("%s: incompatible non-boolean right-side exprssion for operator: !%s", e.lineColForNode(right), right.string())
+		return objectNewErr("%s: incompatible non-boolean right-side exprssion for operator: !%s", e.lineColForNode(rightExpr), rightExpr.string())
 	}
 }
-func (e *evaluator) handlePrefixMinus(right expression, env *environment) object {
-	rightObj := e.eval(right, env)
+func (e *evaluator) handlePrefixMinus(rightExpr *prefixExpression, rightObj object) object {
 	switch v := rightObj.(type) {
 	case *objectInteger:
 		return &objectInteger{value: -v.value}
 	case *objectFloat:
 		return &objectFloat{value: -v.value}
 	default:
-		return objectNewErr("%s: incompatible non-numeric right-side expression for operator: -%s", e.lineColForNode(right), right.string())
+		return objectNewErr("%s: incompatible non-numeric right-side expression for operator: -%s", e.lineColForNode(rightExpr), rightExpr.string())
 	}
 }
 
@@ -230,4 +330,12 @@ func objectIsError(obj object) bool {
 
 func (e *evaluator) lineColForNode(n node) string {
 	return lineColString(lineAndCol(e.parser.lexer.input, n.position().start))
+}
+
+func objectFromBoolean(b bool) *objectBoolean {
+	if b {
+		return obj_global_true
+	} else {
+		return obj_global_false
+	}
 }

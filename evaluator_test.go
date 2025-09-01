@@ -4,6 +4,42 @@ import (
 	"testing"
 )
 
+func TestEvalNumberEquality(t *testing.T) {
+
+}
+
+func TestEvalMathFloats(t *testing.T) {
+
+}
+
+func TestEvalMathInts(t *testing.T) {
+	cases := []struct {
+		input string
+		want  int64
+	}{
+		{"1 + 1", 2},
+		{"5 - 1", 4},
+		{"5 * 5", 25},
+		{"36 / 6", 6},
+	}
+	for _, tt := range cases {
+		env := newEnvironment()
+		evaluator := *setupEvalTest(tt.input)
+		if len(evaluator.parser.errors) > 0 {
+			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+		}
+		stmt := evaluator.parser.parseExpressionStatement()
+		res := evaluator.eval(stmt, env)
+		intRes, ok := res.(*objectInteger)
+		if !ok {
+			t.Fatalf("expected result to be type *objectInteger. got=%T", res)
+		}
+		if intRes.value != tt.want {
+			t.Errorf("expected integer value to be %d. got=%d", tt.want, intRes.value)
+		}
+	}
+}
+
 func TestEvalTemplateExpression(t *testing.T) {
 	env := newEnvironment()
 	evaluator := setupEvalTest(`

@@ -4,6 +4,38 @@ import (
 	"testing"
 )
 
+func TestParseInfixExpression(t *testing.T) {
+	infixTests := []struct {
+		input      string
+		leftValue  interface{}
+		operator   string
+		rightValue interface{}
+	}{
+		{"5 + 5", 5, "+", 5},
+		{"5 - 5", 5, "-", 5},
+		{"5 * 5", 5, "*", 5},
+		{"5 / 5", 5, "/", 5},
+		{"5 % 5", 5, "%", 5},
+		{"5 > 5", 5, ">", 5},
+		{"5 < 5", 5, "<", 5},
+		{"5 == 5", 5, "==", 5},
+		{"5 != 5", 5, "!=", 5},
+		{"5 <= 5", 5, "<=", 5},
+		{"5 >= 5", 5, ">=", 5},
+		{"5 != 5", 5, "!=", 5},
+		{"true == true", true, "==", true},
+		{"true != false", true, "!=", false},
+		{"false == false", false, "==", false},
+	}
+	for _, tt := range infixTests {
+		program := setupParserTest(t, tt.input)
+		checkParserProgramLength(t, program, 1)
+		checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+		stmt := program.statements[0].(*expressionStatement)
+		testInfixExpression(t, stmt.expression, tt.leftValue, tt.operator, tt.rightValue)
+	}
+}
+
 func TestParseTemplateLiteral(t *testing.T) {
 	input := `'${my_var} world ${myother_var} ${myLastVar}'`
 	program := setupParserTest(t, input)
@@ -170,6 +202,25 @@ func TestParseBooleans(t *testing.T) {
 }
 
 // sub-parser helpers
+
+func testInfixExpression(t *testing.T, exp expression, left interface{}, operator string, right interface{}) bool {
+	infix, ok := exp.(*infixExpression)
+	if !ok {
+		t.Errorf("exp is not *ast.InfixExpression. got=%T", exp)
+		return false
+	}
+	if !testLiteralExpression(t, infix.left, left) {
+		return false
+	}
+	if infix.operator != operator {
+		t.Errorf("exp.Operator is not %s. got=%q", operator, infix.operator)
+		return false
+	}
+	if !testLiteralExpression(t, infix.right, right) {
+		return false
+	}
+	return true
+}
 
 func testPrefixExpression(t *testing.T, expr expression, wantOperator string, wantRight interface{}) bool {
 	prefixExpr, ok := expr.(*prefixExpression)

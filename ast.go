@@ -161,7 +161,22 @@ func (pe *prefixExpression) position() position {
 //
 
 type infixExpression struct {
-	// TODO
+	tok      token
+	left     expression
+	operator string
+	right    expression
+}
+
+func (ie *infixExpression) expressionNode() {}
+func (ie *infixExpression) token() token    { return ie.tok }
+func (ie *infixExpression) string() string {
+	return fmt.Sprintf("(%s %s %s)", ie.left.string(), ie.operator, ie.right.string())
+}
+func (ie *infixExpression) position() position {
+	return position{
+		start: ie.left.position().start,
+		end:   ie.right.position().end,
+	}
 }
 
 //

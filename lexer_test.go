@@ -4,11 +4,245 @@ import (
 	"testing"
 )
 
+func TestLexGTEQ(t *testing.T) {
+	input := "5 >= 5"
+	tests := []testCase{
+		{
+			tokenType:  tok_int,
+			start:      0,
+			end:        1,
+			value:      "5",
+			rangeValue: "5",
+		},
+		{
+			tokenType:  tok_gteq,
+			start:      2,
+			end:        4,
+			value:      ">=",
+			rangeValue: ">=",
+		},
+		{
+			tokenType:  tok_int,
+			start:      5,
+			end:        6,
+			value:      "5",
+			rangeValue: "5",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+func TestLexLTEQ(t *testing.T) {
+	input := "5 <= 5"
+	tests := []testCase{
+		{
+			tokenType:  tok_int,
+			start:      0,
+			end:        1,
+			value:      "5",
+			rangeValue: "5",
+		},
+		{
+			tokenType:  tok_lteq,
+			start:      2,
+			end:        4,
+			value:      "<=",
+			rangeValue: "<=",
+		},
+		{
+			tokenType:  tok_int,
+			start:      5,
+			end:        6,
+			value:      "5",
+			rangeValue: "5",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+func TestLexLT(t *testing.T) {
+	input := "5 < 5"
+	tests := []testCase{
+		{
+			tokenType:  tok_int,
+			start:      0,
+			end:        1,
+			value:      "5",
+			rangeValue: "5",
+		},
+		{
+			tokenType:  tok_lt,
+			start:      2,
+			end:        3,
+			value:      "<",
+			rangeValue: "<",
+		},
+		{
+			tokenType:  tok_int,
+			start:      4,
+			end:        5,
+			value:      "5",
+			rangeValue: "5",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+func TestLexGT(t *testing.T) {
+	input := "5 > 5"
+	tests := []testCase{
+		{
+			tokenType:  tok_int,
+			start:      0,
+			end:        1,
+			value:      "5",
+			rangeValue: "5",
+		},
+		{
+			tokenType:  tok_gt,
+			start:      2,
+			end:        3,
+			value:      ">",
+			rangeValue: ">",
+		},
+		{
+			tokenType:  tok_int,
+			start:      4,
+			end:        5,
+			value:      "5",
+			rangeValue: "5",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexMod(t *testing.T) {
+	input := "5 % 5"
+	tests := []testCase{
+		{
+			tokenType:  tok_int,
+			start:      0,
+			end:        1,
+			value:      "5",
+			rangeValue: "5",
+		},
+		{
+			tokenType:  tok_mod,
+			start:      2,
+			end:        3,
+			value:      "%",
+			rangeValue: "%",
+		},
+		{
+			tokenType:  tok_int,
+			start:      4,
+			end:        5,
+			value:      "5",
+			rangeValue: "5",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+func TestLexSlash(t *testing.T) {
+	input := "5 / 5"
+	tests := []testCase{
+		{
+			tokenType:  tok_int,
+			start:      0,
+			end:        1,
+			value:      "5",
+			rangeValue: "5",
+		},
+		{
+			tokenType:  tok_slash,
+			start:      2,
+			end:        3,
+			value:      "/",
+			rangeValue: "/",
+		},
+		{
+			tokenType:  tok_int,
+			start:      4,
+			end:        5,
+			value:      "5",
+			rangeValue: "5",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexAsterisk(t *testing.T) {
+	input := "5 * 5"
+	tests := []testCase{
+		{
+			tokenType:  tok_int,
+			start:      0,
+			end:        1,
+			value:      "5",
+			rangeValue: "5",
+		},
+		{
+			tokenType:  tok_asterisk,
+			start:      2,
+			end:        3,
+			value:      "*",
+			rangeValue: "*",
+		},
+		{
+			tokenType:  tok_int,
+			start:      4,
+			end:        5,
+			value:      "5",
+			rangeValue: "5",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexEqual(t *testing.T) {
+	input := "5 =="
+	tests := []testCase{
+		{
+			tokenType:  tok_int,
+			start:      0,
+			end:        1,
+			value:      "5",
+			rangeValue: "5",
+		},
+		{
+			tokenType:  tok_equal,
+			start:      2,
+			end:        4,
+			value:      "==",
+			rangeValue: "==",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
+func TestLexNotEqual(t *testing.T) {
+	input := "5 !="
+	tests := []testCase{
+		{
+			tokenType:  tok_int,
+			start:      0,
+			end:        1,
+			value:      "5",
+			rangeValue: "5",
+		},
+		{
+			tokenType:  tok_not_equal,
+			start:      2,
+			end:        4,
+			value:      "!=",
+			rangeValue: "!=",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
 func TestLexDoubleQuoteEscapeError(t *testing.T) {
 	input := `"my\ncool\"string\v"`
 	tests := []testCase{
 		{
-			tokenType:  TOK_ILLEGAL,
+			tokenType:  tok_illegal,
 			start:      0,
 			end:        20,
 			value:      "invalid escape sequence",
@@ -23,7 +257,7 @@ func TestLexDoubleQuoteNewlineError(t *testing.T) {
 	string`
 	tests := []testCase{
 		{
-			tokenType:  TOK_ILLEGAL,
+			tokenType:  tok_illegal,
 			start:      0,
 			end:        3,
 			value:      "string literal not terminated",
@@ -166,7 +400,7 @@ func TestLexSingleQuoteEscapeError(t *testing.T) {
 	input := `'mystring\v'`
 	tests := []testCase{
 		{
-			tokenType:  TOK_ILLEGAL,
+			tokenType:  tok_illegal,
 			start:      0,
 			end:        12,
 			value:      "invalid escape sequence",
@@ -213,21 +447,21 @@ func TestLexColon(t *testing.T) {
 	input := ": :: :"
 	tests := []testCase{
 		{
-			tokenType:  TOK_COLON,
+			tokenType:  tok_colon,
 			start:      0,
 			end:        1,
 			value:      ":",
 			rangeValue: ":",
 		},
 		{
-			tokenType:  TOK_DOUBLE_COLON,
+			tokenType:  tok_double_colon,
 			start:      2,
 			end:        4,
 			value:      "::",
 			rangeValue: "::",
 		},
 		{
-			tokenType:  TOK_COLON,
+			tokenType:  tok_colon,
 			start:      5,
 			end:        6,
 			value:      ":",
@@ -241,14 +475,14 @@ func TestLexBoolean(t *testing.T) {
 	input := "true false"
 	tests := []testCase{
 		{
-			tokenType:  TOK_TRUE,
+			tokenType:  tok_true,
 			value:      "true",
 			start:      0,
 			end:        4,
 			rangeValue: "true",
 		},
 		{
-			tokenType:  TOK_FALSE,
+			tokenType:  tok_false,
 			value:      "false",
 			start:      5,
 			end:        10,
@@ -283,7 +517,7 @@ func TestLexDot(t *testing.T) {
 	input := "."
 	tests := []testCase{
 		{
-			tokenType:  TOK_DOT,
+			tokenType:  tok_dot,
 			value:      ".",
 			start:      0,
 			end:        1,
@@ -346,7 +580,7 @@ func TestLexIdent(t *testing.T) {
 			rangeValue: "abc",
 		},
 		{
-			tokenType:  TOK_DOT,
+			tokenType:  tok_dot,
 			value:      ".",
 			start:      3,
 			end:        4,
@@ -375,7 +609,7 @@ func TestLexMinus(t *testing.T) {
 	input := "-5"
 	tests := []testCase{
 		{
-			tokenType:  TOK_MINUS,
+			tokenType:  tok_minus,
 			value:      "-",
 			rangeValue: "-",
 			start:      0,
@@ -396,7 +630,7 @@ func TestLexExclamation(t *testing.T) {
 	input := "!5"
 	tests := []testCase{
 		{
-			tokenType:  TOK_EXCLAMATION,
+			tokenType:  tok_exclamation,
 			value:      "!",
 			rangeValue: "!",
 			start:      0,
