@@ -80,8 +80,7 @@ func (e *evaluator) evalInfixExpression(infix *infixExpression, env *environment
 	case leftObj.getType() != rightObj.getType():
 		return objectNewErr("type mismatch: %s %s %s", leftObj.getType(), infix.operator, rightObj.getType())
 	case leftObj.getType() == t_string && rightObj.getType() == t_string:
-		// TODO e.evalStringInfixExpression(left, operator, right)
-		return nil
+		return e.evalStringInfixExpression(leftObj, infix.operator, rightObj)
 	case infix.operator == "==":
 		return objectFromBoolean(leftObj == rightObj)
 	case infix.operator == "!=":
@@ -89,6 +88,15 @@ func (e *evaluator) evalInfixExpression(infix *infixExpression, env *environment
 	default:
 		return objectNewErr("invalid operator for types: %s %s %s", leftObj.getType(), infix.operator, rightObj.getType())
 	}
+}
+func (e *evaluator) evalStringInfixExpression(leftObj object, operator string, rightObj object) object {
+	l := leftObj.(*objectString).value
+	r := rightObj.(*objectString).value
+	if operator != "+" {
+		return objectNewErr("invalid operator for types: %s %s %s", leftObj.getType(), operator, rightObj.getType())
+	}
+
+	return &objectString{value: l + r}
 }
 
 func (e *evaluator) evalNumberInfixExpression(leftObj object, operator string, rightObj object) object {

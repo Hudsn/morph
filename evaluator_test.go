@@ -4,6 +4,33 @@ import (
 	"testing"
 )
 
+func TestEvalStringAdd(t *testing.T) {
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{`"asdf" + "ghjkl"`, "asdfghjkl"},
+		{`"hello" + " " + "world" + "!"`, "hello world!"},
+		{`"raw" + " " + 'templ${"ate"}'`, "raw template"},
+	}
+	for _, tt := range cases {
+		env := newEnvironment()
+		evaluator := *setupEvalTest(tt.input)
+		if len(evaluator.parser.errors) > 0 {
+			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+		}
+		stmt := evaluator.parser.parseExpressionStatement()
+		res := evaluator.eval(stmt, env)
+		strRes, ok := res.(*objectString)
+		if !ok {
+			t.Fatalf("expected result to be type *objectString. got=%T", res)
+		}
+		if strRes.value != tt.want {
+			t.Errorf("expected string value to be %q. got=%q", tt.want, strRes.value)
+		}
+	}
+}
+
 func TestEvalNumberEquality(t *testing.T) {
 	cases := []struct {
 		input string
