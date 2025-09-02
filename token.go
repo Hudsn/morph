@@ -25,6 +25,7 @@ const (
 	tok_dot          tokenType = "."
 	tok_colon        tokenType = ":"
 	tok_double_colon tokenType = "::"
+	tok_comma        tokenType = ","
 
 	// containers
 	tok_template_start tokenType = "${"

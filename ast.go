@@ -181,6 +181,52 @@ func (ie *infixExpression) position() position {
 
 //
 
+type arrayLiteral struct {
+	tok     token
+	entries []expression
+	endPos  int
+}
+
+func (a *arrayLiteral) expressionNode() {}
+func (a *arrayLiteral) token() token    { return a.tok }
+func (a *arrayLiteral) string() string {
+	stringItems := []string{}
+	for _, entry := range a.entries {
+		stringItems = append(stringItems, entry.string())
+	}
+	return fmt.Sprintf("[%s]", strings.Join(stringItems, ", "))
+}
+func (a *arrayLiteral) position() position {
+	return position{
+		start: a.tok.start,
+		end:   a.endPos,
+	}
+}
+
+//
+
+type indexExpression struct {
+	tok    token
+	left   expression
+	index  expression
+	endPos int
+}
+
+func (ie *indexExpression) expressionNode() {}
+func (ie *indexExpression) pathPartNode()   {}
+func (ie *indexExpression) token() token    { return ie.tok }
+func (ie *indexExpression) string() string {
+	return fmt.Sprintf("%s[%s]", ie.left.string(), ie.index.string())
+}
+func (ie *indexExpression) position() position {
+	return position{
+		start: ie.left.position().start,
+		end:   ie.endPos,
+	}
+}
+
+//
+
 type identifierExpression struct {
 	tok   token
 	value string
@@ -312,6 +358,7 @@ type stringLiteral struct {
 }
 
 func (sl *stringLiteral) expressionNode() {}
+func (sl *stringLiteral) pathPartNode()   {}
 func (sl *stringLiteral) token() token    { return sl.tok }
 func (sl *stringLiteral) string() string  { return sl.value }
 func (sl *stringLiteral) position() position {

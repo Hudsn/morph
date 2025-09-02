@@ -4,35 +4,27 @@ import (
 	"testing"
 )
 
-func TestParseInfixExpression(t *testing.T) {
-	infixTests := []struct {
-		input      string
-		leftValue  interface{}
-		operator   string
-		rightValue interface{}
-	}{
-		{"5 + 5", 5, "+", 5},
-		{"5 - 5", 5, "-", 5},
-		{"5 * 5", 5, "*", 5},
-		{"5 / 5", 5, "/", 5},
-		{"5 % 5", 5, "%", 5},
-		{"5 > 5", 5, ">", 5},
-		{"5 < 5", 5, "<", 5},
-		{"5 == 5", 5, "==", 5},
-		{"5 != 5", 5, "!=", 5},
-		{"5 <= 5", 5, "<=", 5},
-		{"5 >= 5", 5, ">=", 5},
-		{"5 != 5", 5, "!=", 5},
-		{"true == true", true, "==", true},
-		{"true != false", true, "!=", false},
-		{"false == false", false, "==", false},
+func TestParseIndexExpression(t *testing.T) {
+	// TODO
+	// input := `asdf`
+}
+
+func TestParseArrayLiteral(t *testing.T) {
+	input := "[1, 2 * 2, 3 + 3]"
+	program := setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+	stmt := program.statements[0].(*expressionStatement)
+	arr, ok := stmt.expression.(*arrayLiteral)
+	if !ok {
+		t.Fatalf("stmt.expression is not of type *arrayLiteral. got=%T", stmt.expression)
 	}
-	for _, tt := range infixTests {
-		program := setupParserTest(t, tt.input)
-		checkParserProgramLength(t, program, 1)
-		checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
-		stmt := program.statements[0].(*expressionStatement)
-		testInfixExpression(t, stmt.expression, tt.leftValue, tt.operator, tt.rightValue)
+	if len(arr.entries) != 3 {
+		t.Errorf("expected len of array literal to be 3. got=%d", len(arr.entries))
+	}
+	wantStr := "[1, (2 * 2), (3 + 3)]"
+	if arr.string() != wantStr {
+		t.Errorf("wrong array value. want=%q got=%q", wantStr, arr.string())
 	}
 }
 
@@ -166,6 +158,38 @@ func TestParsePrefix(t *testing.T) {
 	}
 }
 
+func TestParseInfixExpression(t *testing.T) {
+	infixTests := []struct {
+		input      string
+		leftValue  interface{}
+		operator   string
+		rightValue interface{}
+	}{
+		{"5 + 5", 5, "+", 5},
+		{"5 - 5", 5, "-", 5},
+		{"5 * 5", 5, "*", 5},
+		{"5 / 5", 5, "/", 5},
+		{"5 % 5", 5, "%", 5},
+		{"5 > 5", 5, ">", 5},
+		{"5 < 5", 5, "<", 5},
+		{"5 == 5", 5, "==", 5},
+		{"5 != 5", 5, "!=", 5},
+		{"5 <= 5", 5, "<=", 5},
+		{"5 >= 5", 5, ">=", 5},
+		{"5 != 5", 5, "!=", 5},
+		{"true == true", true, "==", true},
+		{"true != false", true, "!=", false},
+		{"false == false", false, "==", false},
+	}
+	for _, tt := range infixTests {
+		program := setupParserTest(t, tt.input)
+		checkParserProgramLength(t, program, 1)
+		checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+		stmt := program.statements[0].(*expressionStatement)
+		testInfixExpression(t, stmt.expression, tt.leftValue, tt.operator, tt.rightValue)
+	}
+}
+
 func TestParseNumbers(t *testing.T) {
 	tests := []struct {
 		input string
@@ -230,6 +254,10 @@ func TestParseOperatorPrecedence(t *testing.T) {
 			"!blue != false",
 			"((!blue) != false)",
 		},
+		{
+			"true || !false == false && true",
+			"(true || (((!false) == false) && true))",
+		},
 	}
 	for _, tt := range tests {
 		program := setupParserTest(t, tt.input)
@@ -237,7 +265,6 @@ func TestParseOperatorPrecedence(t *testing.T) {
 		if tt.want != got {
 			t.Errorf("expected=%q got=%q", tt.want, got)
 		}
-
 	}
 }
 
@@ -391,7 +418,7 @@ func testPathExpression(t *testing.T, expr expression, wantList []interface{}) b
 			path = path.left.(*pathExpression)
 			continue
 		}
-		// if we get here, out left node is NOT a path expr so we are probably at the first path part like an ident, string, or indexExprssion
+		// if we get here, our left node is NOT a path expr so we are probably at the first path part like an ident, string, or indexExprssion
 		i--
 		wantVal = wantList[i]
 		final, ok := path.left.(expression)

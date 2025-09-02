@@ -313,7 +313,11 @@ func (e *evaluator) evalPathExpression(pathExpr *pathExpression, env *environmen
 
 	// apply attribute value to
 	switch v := pathExpr.attribute.(type) {
+	case *stringLiteral:
+		// TODO
+		return nil
 	case *identifierExpression:
+		// TODO: move this down to resolvePathForKey
 		leftMap, ok := leftObj.(*objectMap)
 		if !ok {
 			return objectNewErr("%s: cannot access a path on a non-map object", e.lineColForNode(pathExpr.left))
@@ -328,6 +332,10 @@ func (e *evaluator) evalPathExpression(pathExpr *pathExpression, env *environmen
 		return objectNewErr(msg)
 	}
 }
+
+// func (e *evaluator) resolvePathEntryForKey(key string, env *environment) object {
+
+// }
 
 // err helpers
 

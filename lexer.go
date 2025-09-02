@@ -67,6 +67,8 @@ func (l *lexer) tokenize() token {
 		tok = l.handleLT()
 	case '>':
 		tok = l.handleGT()
+	case ',':
+		tok = token{tokenType: tok_comma, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
 	case '.':
 		tok = l.handleDot()
 		if tok.tokenType == tok_float {

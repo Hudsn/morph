@@ -4,6 +4,27 @@ import (
 	"testing"
 )
 
+func TestLexComma(t *testing.T) {
+	input := ", ,"
+	tests := []testCase{
+		{
+			tokenType:  tok_comma,
+			start:      0,
+			end:        1,
+			value:      ",",
+			rangeValue: ",",
+		},
+		{
+			tokenType:  tok_comma,
+			start:      2,
+			end:        3,
+			value:      ",",
+			rangeValue: ",",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
 func TestLexBinaryOperators(t *testing.T) {
 	input := "&& ||"
 	tests := []testCase{

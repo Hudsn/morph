@@ -9,26 +9,30 @@ const (
 	_ int = iota
 	lowest
 	assign
-	equality
+	binary_or  // ||
+	binary_and // &&
+	equality   // includes inequality like !=, <= >, etc...
 	sum
 	product
-	prefix
-	path
+	prefix // !true or -1.234
+	path   // dot expression like myobj.myattr
 )
 
 var precedenceMap = map[tokenType]int{
-	tok_equal:     equality,
-	tok_not_equal: equality,
-	tok_lt:        equality,
-	tok_lteq:      equality,
-	tok_gt:        equality,
-	tok_gteq:      equality,
-	tok_minus:     sum,
-	tok_plus:      sum,
-	tok_asterisk:  product,
-	tok_slash:     product,
-	tok_mod:       product,
-	tok_dot:       path,
+	tok_equal:      equality,
+	tok_not_equal:  equality,
+	tok_lt:         equality,
+	tok_lteq:       equality,
+	tok_gt:         equality,
+	tok_gteq:       equality,
+	tok_binary_and: binary_and,
+	tok_binary_or:  binary_or,
+	tok_minus:      sum,
+	tok_plus:       sum,
+	tok_asterisk:   product,
+	tok_slash:      product,
+	tok_mod:        product,
+	tok_dot:        path,
 }
 
 type prefixFunc func() expression
@@ -69,6 +73,7 @@ func (p *parser) registerFuncs() {
 	p.registerPrefixFunc(tok_string, p.parseStringLiteral)
 	p.registerPrefixFunc(tok_template_string, p.parseTemplateExpression)
 	p.registerPrefixFunc(tok_lparen, p.parseGroupedExpression)
+	p.registerPrefixFunc(tok_lsquare, p.parseArrayLiteral)
 
 	p.registerInfixFunc(tok_dot, p.parsePathExpression)
 	p.registerInfixFunc(tok_plus, p.parseInfixExpression)
@@ -82,6 +87,9 @@ func (p *parser) registerFuncs() {
 	p.registerInfixFunc(tok_lteq, p.parseInfixExpression)
 	p.registerInfixFunc(tok_gt, p.parseInfixExpression)
 	p.registerInfixFunc(tok_gteq, p.parseInfixExpression)
+	p.registerInfixFunc(tok_binary_and, p.parseInfixExpression)
+	p.registerInfixFunc(tok_binary_or, p.parseInfixExpression)
+	p.registerInfixFunc(tok_lsquare, p.parseIndexExpression)
 }
 
 func (p *parser) next() {
@@ -158,6 +166,46 @@ func (p *parser) parsePrefixExpression() expression {
 }
 
 // specific expression parsers
+func (p *parser) parseArrayLiteral() expression {
+	ret := &arrayLiteral{tok: p.currentToken}
+	ret.entries = p.parseExpressionList(tok_rsquare)
+	return ret
+}
+
+func (p *parser) parseExpressionList(endTok tokenType) []expression {
+	if p.isPeekToken(endTok) {
+		p.next()
+		return []expression{}
+	}
+	p.next() // to first item
+
+	ret := []expression{p.parseExpression(lowest)}
+
+	for p.isPeekToken(tok_comma) {
+		p.next() // to comma
+		p.next() // to next expression
+		ret = append(ret, p.parseExpression(lowest))
+	}
+
+	if !p.mustNextToken(endTok) {
+		return nil
+	}
+
+	return ret
+}
+
+func (p *parser) parseIndexExpression(left expression) expression {
+	ret := &indexExpression{tok: p.currentToken, left: left}
+	if p.isPeekToken(tok_rsquare) {
+		return nil
+	}
+	p.next()
+
+	ret.index = p.parseExpression(lowest)
+	p.mustNextToken(tok_rsquare)
+
+	return ret
+}
 
 func (p *parser) parseGroupedExpression() expression {
 	p.next()
