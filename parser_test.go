@@ -4,6 +4,31 @@ import (
 	"testing"
 )
 
+func TestParseFunctionCall(t *testing.T) {
+	input := `myfunc(ident1, "three", 6)`
+	program := setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+	stmt := program.statements[0].(*expressionStatement)
+	callExpr, ok := stmt.expression.(*callExpression)
+	if !ok {
+		t.Fatalf("stmt.expression is not of type *callExpression. got=%T", stmt.expression)
+	}
+	tests := []interface{}{
+		"ident1",
+		"three",
+		6,
+	}
+	if len(callExpr.arguments) != len(tests) {
+		t.Fatalf("expected arguments to be len %d. got=%d", len(tests), len(callExpr.arguments))
+	}
+	for idx, want := range tests {
+		gotArg := callExpr.arguments[idx]
+		testLiteralExpression(t, gotArg, want)
+	}
+
+}
+
 func TestParseIndexExpression(t *testing.T) {
 	input := "myArray[3+2]"
 	program := setupParserTest(t, input)

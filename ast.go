@@ -207,7 +207,7 @@ func (a *arrayLiteral) position() position {
 
 type indexExpression struct {
 	tok    token
-	left   *identifierExpression
+	left   assignable
 	index  expression
 	endPos int
 }
@@ -395,4 +395,29 @@ func (te *templateExpression) string() string {
 		stringParts = append(stringParts, entry.string())
 	}
 	return strings.Join(stringParts, "")
+}
+
+//
+
+type callExpression struct {
+	tok       token
+	name      assignable // path or ident
+	arguments []expression
+	endPos    int
+}
+
+func (c *callExpression) expressionNode() {}
+func (c *callExpression) token() token    { return c.tok }
+func (c *callExpression) string() string {
+	argStringList := []string{}
+	for _, entry := range c.arguments {
+		argStringList = append(argStringList, entry.string())
+	}
+	return fmt.Sprintf("%s(%s)", c.name.string(), strings.Join(argStringList, ", "))
+}
+func (c *callExpression) position() position {
+	return position{
+		start: c.name.position().start,
+		end:   c.endPos,
+	}
 }

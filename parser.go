@@ -34,6 +34,7 @@ var precedenceMap = map[tokenType]int{
 	tok_mod:        product,
 	tok_lsquare:    highest,
 	tok_dot:        highest,
+	tok_lparen:     highest,
 }
 
 type prefixFunc func() expression
@@ -91,6 +92,7 @@ func (p *parser) registerFuncs() {
 	p.registerInfixFunc(tok_binary_and, p.parseInfixExpression)
 	p.registerInfixFunc(tok_binary_or, p.parseInfixExpression)
 	p.registerInfixFunc(tok_lsquare, p.parseIndexExpression)
+	p.registerInfixFunc(tok_lparen, p.parseCallExpression)
 }
 
 func (p *parser) next() {
@@ -167,6 +169,21 @@ func (p *parser) parsePrefixExpression() expression {
 }
 
 // specific expression parsers
+
+// fn call
+func (p *parser) parseCallExpression(left expression) expression {
+	funcName, ok := left.(assignable)
+	if !ok {
+		p.err("invalid function name", left.position().start)
+		return nil
+	}
+	ret := &callExpression{tok: p.currentToken, name: funcName}
+	ret.arguments = p.parseExpressionList(tok_rparen)
+	ret.endPos = p.currentToken.end
+	return ret
+}
+
+// arrays
 func (p *parser) parseArrayLiteral() expression {
 	ret := &arrayLiteral{tok: p.currentToken}
 	ret.entries = p.parseExpressionList(tok_rsquare)
@@ -196,13 +213,15 @@ func (p *parser) parseExpressionList(endTok tokenType) []expression {
 	return ret
 }
 
+//
+
 func (p *parser) parseIndexExpression(left expression) expression {
-	leftIdent, ok := left.(*identifierExpression)
+	leftExpr, ok := left.(assignable)
 	if !ok {
 		p.err("invalid index expression. cannot call index on a non-identifier", left.position().start)
 		return nil
 	}
-	ret := &indexExpression{tok: p.currentToken, left: leftIdent}
+	ret := &indexExpression{tok: p.currentToken, left: leftExpr}
 	if p.isPeekToken(tok_rsquare) {
 		p.err("invalid index expression", p.currentToken.start)
 		return nil
@@ -216,6 +235,8 @@ func (p *parser) parseIndexExpression(left expression) expression {
 	return ret
 }
 
+//
+
 func (p *parser) parseGroupedExpression() expression {
 	p.next()
 	exp := p.parseExpression(lowest)
@@ -224,6 +245,8 @@ func (p *parser) parseGroupedExpression() expression {
 	}
 	return exp
 }
+
+//
 
 func (p *parser) parseTemplateExpression() expression {
 	if !p.mustCurrentToken(tok_template_string) {
