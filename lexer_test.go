@@ -5,14 +5,21 @@ import (
 )
 
 func TestLexComma(t *testing.T) {
-	input := ", ,"
+	input := `[1, "asdf", '${myvar}', 2]`
 	tests := []testCase{
 		{
-			tokenType:  tok_comma,
+			tokenType:  tok_lsquare,
 			start:      0,
 			end:        1,
-			value:      ",",
-			rangeValue: ",",
+			value:      "[",
+			rangeValue: "[",
+		},
+		{
+			tokenType:  tok_int,
+			start:      1,
+			end:        2,
+			value:      "1",
+			rangeValue: "1",
 		},
 		{
 			tokenType:  tok_comma,
@@ -20,6 +27,83 @@ func TestLexComma(t *testing.T) {
 			end:        3,
 			value:      ",",
 			rangeValue: ",",
+		},
+		{
+			tokenType:  tok_string,
+			start:      4,
+			end:        10,
+			value:      "asdf",
+			rangeValue: `"asdf"`,
+		},
+		{
+			tokenType:  tok_comma,
+			start:      10,
+			end:        11,
+			value:      ",",
+			rangeValue: `,`,
+		},
+		{
+			tokenType:  tok_template_string,
+			start:      12,
+			end:        13,
+			value:      "",
+			rangeValue: "'",
+		},
+		{
+			tokenType:  tok_template_start,
+			start:      13,
+			end:        15,
+			value:      "${",
+			rangeValue: "${",
+		},
+		{
+			tokenType:  tok_ident,
+			start:      15,
+			end:        20,
+			value:      "myvar",
+			rangeValue: "myvar",
+		},
+		{
+			tokenType:  tok_rcurly,
+			start:      20,
+			end:        21,
+			value:      "}",
+			rangeValue: "}",
+		},
+		{
+			tokenType:  tok_template_string,
+			start:      21,
+			end:        22,
+			value:      "",
+			rangeValue: "'",
+		},
+		{
+			tokenType:  tok_comma,
+			start:      22,
+			end:        23,
+			value:      ",",
+			rangeValue: ",",
+		},
+		{
+			tokenType:  tok_int,
+			start:      24,
+			end:        25,
+			value:      "2",
+			rangeValue: "2",
+		},
+		{
+			tokenType:  tok_rsquare,
+			start:      25,
+			end:        26,
+			value:      "]",
+			rangeValue: "]",
+		},
+		{
+			tokenType:  tok_eof,
+			start:      0,
+			end:        0,
+			value:      string(nullchar),
+			rangeValue: "",
 		},
 	}
 	checkLexTestCase(t, input, tests)

@@ -323,7 +323,7 @@ func (l *lexer) handleDoubleQuote() token {
 	}
 	tok.value = string(str)
 	tok.end = l.nextIdx
-	l.next()
+	// l.next()
 	return tok
 }
 

@@ -21,7 +21,8 @@ const (
 	t_boolean objectType = "BOOLEAN"
 	t_string  objectType = "STRING"
 
-	t_map objectType = "MAP"
+	t_map   objectType = "MAP"
+	t_array objectType = "ARRAY"
 
 	t_error     objectType = "ERROR"
 	t_terminate objectType = "TERMINATE"
@@ -30,6 +31,32 @@ const (
 
 //
 //object impls
+
+type objectArray struct {
+	entries []object
+}
+
+func (a *objectArray) getType() objectType { return t_array }
+func (a *objectArray) inspect() string {
+	stringList := []string{}
+	for _, entry := range a.entries {
+		stringList = append(stringList, entry.inspect())
+	}
+
+	return fmt.Sprintf("[%s]", strings.Join(stringList, ", "))
+}
+func (a *objectArray) clone() object {
+	newArr := []object{}
+	for _, entry := range a.entries {
+		newArr = append(newArr, entry.clone())
+	}
+	return &objectArray{entries: newArr}
+}
+func (a *objectArray) isTruthy() bool {
+	return len(a.entries) > 0
+}
+
+//
 
 type objectMapPair struct {
 	key   string

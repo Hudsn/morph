@@ -360,7 +360,7 @@ type stringLiteral struct {
 func (sl *stringLiteral) expressionNode() {}
 func (sl *stringLiteral) pathPartNode()   {}
 func (sl *stringLiteral) token() token    { return sl.tok }
-func (sl *stringLiteral) string() string  { return sl.value }
+func (sl *stringLiteral) string() string  { return fmt.Sprintf("\"%s\"", sl.value) }
 func (sl *stringLiteral) position() position {
 	return position{
 		start: sl.tok.start,

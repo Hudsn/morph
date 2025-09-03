@@ -16,10 +16,22 @@ func TestParseIndexExpression(t *testing.T) {
 	}
 	testIdentifierExpression(t, indexExpr.left, "myArray")
 	testInfixExpression(t, indexExpr.index, 3, "+", 2)
+
+	input = "myArray[0]"
+	program = setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+	stmt = program.statements[0].(*expressionStatement)
+	indexExpr, ok = stmt.expression.(*indexExpression)
+	if !ok {
+		t.Fatalf("stmt.expression is not of type *indexExpression. got=%T", stmt.expression)
+	}
+	testIdentifierExpression(t, indexExpr.left, "myArray")
+	testLiteralExpression(t, indexExpr.index, 0)
 }
 
 func TestParseArrayLiteral(t *testing.T) {
-	input := "[1, 2 * 2, 3 + 3]"
+	input := `[1, "two", 2 * 2, 3 + 3]`
 	program := setupParserTest(t, input)
 	checkParserProgramLength(t, program, 1)
 	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
@@ -28,12 +40,12 @@ func TestParseArrayLiteral(t *testing.T) {
 	if !ok {
 		t.Fatalf("stmt.expression is not of type *arrayLiteral. got=%T", stmt.expression)
 	}
-	if len(arr.entries) != 3 {
-		t.Errorf("expected len of array literal to be 3. got=%d", len(arr.entries))
+	if len(arr.entries) != 4 {
+		t.Errorf("expected len of array literal to be 4. got=%d", len(arr.entries))
 	}
-	wantStr := "[1, (2 * 2), (3 + 3)]"
+	wantStr := `[1, "two", (2 * 2), (3 + 3)]`
 	if arr.string() != wantStr {
-		t.Errorf("wrong array value. want=%q got=%q", wantStr, arr.string())
+		t.Errorf("wrong array value. want=%s got=%s", wantStr, arr.string())
 	}
 }
 

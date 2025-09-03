@@ -14,9 +14,8 @@ const (
 	equality   // includes inequality like !=, <= >, etc...
 	sum
 	product
-	prefix // !true or -1.234
-	index
-	path // dot expression like myobj.myattr
+	prefix  // !true or -1.234
+	highest // dot expression like myobj.myattr, index like myarr[0], fn call like myfunc(arg)
 )
 
 var precedenceMap = map[tokenType]int{
@@ -33,8 +32,8 @@ var precedenceMap = map[tokenType]int{
 	tok_asterisk:   product,
 	tok_slash:      product,
 	tok_mod:        product,
-	tok_dot:        path,
-	tok_lsquare:    index,
+	tok_lsquare:    highest,
+	tok_dot:        highest,
 }
 
 type prefixFunc func() expression
@@ -260,6 +259,7 @@ func (p *parser) parseTemplateInnerExpression() (expression, bool) {
 
 func (p *parser) parsePathExpression(left expression) expression {
 	ret := &pathExpression{tok: p.currentToken}
+	precedence := lookupPrecedence(p.currentToken.tokenType)
 	leftPart, ok := left.(pathPartExpression)
 	if !ok {
 		p.err(fmt.Sprintf("invalid path expression: %s", left.string()), left.position().start)
@@ -267,7 +267,8 @@ func (p *parser) parsePathExpression(left expression) expression {
 	}
 	ret.left = leftPart
 	p.next()
-	itemCandidate := p.parseExpression(path)
+
+	itemCandidate := p.parseExpression(precedence)
 	item, ok := itemCandidate.(pathPartExpression)
 	if !ok {
 		p.err(fmt.Sprintf("invalid path expression: %s", itemCandidate.string()), itemCandidate.position().start)

@@ -4,6 +4,67 @@ import (
 	"testing"
 )
 
+func TestEvalArrays(t *testing.T) {
+
+	input := `
+	set worldVar = "world"
+	SET myarr = ["zero", 1, 1 + 1, 'hello ${worldVar}!']
+	SET myresult0 = myarr[0]
+	SET myresult1 = myarr[1]
+	SET myresult2 = myarr[1 + 1]
+	set myresult3 = myarr[9 / 3]
+	`
+	env := newEnvironment()
+	evaluator := setupEvalTest(input)
+	if len(evaluator.parser.errors) > 0 {
+		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	}
+	program, err := evaluator.parser.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	errOrNull := evaluator.eval(program, env)
+	if objectIsError(errOrNull) {
+		errMsg := errOrNull.(*objectError)
+		t.Fatal(errMsg.message)
+	}
+	tests := []struct {
+		key  string
+		want interface{}
+	}{
+		{"myresult0", "zero"},
+		{"myresult1", 1},
+		{"myresult2", 2},
+		{"myresult3", "hello world!"},
+	}
+	for _, tt := range tests {
+		got, found := env.get(tt.key)
+		if !found {
+			t.Fatalf("wanted result for env key %q but got no result", tt.key)
+		}
+		switch want := tt.want.(type) {
+		case int:
+			gotInt, ok := got.(*objectInteger)
+			if !ok {
+				t.Fatalf("result is not of type *objectInteger. got=%T", got)
+			}
+			if want != int(gotInt.value) {
+				t.Errorf("expected value for key %q to be %d. got=%d", tt.key, want, gotInt.value)
+			}
+		case string:
+			gotStr, ok := got.(*objectString)
+			if !ok {
+				t.Fatalf("result is not of type *objectString. got=%T", got)
+			}
+			if want != gotStr.value {
+				t.Errorf("expected value for key %q to be %s. got=%s", tt.key, want, gotStr.value)
+			}
+		default:
+			t.Fatalf("unsupported assertion type: %T", want)
+		}
+	}
+}
+
 func TestEvalStringAdd(t *testing.T) {
 	cases := []struct {
 		input string
@@ -15,7 +76,7 @@ func TestEvalStringAdd(t *testing.T) {
 	}
 	for _, tt := range cases {
 		env := newEnvironment()
-		evaluator := *setupEvalTest(tt.input)
+		evaluator := setupEvalTest(tt.input)
 		if len(evaluator.parser.errors) > 0 {
 			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 		}

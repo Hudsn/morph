@@ -53,6 +53,10 @@ func (e *evaluator) eval(astNode node, env *environment) object {
 		} else {
 			return obj_global_false
 		}
+	case *arrayLiteral:
+		return e.evalArrayLiteral(astNode, env)
+	case *indexExpression:
+		return e.evalIndexExpression(astNode, env)
 	default:
 		return obj_global_null
 	}
@@ -60,10 +64,15 @@ func (e *evaluator) eval(astNode node, env *environment) object {
 
 func (e *evaluator) evalProgramStatements(programNode *program, env *environment) object {
 	for _, stmt := range programNode.statements {
-		e.eval(stmt, env)
+		res := e.eval(stmt, env)
+		if objectIsError(res) {
+			return res
+		}
 	}
 	return obj_global_null
 }
+
+// infix
 
 func (e *evaluator) evalInfixExpression(infix *infixExpression, env *environment) object {
 	leftObj := e.eval(infix.left, env)
@@ -178,6 +187,8 @@ func objectNumberToFloat64(obj object) (float64, error) {
 	}
 }
 
+//prefix
+
 func (e *evaluator) evalPrefixExpression(prefix *prefixExpression, env *environment) object {
 	rightObj := e.eval(prefix.right, env)
 	if objectIsError(rightObj) {
@@ -212,6 +223,8 @@ func (e *evaluator) handlePrefixMinus(rightExpr *prefixExpression, rightObj obje
 		return objectNewErr("%s: incompatible non-numeric right-side expression for operator: -%s", e.lineColForNode(rightExpr), rightExpr.string())
 	}
 }
+
+//set stmt
 
 func (e *evaluator) evalSetStatement(setStmt *setStatement, env *environment) object {
 	valToSet := e.eval(setStmt.value, env)
@@ -254,6 +267,7 @@ func (e *evaluator) setStatementHandleENV(current *assignPath, valToSet object, 
 		return existing
 	}
 }
+
 func (e *evaluator) setStatementHandleMAP(objHandle object, current *assignPath, valToSet object, setTarget assignable) object {
 	mapObj, ok := objHandle.(*objectMap)
 	if !ok {
@@ -280,16 +294,23 @@ func (e *evaluator) setStatementHandleMAP(objHandle object, current *assignPath,
 	return existing.value
 }
 
+//when
+
 func (e *evaluator) evalWhenStatement(whenStmt *whenStatement, env *environment) object {
 	conditionObj := e.eval(whenStmt.condition, env)
 	if objectIsError(conditionObj) {
 		return conditionObj
 	}
 	if conditionObj.isTruthy() {
-		e.eval(whenStmt.consequence, env)
+		res := e.eval(whenStmt.consequence, env)
+		if objectIsError(res) {
+			return res
+		}
 	}
 	return obj_global_null
 }
+
+//ident
 
 func (e *evaluator) evalIdentifierExpression(identExpr *identifierExpression, env *environment) object {
 	if res, ok := env.get(identExpr.value); ok {
@@ -298,44 +319,97 @@ func (e *evaluator) evalIdentifierExpression(identExpr *identifierExpression, en
 	return objectNewErr("%s: identifier not found: %s", e.lineColForNode(identExpr), identExpr.value)
 }
 
+//template
+
 func (e *evaluator) evalTemplateExpression(templateExpr *templateExpression, env *environment) object {
 	stringParts := []string{}
 	for _, entry := range templateExpr.parts {
-		stringParts = append(stringParts, e.eval(entry, env).inspect())
+		res := e.eval(entry, env)
+		if objectIsError(res) {
+			return res
+		}
+		stringParts = append(stringParts, res.inspect())
 	}
 	return &objectString{value: strings.Join(stringParts, "")}
 }
 
-func (e *evaluator) evalPathExpression(pathExpr *pathExpression, env *environment) object {
+//path
 
-	// get left side value via eval
-	leftObj := e.eval(pathExpr.left, env)
+func (e *evaluator) evalPathExpression(pathExpr *pathExpression, env *environment) object {
 
 	// apply attribute value to
 	switch v := pathExpr.attribute.(type) {
 	case *stringLiteral:
-		// TODO
-		return nil
+		return e.resolvePathEntryForKey(pathExpr, v.value, env)
 	case *identifierExpression:
 		// TODO: move this down to resolvePathForKey
-		leftMap, ok := leftObj.(*objectMap)
-		if !ok {
-			return objectNewErr("%s: cannot access a path on a non-map object", e.lineColForNode(pathExpr.left))
-		}
-		res, ok := leftMap.kvPairs[v.value]
-		if !ok {
-			return objectNewErr("%s: key not found: %s", e.lineColForNode(pathExpr.left), v.value)
-		}
-		return res.value
+		return e.resolvePathEntryForKey(pathExpr, v.value, env)
 	default:
 		msg := fmt.Sprintf("%s: invalid path part: %s", e.lineColForNode(v), v.string())
 		return objectNewErr(msg)
 	}
 }
 
-// func (e *evaluator) resolvePathEntryForKey(key string, env *environment) object {
+func (e *evaluator) resolvePathEntryForKey(pathExpr *pathExpression, key string, env *environment) object {
+	// get left side value via eval
+	leftObj := e.eval(pathExpr.left, env)
+	if objectIsError(leftObj) {
+		return leftObj
+	}
+	leftMap, ok := leftObj.(*objectMap)
+	if !ok {
+		return objectNewErr("%s: cannot access a path on a non-map object", e.lineColForNode(pathExpr.left))
+	}
+	res, ok := leftMap.kvPairs[key]
+	if !ok {
+		return objectNewErr("%s: key not found: %s", e.lineColForNode(pathExpr.left), key)
+	}
+	return res.value
+}
 
-// }
+// arr
+func (e *evaluator) evalArrayLiteral(arrayLit *arrayLiteral, env *environment) object {
+	objEntries := []object{}
+	for _, entryExpr := range arrayLit.entries {
+		toAdd := e.eval(entryExpr, env)
+		if objectIsError(toAdd) {
+			return toAdd
+		}
+		objEntries = append(objEntries, toAdd)
+	}
+	return &objectArray{entries: objEntries}
+}
+
+//index
+
+func (e *evaluator) evalIndexExpression(indexExpr *indexExpression, env *environment) object {
+	identResult := e.eval(indexExpr.left, env)
+	if objectIsError(identResult) {
+		return identResult
+	}
+	arrObj, ok := identResult.(*objectArray)
+	if !ok {
+		return objectNewErr("%s: cannot call index expression on non-array object", e.lineColForNode(indexExpr.left))
+	}
+
+	indexObj := e.eval(indexExpr.index, env)
+	if objectIsError(indexObj) {
+		return indexObj
+	}
+	if indexObj.getType() != t_integer {
+		return objectNewErr("%s: index is not of type %s. got=%s", e.lineColForNode(indexExpr.index), t_integer, indexObj.getType())
+	}
+	idxInt, ok := indexObj.(*objectInteger)
+	if !ok {
+		return objectNewErr("%s: index is not of type %s. got=%s", e.lineColForNode(indexExpr.index), t_integer, indexObj.getType())
+	}
+
+	targetIdx := int(idxInt.value)
+	if int(targetIdx) >= len(arrObj.entries) || targetIdx < 0 {
+		return objectNewErr("%s: index is out of range for target array", e.lineColForNode(indexExpr.index))
+	}
+	return arrObj.entries[targetIdx]
+}
 
 // err helpers
 
