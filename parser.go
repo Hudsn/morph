@@ -15,7 +15,8 @@ const (
 	sum
 	product
 	prefix // !true or -1.234
-	path   // dot expression like myobj.myattr
+	index
+	path // dot expression like myobj.myattr
 )
 
 var precedenceMap = map[tokenType]int{
@@ -33,6 +34,7 @@ var precedenceMap = map[tokenType]int{
 	tok_slash:      product,
 	tok_mod:        product,
 	tok_dot:        path,
+	tok_lsquare:    index,
 }
 
 type prefixFunc func() expression
@@ -169,6 +171,7 @@ func (p *parser) parsePrefixExpression() expression {
 func (p *parser) parseArrayLiteral() expression {
 	ret := &arrayLiteral{tok: p.currentToken}
 	ret.entries = p.parseExpressionList(tok_rsquare)
+	ret.endPos = p.currentToken.end
 	return ret
 }
 
@@ -195,14 +198,21 @@ func (p *parser) parseExpressionList(endTok tokenType) []expression {
 }
 
 func (p *parser) parseIndexExpression(left expression) expression {
-	ret := &indexExpression{tok: p.currentToken, left: left}
+	leftIdent, ok := left.(*identifierExpression)
+	if !ok {
+		p.err("invalid index expression. cannot call index on a non-identifier", left.position().start)
+		return nil
+	}
+	ret := &indexExpression{tok: p.currentToken, left: leftIdent}
 	if p.isPeekToken(tok_rsquare) {
+		p.err("invalid index expression", p.currentToken.start)
 		return nil
 	}
 	p.next()
 
 	ret.index = p.parseExpression(lowest)
 	p.mustNextToken(tok_rsquare)
+	ret.endPos = p.currentToken.end
 
 	return ret
 }

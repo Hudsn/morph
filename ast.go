@@ -207,7 +207,7 @@ func (a *arrayLiteral) position() position {
 
 type indexExpression struct {
 	tok    token
-	left   expression
+	left   *identifierExpression
 	index  expression
 	endPos int
 }
@@ -216,7 +216,7 @@ func (ie *indexExpression) expressionNode() {}
 func (ie *indexExpression) pathPartNode()   {}
 func (ie *indexExpression) token() token    { return ie.tok }
 func (ie *indexExpression) string() string {
-	return fmt.Sprintf("%s[%s]", ie.left.string(), ie.index.string())
+	return fmt.Sprintf("(%s[%s])", ie.left.string(), ie.index.string())
 }
 func (ie *indexExpression) position() position {
 	return position{

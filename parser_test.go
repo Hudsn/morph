@@ -5,8 +5,17 @@ import (
 )
 
 func TestParseIndexExpression(t *testing.T) {
-	// TODO
-	// input := `asdf`
+	input := "myArray[3+2]"
+	program := setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+	stmt := program.statements[0].(*expressionStatement)
+	indexExpr, ok := stmt.expression.(*indexExpression)
+	if !ok {
+		t.Fatalf("stmt.expression is not of type *indexExpression. got=%T", stmt.expression)
+	}
+	testIdentifierExpression(t, indexExpr.left, "myArray")
+	testInfixExpression(t, indexExpr.index, 3, "+", 2)
 }
 
 func TestParseArrayLiteral(t *testing.T) {
@@ -446,7 +455,7 @@ func setupParserTest(t *testing.T, input string) *program {
 
 func checkParserProgramLength(t *testing.T, program *program, wantLen int) {
 	if len(program.statements) != wantLen {
-		t.Fatalf("expected program statments to be length %d. got=%d", len(program.statements), wantLen)
+		t.Fatalf("expected program statments to be length %d. got=%d", wantLen, len(program.statements))
 	}
 }
 
