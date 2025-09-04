@@ -11,7 +11,6 @@ type object interface {
 	getType() objectType
 	inspect() string
 	clone() object // used for deep copying so we don't allow mutates on env variables to retroactively affect other variables they're assigned to.  ex: in pseudocode "x = 1; y = x; x = 5;" y shold be equal to 1, *NOT* 5.
-	// *NOTE* objects that aren't assignable should return an error object when clone is called.
 	isTruthy() bool
 }
 
@@ -153,16 +152,16 @@ func (n *objectNull) isTruthy() bool { return false }
 
 //
 
-type objectError struct {
-	message string
-}
+// type objectError struct {
+// 	message string
+// }
 
-func (e *objectError) getType() objectType { return t_error }
-func (e *objectError) inspect() string     { return "ERROR: " + e.message }
-func (e *objectError) clone() object {
-	return &objectError{message: e.message}
-}
-func (e *objectError) isTruthy() bool { return false }
+// func (e *objectError) getType() objectType { return t_error }
+// func (e *objectError) inspect() string     { return "ERROR: " + e.message }
+// func (e *objectError) clone() object {
+// 	return &objectError{message: e.message}
+// }
+// func (e *objectError) isTruthy() bool { return false }
 
 //
 

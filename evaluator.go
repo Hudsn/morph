@@ -21,7 +21,7 @@ func newEvaluator(p *parser) *evaluator {
 	return &evaluator{parser: p}
 }
 
-func (e *evaluator) eval(astNode node, env *environment) object {
+func (e *evaluator) eval(astNode node, env *environment) (object, error) {
 	switch astNode := astNode.(type) {
 	case *program:
 		return e.evalProgramStatements(astNode, env)
@@ -62,88 +62,96 @@ func (e *evaluator) eval(astNode node, env *environment) object {
 	}
 }
 
-func (e *evaluator) evalProgramStatements(programNode *program, env *environment) object {
+func (e *evaluator) evalProgramStatements(programNode *program, env *environment) (object, error) {
 	for _, stmt := range programNode.statements {
-		res := e.eval(stmt, env)
-		if objectIsError(res) {
-			return res
+		_, err := e.eval(stmt, env)
+		if err != nil {
+			return obj_global_null, err
 		}
 	}
-	return obj_global_null
+	return obj_global_null, nil
 }
 
 // infix
 
-func (e *evaluator) evalInfixExpression(infix *infixExpression, env *environment) object {
-	leftObj := e.eval(infix.left, env)
-	if objectIsError(leftObj) {
-		return leftObj
+func (e *evaluator) evalInfixExpression(infix *infixExpression, env *environment) (object, error) {
+	leftObj, err := e.eval(infix.left, env)
+	if err != nil {
+		return obj_global_null, err
 	}
-	rightObj := e.eval(infix.right, env)
-	if objectIsError(rightObj) {
-		return rightObj
+	rightObj, err := e.eval(infix.right, env)
+	if err != nil {
+		return obj_global_null, err
 	}
 	switch {
 	case slices.Contains([]objectType{t_integer, t_float}, leftObj.getType()) && slices.Contains([]objectType{t_integer, t_float}, rightObj.getType()):
-		return e.evalNumberInfixExpression(leftObj, infix.operator, rightObj)
+		ret, err := e.evalNumberInfixExpression(leftObj, infix.operator, rightObj)
+		if err != nil {
+			return obj_global_null, fmt.Errorf("%s: %w", e.lineColForNode(infix), err)
+		}
+		return ret, nil
 	case leftObj.getType() != rightObj.getType():
-		return objectNewErr("type mismatch: %s %s %s", leftObj.getType(), infix.operator, rightObj.getType())
+		return obj_global_null, fmt.Errorf("type mismatch: %s %s %s", leftObj.getType(), infix.operator, rightObj.getType())
 	case leftObj.getType() == t_string && rightObj.getType() == t_string:
-		return e.evalStringInfixExpression(leftObj, infix.operator, rightObj)
+		ret, err := e.evalStringInfixExpression(leftObj, infix.operator, rightObj)
+		if err != nil {
+			return obj_global_null, fmt.Errorf("%s: %w", e.lineColForNode(infix), err)
+		}
+		return ret, nil
 	case infix.operator == "==":
-		return objectFromBoolean(leftObj == rightObj)
+		return objectFromBoolean(leftObj == rightObj), nil
 	case infix.operator == "!=":
-		return objectFromBoolean(leftObj != rightObj)
+		return objectFromBoolean(leftObj != rightObj), nil
 	default:
-		return objectNewErr("invalid operator for types: %s %s %s", leftObj.getType(), infix.operator, rightObj.getType())
+		return obj_global_null, fmt.Errorf("invalid operator for types: %s %s %s", leftObj.getType(), infix.operator, rightObj.getType())
 	}
 }
-func (e *evaluator) evalStringInfixExpression(leftObj object, operator string, rightObj object) object {
+func (e *evaluator) evalStringInfixExpression(leftObj object, operator string, rightObj object) (object, error) {
 	l := leftObj.(*objectString).value
 	r := rightObj.(*objectString).value
 	if operator != "+" {
-		return objectNewErr("invalid operator for types: %s %s %s", leftObj.getType(), operator, rightObj.getType())
+		return obj_global_null, fmt.Errorf("invalid operator for types: %s %s %s", leftObj.getType(), operator, rightObj.getType())
 	}
 
-	return &objectString{value: l + r}
+	return &objectString{value: l + r}, nil
 }
 
-func (e *evaluator) evalNumberInfixExpression(leftObj object, operator string, rightObj object) object {
+func (e *evaluator) evalNumberInfixExpression(leftObj object, operator string, rightObj object) (object, error) {
 	leftNum, err := objectNumberToFloat64(leftObj)
 	if err != nil {
-		return objectNewErr("invalid type for numeric operation: %s", leftObj.getType())
+		return obj_global_null, err
 	}
 	rightNum, err := objectNumberToFloat64(rightObj)
 	if err != nil {
-		return objectNewErr("invalid type for numeric operation: %s", rightObj.getType())
+		return obj_global_null, err
 	}
 
 	areBothInteger := leftObj.getType() == t_integer && rightObj.getType() == t_integer
 	if slices.Contains([]string{"+", "-", "*", "/"}, operator) {
-		return objHandleMathOperation(leftNum, operator, rightNum, areBothInteger)
+		return objHandleMathOperation(leftNum, operator, rightNum, areBothInteger), nil
 	}
 
 	switch operator {
 	case "%":
 		if !areBothInteger {
-			return objectNewErr("invalid operator for input types: %s %s %s", leftObj.getType(), operator, rightObj.getType())
+			return obj_global_null, fmt.Errorf("invalid operator for input types: %s %s %s", leftObj.getType(), operator, rightObj.getType())
 		}
 		res := int64(leftNum) % int64(rightNum)
-		return &objectInteger{value: res}
+		return &objectInteger{value: res}, nil
 	case "<":
-		return objectFromBoolean(leftNum < rightNum)
+		return objectFromBoolean(leftNum < rightNum), nil
 	case "<=":
-		return objectFromBoolean(isFloatEqual(leftNum, rightNum) || leftNum < rightNum)
+		return objectFromBoolean(isFloatEqual(leftNum, rightNum) || leftNum < rightNum), nil
 	case ">":
-		return objectFromBoolean(leftNum > rightNum)
+		return objectFromBoolean(leftNum > rightNum), nil
 	case ">=":
-		return objectFromBoolean(isFloatEqual(leftNum, rightNum) || leftNum > rightNum)
+		return objectFromBoolean(isFloatEqual(leftNum, rightNum) || leftNum > rightNum), nil
 	case "==":
-		return objectFromBoolean(isFloatEqual(leftNum, rightNum))
+		return objectFromBoolean(isFloatEqual(leftNum, rightNum)), nil
 	case "!=":
-		return objectFromBoolean(!isFloatEqual(leftNum, rightNum))
+		return objectFromBoolean(!isFloatEqual(leftNum, rightNum)), nil
 	default:
-		return objectNewErr("")
+		return obj_global_null, fmt.Errorf("unsupported operator: %s", operator)
 	}
 }
 
@@ -189,10 +197,10 @@ func objectNumberToFloat64(obj object) (float64, error) {
 
 //prefix
 
-func (e *evaluator) evalPrefixExpression(prefix *prefixExpression, env *environment) object {
-	rightObj := e.eval(prefix.right, env)
-	if objectIsError(rightObj) {
-		return rightObj
+func (e *evaluator) evalPrefixExpression(prefix *prefixExpression, env *environment) (object, error) {
+	rightObj, err := e.eval(prefix.right, env)
+	if err != nil {
+		return obj_global_null, err
 	}
 	switch prefix.operator {
 	case "!":
@@ -200,58 +208,56 @@ func (e *evaluator) evalPrefixExpression(prefix *prefixExpression, env *environm
 	case "-":
 		return e.handlePrefixMinus(prefix, rightObj)
 	default:
-		return objectNewErr("%s: unknown operator: %s", e.lineColForNode(prefix), prefix.operator)
+		return obj_global_null, fmt.Errorf("%s: unknown operator: %s", e.lineColForNode(prefix), prefix.operator)
 	}
 }
-func (e *evaluator) handlePrefixExclamation(rightExpr *prefixExpression, rightObj object) object {
+func (e *evaluator) handlePrefixExclamation(rightExpr *prefixExpression, rightObj object) (object, error) {
 	switch rightObj {
 	case obj_global_false:
-		return obj_global_true
+		return obj_global_true, nil
 	case obj_global_true:
-		return obj_global_false
+		return obj_global_false, nil
 	default:
-		return objectNewErr("%s: incompatible non-boolean right-side exprssion for operator: !%s", e.lineColForNode(rightExpr), rightExpr.string())
+		return obj_global_null, fmt.Errorf("%s: incompatible non-boolean right-side exprssion for operator: !%s", e.lineColForNode(rightExpr), rightExpr.string())
 	}
 }
-func (e *evaluator) handlePrefixMinus(rightExpr *prefixExpression, rightObj object) object {
+func (e *evaluator) handlePrefixMinus(rightExpr *prefixExpression, rightObj object) (object, error) {
 	switch v := rightObj.(type) {
 	case *objectInteger:
-		return &objectInteger{value: -v.value}
+		return &objectInteger{value: -v.value}, nil
 	case *objectFloat:
-		return &objectFloat{value: -v.value}
+		return &objectFloat{value: -v.value}, nil
 	default:
-		return objectNewErr("%s: incompatible non-numeric right-side expression for operator: -%s", e.lineColForNode(rightExpr), rightExpr.string())
+		return obj_global_null, fmt.Errorf("%s: incompatible non-numeric right-side expression for operator: -%s", e.lineColForNode(rightExpr), rightExpr.string())
 	}
 }
 
 //set stmt
 
-func (e *evaluator) evalSetStatement(setStmt *setStatement, env *environment) object {
-	valToSet := e.eval(setStmt.value, env)
-	valToSet = valToSet.clone()
-	if objectIsError(valToSet) {
-		return valToSet
+func (e *evaluator) evalSetStatement(setStmt *setStatement, env *environment) (object, error) {
+	valToSet, err := e.eval(setStmt.value, env)
+	if err != nil {
+		return obj_global_null, err
 	}
+	valToSet = valToSet.clone()
+
 	var objHandle object // reference to object at current path. may be unused in instances where we're just assigning a regular variable without dot-path syntax
 	currentPath := setStmt.target.toAssignPath()
 	for currentPath != nil {
 		switch currentPath.stepType {
 		case assign_step_env:
 			objHandle = e.setStatementHandleENV(currentPath, valToSet, env)
-			if objectIsError(objHandle) {
-				return objHandle
-			}
 		case assign_step_map_key:
-			objHandle = e.setStatementHandleMAP(objHandle, currentPath, valToSet, setStmt.target)
-			if objectIsError(objHandle) {
-				return objHandle
+			objHandle, err = e.setStatementHandleMAP(objHandle, currentPath, valToSet, setStmt.target)
+			if err != nil {
+				return obj_global_null, err
 			}
 		default:
-			return objectNewErr("%s: invalid path part for SET statement", e.lineColForNode(setStmt.target))
+			return obj_global_null, fmt.Errorf("%s: invalid path part for SET statement", e.lineColForNode(setStmt.target))
 		}
 		currentPath = currentPath.next
 	}
-	return obj_global_null
+	return obj_global_null, nil
 }
 
 func (e *evaluator) setStatementHandleENV(current *assignPath, valToSet object, env *environment) object {
@@ -268,10 +274,10 @@ func (e *evaluator) setStatementHandleENV(current *assignPath, valToSet object, 
 	}
 }
 
-func (e *evaluator) setStatementHandleMAP(objHandle object, current *assignPath, valToSet object, setTarget assignable) object {
+func (e *evaluator) setStatementHandleMAP(objHandle object, current *assignPath, valToSet object, setTarget assignable) (object, error) {
 	mapObj, ok := objHandle.(*objectMap)
 	if !ok {
-		return objectNewErr("%s: invalid path part for SET statement: cannot use a path expression on a non-map object", e.lineColForNode(setTarget))
+		return obj_global_null, fmt.Errorf("%s: invalid path part for SET statement: cannot use a path expression on a non-map object", e.lineColForNode(setTarget))
 	}
 	if current.next == nil {
 		pair := objectMapPair{
@@ -279,7 +285,7 @@ func (e *evaluator) setStatementHandleMAP(objHandle object, current *assignPath,
 			value: valToSet,
 		}
 		mapObj.kvPairs[current.partName] = pair
-		return obj_global_null
+		return obj_global_null, nil
 	}
 	existing, ok := mapObj.kvPairs[current.partName]
 	if !ok {
@@ -289,53 +295,52 @@ func (e *evaluator) setStatementHandleMAP(objHandle object, current *assignPath,
 			value: newMap,
 		}
 		mapObj.kvPairs[current.partName] = pair
-		return newMap
+		return newMap, nil
 	}
-	return existing.value
+	return existing.value, nil
 }
 
 //when
 
-func (e *evaluator) evalWhenStatement(whenStmt *whenStatement, env *environment) object {
-	conditionObj := e.eval(whenStmt.condition, env)
-	if objectIsError(conditionObj) {
-		return conditionObj
+func (e *evaluator) evalWhenStatement(whenStmt *whenStatement, env *environment) (object, error) {
+	conditionObj, err := e.eval(whenStmt.condition, env)
+	if err != nil {
+		return obj_global_null, err
 	}
 	if conditionObj.isTruthy() {
-		res := e.eval(whenStmt.consequence, env)
-		if objectIsError(res) {
-			return res
+		if _, err := e.eval(whenStmt.consequence, env); err != nil {
+			return obj_global_null, err
 		}
 	}
-	return obj_global_null
+	return obj_global_null, nil
 }
 
 //ident
 
-func (e *evaluator) evalIdentifierExpression(identExpr *identifierExpression, env *environment) object {
+func (e *evaluator) evalIdentifierExpression(identExpr *identifierExpression, env *environment) (object, error) {
 	if res, ok := env.get(identExpr.value); ok {
-		return res
+		return res, nil
 	}
-	return objectNewErr("%s: identifier not found: %s", e.lineColForNode(identExpr), identExpr.value)
+	return obj_global_null, fmt.Errorf("%s: identifier not found: %s", e.lineColForNode(identExpr), identExpr.value)
 }
 
 //template
 
-func (e *evaluator) evalTemplateExpression(templateExpr *templateExpression, env *environment) object {
+func (e *evaluator) evalTemplateExpression(templateExpr *templateExpression, env *environment) (object, error) {
 	stringParts := []string{}
 	for _, entry := range templateExpr.parts {
-		res := e.eval(entry, env)
-		if objectIsError(res) {
-			return res
+		res, err := e.eval(entry, env)
+		if err != nil {
+			return obj_global_null, err
 		}
 		stringParts = append(stringParts, res.inspect())
 	}
-	return &objectString{value: strings.Join(stringParts, "")}
+	return &objectString{value: strings.Join(stringParts, "")}, nil
 }
 
 //path
 
-func (e *evaluator) evalPathExpression(pathExpr *pathExpression, env *environment) object {
+func (e *evaluator) evalPathExpression(pathExpr *pathExpression, env *environment) (object, error) {
 
 	// apply attribute value to
 	switch v := pathExpr.attribute.(type) {
@@ -345,26 +350,25 @@ func (e *evaluator) evalPathExpression(pathExpr *pathExpression, env *environmen
 		// TODO: move this down to resolvePathForKey
 		return e.resolvePathEntryForKey(pathExpr, v.value, env)
 	default:
-		msg := fmt.Sprintf("%s: invalid path part: %s", e.lineColForNode(v), v.string())
-		return objectNewErr(msg)
+		return obj_global_null, fmt.Errorf("%s: invalid path part: %s", e.lineColForNode(v), v.string())
 	}
 }
 
-func (e *evaluator) resolvePathEntryForKey(pathExpr *pathExpression, key string, env *environment) object {
+func (e *evaluator) resolvePathEntryForKey(pathExpr *pathExpression, key string, env *environment) (object, error) {
 	// get left side value via eval
-	leftObj := e.eval(pathExpr.left, env)
-	if objectIsError(leftObj) {
-		return leftObj
+	leftObj, err := e.eval(pathExpr.left, env)
+	if err != nil {
+		return obj_global_null, err
 	}
 	leftMap, ok := leftObj.(*objectMap)
 	if !ok {
-		return objectNewErr("%s: cannot access a path on a non-map object", e.lineColForNode(pathExpr.left))
+		return obj_global_null, fmt.Errorf("%s: cannot access a path on a non-map object", e.lineColForNode(pathExpr.left))
 	}
 	res, ok := leftMap.kvPairs[key]
 	if !ok {
-		return objectNewErr("%s: key not found: %s", e.lineColForNode(pathExpr.left), key)
+		return obj_global_null, fmt.Errorf("%s: key not found: %s", e.lineColForNode(pathExpr.left), key)
 	}
-	return res.value
+	return res.value, nil
 }
 
 // arr
@@ -413,16 +417,16 @@ func (e *evaluator) evalIndexExpression(indexExpr *indexExpression, env *environ
 
 // err helpers
 
-func objectNewErr(format string, a ...interface{}) *objectError {
-	return &objectError{message: fmt.Sprintf(format, a...)}
-}
+// func objectNewErr(format string, a ...interface{}) *objectError {
+// 	return &objectError{message: fmt.Sprintf(format, a...)}
+// }
 
-func objectIsError(obj object) bool {
-	if obj != nil {
-		return obj.getType() == t_error
-	}
-	return false
-}
+// func objectIsError(obj object) bool {
+// 	if obj != nil {
+// 		return obj.getType() == t_error
+// 	}
+// 	return false
+// }
 
 //
 
