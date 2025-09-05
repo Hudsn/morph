@@ -23,10 +23,9 @@ func TestEvalArrays(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	errOrNull := evaluator.eval(program, env)
-	if objectIsError(errOrNull) {
-		errMsg := errOrNull.(*objectError)
-		t.Fatal(errMsg.message)
+	_, err = evaluator.eval(program, env)
+	if err != nil {
+		t.Fatal(err)
 	}
 	tests := []struct {
 		key  string
@@ -81,7 +80,10 @@ func TestEvalStringAdd(t *testing.T) {
 			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 		}
 		stmt := evaluator.parser.parseExpressionStatement()
-		res := evaluator.eval(stmt, env)
+		res, err := evaluator.eval(stmt, env)
+		if err != nil {
+			t.Fatal(err)
+		}
 		strRes, ok := res.(*objectString)
 		if !ok {
 			t.Fatalf("expected result to be type *objectString. got=%T", res)
@@ -113,7 +115,10 @@ func TestEvalNumberEquality(t *testing.T) {
 			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 		}
 		stmt := evaluator.parser.parseExpressionStatement()
-		res := evaluator.eval(stmt, env)
+		res, err := evaluator.eval(stmt, env)
+		if err != nil {
+			t.Fatal(err)
+		}
 		boolRes, ok := res.(*objectBoolean)
 		if !ok {
 			t.Fatalf("expected result to be type *objectFloat. got=%T", res)
@@ -145,7 +150,10 @@ func TestEvalMathFloats(t *testing.T) {
 			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 		}
 		stmt := evaluator.parser.parseExpressionStatement()
-		res := evaluator.eval(stmt, env)
+		res, err := evaluator.eval(stmt, env)
+		if err != nil {
+			t.Fatal(err)
+		}
 		flRes, ok := res.(*objectFloat)
 		if !ok {
 			t.Fatalf("expected result to be type *objectFloat. got=%T", res)
@@ -173,7 +181,10 @@ func TestEvalMathInts(t *testing.T) {
 			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 		}
 		stmt := evaluator.parser.parseExpressionStatement()
-		res := evaluator.eval(stmt, env)
+		res, err := evaluator.eval(stmt, env)
+		if err != nil {
+			t.Fatal(err)
+		}
 		intRes, ok := res.(*objectInteger)
 		if !ok {
 			t.Fatalf("expected result to be type *objectInteger. got=%T", res)
@@ -221,7 +232,10 @@ func TestEvalStringLitera(t *testing.T) {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 	}
 	stmt1 := evaluator.parser.parseStatement()
-	got := evaluator.eval(stmt1, env)
+	got, err := evaluator.eval(stmt1, env)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.getType() != t_string {
 		t.Fatalf("expected result type to be %s. got=%s", t_string, got.getType())
 	}
@@ -233,7 +247,10 @@ func TestEvalStringLitera(t *testing.T) {
 	//
 	evaluator.parser.next()
 	stmt2 := evaluator.parser.parseStatement()
-	got = evaluator.eval(stmt2, env)
+	got, err = evaluator.eval(stmt2, env)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.getType() != t_string {
 		t.Fatalf("expected result type to be %s. got=%s", t_string, got.getType())
 	}
@@ -250,7 +267,10 @@ func TestEvalPrefixExpression(t *testing.T) {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 	}
 	program := evaluator.parser.parseStatement()
-	got := evaluator.eval(program, env)
+	got, err := evaluator.eval(program, env)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.getType() != t_boolean {
 		t.Fatalf("expected result type to be %s. got=%s", t_boolean, got.getType())
 	}
@@ -265,7 +285,10 @@ func TestEvalPrefixExpression(t *testing.T) {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 	}
 	program = evaluator.parser.parseStatement()
-	got = evaluator.eval(program, env)
+	got, err = evaluator.eval(program, env)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.getType() != t_float {
 		t.Fatalf("expected result type to be %s. got=%s", t_float, got.getType())
 	}
@@ -289,7 +312,10 @@ func TestEvalWhenStatement(t *testing.T) {
 	if len(evaluator.parser.errors) > 0 {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 	}
-	got := evaluator.eval(program, env)
+	got, err := evaluator.eval(program, env)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.getType() != t_integer {
 		t.Fatalf("expected result type to be %s. got=%s", t_integer, got.getType())
 	}
@@ -306,10 +332,9 @@ func TestEvalSetExpression(t *testing.T) {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 	}
 	env := newEnvironment()
-	got := evaluator.eval(program, env)
-	if objectIsError(got) {
-		errObj := got.(*objectError)
-		t.Fatal(errObj.message)
+	_, err := evaluator.eval(program, env)
+	if err != nil {
+		t.Fatal(err)
 	}
 	objRoot, ok := env.get("my")
 	if !ok {
@@ -357,7 +382,10 @@ func TestEvalPathExpression(t *testing.T) {
 	if len(evaluator.parser.errors) > 0 {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 	}
-	got := evaluator.eval(program, env)
+	got, err := evaluator.eval(program, env)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.getType() != t_integer {
 		t.Fatalf("expected result type to be %s. got=%s", t_integer, got.getType())
 	}

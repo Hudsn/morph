@@ -171,6 +171,6 @@ type objectTerminate struct{}
 func (t *objectTerminate) getType() objectType { return t_terminate }
 func (t *objectTerminate) inspect() string     { return "TERMINATE" }
 func (t *objectTerminate) clone() object {
-	return objectNewErr("invalid target of SET statement")
+	return t
 }
 func (t *objectTerminate) isTruthy() bool { return false }

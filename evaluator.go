@@ -42,23 +42,23 @@ func (e *evaluator) eval(astNode node, env *environment) (object, error) {
 	case *infixExpression:
 		return e.evalInfixExpression(astNode, env)
 	case *stringLiteral:
-		return &objectString{value: astNode.value}
+		return &objectString{value: astNode.value}, nil
 	case *integerLiteral:
-		return &objectInteger{value: astNode.value}
+		return &objectInteger{value: astNode.value}, nil
 	case *floatLiteral:
-		return &objectFloat{value: astNode.value}
+		return &objectFloat{value: astNode.value}, nil
 	case *booleanLiteral:
 		if astNode.value {
-			return obj_global_true
+			return obj_global_true, nil
 		} else {
-			return obj_global_false
+			return obj_global_false, nil
 		}
 	case *arrayLiteral:
 		return e.evalArrayLiteral(astNode, env)
 	case *indexExpression:
 		return e.evalIndexExpression(astNode, env)
 	default:
-		return obj_global_null
+		return obj_global_null, fmt.Errorf("%s: unsupported statement", e.lineColForNode(astNode))
 	}
 }
 
@@ -372,47 +372,47 @@ func (e *evaluator) resolvePathEntryForKey(pathExpr *pathExpression, key string,
 }
 
 // arr
-func (e *evaluator) evalArrayLiteral(arrayLit *arrayLiteral, env *environment) object {
+func (e *evaluator) evalArrayLiteral(arrayLit *arrayLiteral, env *environment) (object, error) {
 	objEntries := []object{}
 	for _, entryExpr := range arrayLit.entries {
-		toAdd := e.eval(entryExpr, env)
-		if objectIsError(toAdd) {
-			return toAdd
+		toAdd, err := e.eval(entryExpr, env)
+		if err != nil {
+			return obj_global_null, err
 		}
 		objEntries = append(objEntries, toAdd)
 	}
-	return &objectArray{entries: objEntries}
+	return &objectArray{entries: objEntries}, nil
 }
 
 //index
 
-func (e *evaluator) evalIndexExpression(indexExpr *indexExpression, env *environment) object {
-	identResult := e.eval(indexExpr.left, env)
-	if objectIsError(identResult) {
-		return identResult
+func (e *evaluator) evalIndexExpression(indexExpr *indexExpression, env *environment) (object, error) {
+	identResult, err := e.eval(indexExpr.left, env)
+	if err != nil {
+		return obj_global_null, err
 	}
 	arrObj, ok := identResult.(*objectArray)
 	if !ok {
-		return objectNewErr("%s: cannot call index expression on non-array object", e.lineColForNode(indexExpr.left))
+		return obj_global_null, fmt.Errorf("%s: cannot call index expression on non-array object", e.lineColForNode(indexExpr.left))
 	}
 
-	indexObj := e.eval(indexExpr.index, env)
-	if objectIsError(indexObj) {
-		return indexObj
+	indexObj, err := e.eval(indexExpr.index, env)
+	if err != nil {
+		return obj_global_null, err
 	}
 	if indexObj.getType() != t_integer {
-		return objectNewErr("%s: index is not of type %s. got=%s", e.lineColForNode(indexExpr.index), t_integer, indexObj.getType())
+		return obj_global_null, fmt.Errorf("%s: index is not of type %s. got=%s", e.lineColForNode(indexExpr.index), t_integer, indexObj.getType())
 	}
 	idxInt, ok := indexObj.(*objectInteger)
 	if !ok {
-		return objectNewErr("%s: index is not of type %s. got=%s", e.lineColForNode(indexExpr.index), t_integer, indexObj.getType())
+		return obj_global_null, fmt.Errorf("%s: index is not of type %s. got=%s", e.lineColForNode(indexExpr.index), t_integer, indexObj.getType())
 	}
 
 	targetIdx := int(idxInt.value)
 	if int(targetIdx) >= len(arrObj.entries) || targetIdx < 0 {
-		return objectNewErr("%s: index is out of range for target array", e.lineColForNode(indexExpr.index))
+		return obj_global_null, fmt.Errorf("%s: index is out of range for target array", e.lineColForNode(indexExpr.index))
 	}
-	return arrObj.entries[targetIdx]
+	return arrObj.entries[targetIdx], nil
 }
 
 // err helpers
