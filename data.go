@@ -114,8 +114,8 @@ func rawParseNumJson(num float64) object {
 	}
 }
 
-func objectToInteger(obj object) int64
+// func objectToInteger(obj object) int64
 
-func objectToFloat(obj object) float64
+// func objectToFloat(obj object) float64
 
-func objectToString(obj object) string
+// func objectToString(obj object) string
