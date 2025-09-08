@@ -23,7 +23,6 @@ const (
 	t_map   objectType = "MAP"
 	t_array objectType = "ARRAY"
 
-	t_error     objectType = "ERROR"
 	t_terminate objectType = "TERMINATE"
 	t_null      objectType = "NULL"
 )
@@ -149,19 +148,6 @@ func (n *objectNull) clone() object {
 	return n
 }
 func (n *objectNull) isTruthy() bool { return false }
-
-//
-
-// type objectError struct {
-// 	message string
-// }
-
-// func (e *objectError) getType() objectType { return t_error }
-// func (e *objectError) inspect() string     { return "ERROR: " + e.message }
-// func (e *objectError) clone() object {
-// 	return &objectError{message: e.message}
-// }
-// func (e *objectError) isTruthy() bool { return false }
 
 //
 

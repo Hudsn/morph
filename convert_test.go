@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestDataObjectFromBytes(t *testing.T) {
+func TestConvertObjectFromBytes(t *testing.T) {
 	b := []byte(`{
 	"key": 5,
 	"arr": [1, 2, "three"]
@@ -19,30 +19,30 @@ func TestDataObjectFromBytes(t *testing.T) {
 			1, 2, "three",
 		},
 	}
-	testDataObject(t, obj, want)
+	testConvertObject(t, obj, want)
 }
 
-func testDataObject(t *testing.T, data object, want interface{}) bool {
+func testConvertObject(t *testing.T, data object, want interface{}) bool {
 	switch v := want.(type) {
 	case int:
-		return testDataObjectInt(t, data, int64(v))
+		return testConvertObjectInt(t, data, int64(v))
 	case float64:
-		return testDataObjectFloat(t, data, v)
+		return testConvertObjectFloat(t, data, v)
 	case bool:
-		return testDataObjectBool(t, data, v)
+		return testConvertObjectBool(t, data, v)
 	case string:
-		return testDataObjectString(t, data, v)
+		return testConvertObjectString(t, data, v)
 	case map[string]interface{}:
-		return testDataObjectMap(t, data, v)
+		return testConvertObjectMap(t, data, v)
 	case []interface{}:
-		return testDataObjectArray(t, data, v)
+		return testConvertObjectArray(t, data, v)
 	default:
-		t.Errorf("testDataObject: unsupported data object type. got=%T", want)
+		t.Errorf("testCovnertObject: unsupported type. got=%T", want)
 		return false
 	}
 }
 
-func testDataObjectString(t *testing.T, data object, want string) bool {
+func testConvertObjectString(t *testing.T, data object, want string) bool {
 	strObj, ok := data.(*objectString)
 	if !ok {
 		t.Errorf("data is not of type *objectString. got=%T", data)
@@ -55,7 +55,7 @@ func testDataObjectString(t *testing.T, data object, want string) bool {
 	return true
 }
 
-func testDataObjectInt(t *testing.T, data object, want int64) bool {
+func testConvertObjectInt(t *testing.T, data object, want int64) bool {
 	intobj, ok := data.(*objectInteger)
 	if !ok {
 		t.Errorf("data is not of type *objectInteger. got=%T", data)
@@ -68,7 +68,7 @@ func testDataObjectInt(t *testing.T, data object, want int64) bool {
 	return true
 }
 
-func testDataObjectFloat(t *testing.T, data object, want float64) bool {
+func testConvertObjectFloat(t *testing.T, data object, want float64) bool {
 	floatObj, ok := data.(*objectFloat)
 	if !ok {
 		t.Errorf("data is not of type *objectFloat. got=%T", data)
@@ -80,7 +80,7 @@ func testDataObjectFloat(t *testing.T, data object, want float64) bool {
 	}
 	return true
 }
-func testDataObjectBool(t *testing.T, data object, want bool) bool {
+func testConvertObjectBool(t *testing.T, data object, want bool) bool {
 	boolObject, ok := data.(*objectBoolean)
 	if !ok {
 		t.Errorf("data is not of type *objectBoolean. got=%T", data)
@@ -93,7 +93,7 @@ func testDataObjectBool(t *testing.T, data object, want bool) bool {
 	return true
 }
 
-func testDataObjectArray(t *testing.T, data object, want []interface{}) bool {
+func testConvertObjectArray(t *testing.T, data object, want []interface{}) bool {
 	arrObj, ok := data.(*objectArray)
 	if !ok {
 		t.Errorf("data is not of type *objectArray. got=%T", data)
@@ -104,14 +104,14 @@ func testDataObjectArray(t *testing.T, data object, want []interface{}) bool {
 	}
 	for idx, entry := range want {
 		got := arrObj.entries[idx]
-		if !testDataObject(t, got, entry) {
+		if !testConvertObject(t, got, entry) {
 			return false
 		}
 	}
 	return true
 }
 
-func testDataObjectMap(t *testing.T, data object, want map[string]interface{}) bool {
+func testConvertObjectMap(t *testing.T, data object, want map[string]interface{}) bool {
 	mapObject, ok := data.(*objectMap)
 	if !ok {
 		t.Errorf("data is not of type *objectMap. got=%T", data)
@@ -123,7 +123,7 @@ func testDataObjectMap(t *testing.T, data object, want map[string]interface{}) b
 			t.Errorf("objectMap does not contain desired key: %s", wantKey)
 			return false
 		}
-		if !testDataObject(t, gotVal.value, wantVal) {
+		if !testConvertObject(t, gotVal.value, wantVal) {
 			return false
 		}
 	}

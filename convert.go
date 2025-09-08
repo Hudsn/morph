@@ -5,14 +5,13 @@ import (
 	"fmt"
 )
 
-// helpers for accessing data parts from arbitrary maps
+// helpers for accessing objects from arbitrary types
 
 func newObjectFromAny(t interface{}) (object, error) {
 	return rawParseAny(t, false)
 }
 
 func newObjectFromBytes(bytes []byte) (object, error) {
-	// d
 	var raw interface{}
 	err := json.Unmarshal(bytes, &raw)
 	if err != nil {
@@ -40,7 +39,7 @@ func rawParseAny(rawData interface{}, isJSON bool) (object, error) {
 	case int, int16, int32, int64, float32, float64:
 		return rawParseNum(v, isJSON)
 	case bool:
-		return &objectBoolean{value: v}, nil
+		return objectFromBoolean(v), nil
 	case string:
 		return &objectString{value: v}, nil
 	case map[string]interface{}:
@@ -114,8 +113,48 @@ func rawParseNumJson(num float64) object {
 	}
 }
 
-// func objectToInteger(obj object) int64
+// obj -> type helpers
 
-// func objectToFloat(obj object) float64
+func convertObjectToNative(o object) (interface{}, error) {
+	switch v := o.(type) {
+	case *objectMap:
+		return convertMapToNative(v)
+	case *objectArray:
+		return convertArrayToNative(v)
+	case *objectInteger:
+		return v.value, nil
+	case *objectFloat:
+		return v.value, nil
+	case *objectString:
+		return v.value, nil
+	case *objectBoolean:
+		return objectFromBoolean(v.value), nil
+	default:
+		return obj_global_null, fmt.Errorf("unsupported object type: %T", v)
+	}
+}
 
-// func objectToString(obj object) string
+func convertArrayToNative(a *objectArray) (interface{}, error) {
+	ret := []interface{}{}
+	for _, entry := range a.entries {
+		toAdd, err := convertObjectToNative(entry)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, toAdd)
+	}
+	return ret, nil
+}
+
+func convertMapToNative(m *objectMap) (interface{}, error) {
+	ret := make(map[string]interface{})
+	for k, pair := range m.kvPairs {
+		vObj := pair.value
+		v, err := convertObjectToNative(vObj)
+		if err != nil {
+			return obj_global_null, err
+		}
+		ret[k] = v
+	}
+	return ret, nil
+}

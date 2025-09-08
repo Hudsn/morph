@@ -1,129 +1,271 @@
 package morph
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 )
 
-type functionStore map[string]function
-
-type function func(args ...object) (object, error)
-
-var refErrPtr = (*error)(nil)
-var refErrType = reflect.TypeOf(refErrPtr).Elem()
-
-// TODO/ WIP
-func functionFromNative(fnToRegister interface{}) (function, error) {
-	fnRef := reflect.ValueOf(fnToRegister)
-	fnType := fnRef.Type()
-	if fnType.Kind() == reflect.Ptr { // if pointer, get the underlying func
-		fnType = fnType.Elem()
-	}
-	if fnType.Kind() != reflect.Func {
-		return nil, fmt.Errorf("cannot register function: item is not a function")
-	}
-
-	numOut := fnType.NumOut()
-	if numOut > 2 {
-		return nil, fmt.Errorf("function must return at most 2 values. if 2 values are returned, the second must be of type 'error'")
-	}
-
-	if numOut == 2 {
-		if !fnType.Out(1).Implements(refErrType) {
-			return nil, fmt.Errorf("second return value must be of type error")
-		}
-	}
-
-	numIn := fnType.NumIn()
-	return func(args ...object) (object, error) {
-		if len(args) != numIn {
-			return obj_global_null, fmt.Errorf("expected %d arguments, got %d", numIn, len(args))
-		}
-
-		argList := []reflect.Value{}
-		for idx, arg := range args {
-			expectType := fnType.In(idx)
-			if expectType.Kind() == reflect.Ptr {
-				expectType = expectType.Elem()
-			}
-			argV, err := objectToReflectValueByType(arg, expectType)
-			if err != nil {
-				return obj_global_false, err
-			}
-			argList = append(argList, argV)
-		}
-
-		retVals := fnRef.Call(argList)
-		var retObj object = obj_global_null
-		for _, entry := range retVals {
-			maybeObj, err := reflectValueToObject(entry)
-			if err != nil {
-				return retObj, err
-			}
-			retObj = maybeObj
-		}
-
-		return retObj, nil
-
-	}, nil
+// public wrapper of object to be used for implementing custom functions
+type Object struct {
+	inner object
 }
 
-func reflectValueToObject(val reflect.Value) (object, error) {
-	if val.Type().Implements(refErrType) {
-		if val.IsNil() {
-			return obj_global_null, nil
-		}
-		return obj_global_null, val.Interface().(error)
-	}
-	switch val.Kind() {
-	case reflect.Int:
-		return &objectInteger{value: val.Int()}, nil
-		// case reflect.Map:
-		// 	return &objectMap{}, nil
-	}
-	return obj_global_null, fmt.Errorf("invalid return type for custom function")
+// wrappers for public types
+const (
+	T_INTEGER = t_integer
+	T_FLOAT   = t_float
+	T_BOOLEAN = t_boolean
+	T_MAP     = t_map
+	T_ARRAY   = t_array
+)
+
+func (o *Object) Type() string {
+	return string(o.inner.getType())
 }
 
-func objectToReflectValueByType(obj object, targetType reflect.Type) (reflect.Value, error) {
-	switch targetType.Kind() {
-	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
-		if o, ok := obj.(*objectInteger); ok {
-			return reflect.ValueOf(o.value).Convert(targetType), nil
-		}
-	case reflect.Map:
-		if o, ok := obj.(*objectMap); ok {
-			return objectMapToReflectValue(o)
-		}
-	}
+type Function func(args ...*Object) (*Object, error)
 
-	return reflect.Value{}, fmt.Errorf("cannot convert object of type %T to %s", obj, targetType)
+func evalFunction(fn Function, args ...object) (object, error) {
+	objList := []*Object{}
+	for _, arg := range args {
+		objList = append(objList, &Object{inner: arg})
+	}
+	obj, err := fn(objList...)
+	if err != nil {
+		return obj_global_null, err
+	}
+	return obj.inner, err
 }
 
-func objectMapToReflectValue(obj *objectMap) (reflect.Value, error) {
-	retMap := make(map[string]interface{})
-	for objK, objPairs := range obj.kvPairs {
-		objV, err := objectToNativeType(objPairs.value)
+func EnforceFunctionArgCount(wantArgNum int, args []*Object) error {
+	if wantArgNum != len(args) {
+		return fmt.Errorf("incorrect number of arguments. expected=%d got=%d", wantArgNum, len(args))
+	}
+	return nil
+}
+
+func (o *Object) AsInt() (int64, error) {
+	i, ok := o.inner.(*objectInteger)
+	if !ok {
+		return 0, fmt.Errorf("unable to convert object to Integer: underlying structure is not an integer type. got=%s", o.inner.getType())
+	}
+	return i.value, nil
+}
+func (o *Object) AsFloat() (float64, error) {
+	f, ok := o.inner.(*objectFloat)
+	if !ok {
+		return 0, fmt.Errorf("unable to convert object to Float: underlying structure is not a float type. got=%s", o.inner.getType())
+	}
+	return f.value, nil
+}
+func (o *Object) AsBool() (bool, error) {
+	b, ok := o.inner.(*objectBoolean)
+	if !ok {
+		return false, fmt.Errorf("unable to convert object to Boolean: underlying structure is not a boolean type. got=%s", o.inner.getType())
+	}
+	return b.value, nil
+}
+func (o *Object) AsString() (string, error) {
+	s, ok := o.inner.(*objectString)
+	if !ok {
+		return "", fmt.Errorf("unable to convert object to String: underlying structure is not a string type. got=%s", o.inner.getType())
+	}
+	return s.value, nil
+}
+func (o *Object) AsMap() (map[string]interface{}, error) {
+	m, ok := o.inner.(*objectMap)
+	if !ok {
+		return nil, fmt.Errorf("unable to convert object to Map: underlying structure is not a map type. got=%s", o.inner.getType())
+	}
+	res, err := convertMapToNative(m)
+	if err != nil {
+		return nil, err
+	}
+	ret, ok := res.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unable to convert object to Map: underlying structure does not convert to a map[string]interface{}. got=%s", o.inner.getType())
+	}
+	return ret, nil
+}
+
+// takes an object with an underlying map type, and attempts to marshal it into the target *struct.
+// you can check the underlying type as a string with Object.Type()
+func (o *Object) MapStruct(target interface{}) error {
+	m, err := o.AsMap()
+	if err != nil {
+		return err
+	}
+	targetVal := reflect.ValueOf(target)
+	if targetVal.Kind() != reflect.Pointer {
+		return fmt.Errorf("target must be a pointer")
+	}
+	if targetVal.IsNil() {
+		return fmt.Errorf("target must not be nil")
+	}
+	if targetVal.Elem().Kind() != reflect.Struct {
+		return fmt.Errorf("target must be pointer to a struct")
+	}
+
+	b, err := json.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("MapStruct: cannot convert target to intermediate json format: %w", err)
+	}
+	return json.Unmarshal(b, target)
+}
+
+func (o *Object) Array() ([]interface{}, error) {
+	a, ok := o.inner.(*objectArray)
+	if !ok {
+		return nil, fmt.Errorf("unable to convert object to Array: underlying structure is not an array type. got=%s", o.inner.getType())
+	}
+	res, err := convertArrayToNative(a)
+	if err != nil {
+		return nil, err
+	}
+	ret, ok := res.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unable to convert object to Array: underlying structure does not convert to a []interface{}. got=%T", res)
+	}
+	return ret, nil
+}
+
+// typecast helpers
+
+// casts a Go number to a morph Integer Object so it can be used when defining custom functions
+// input must be one of: int, int8, int16, int32, int64, float32, float64
+func CastInt(value interface{}) (*Object, error) {
+	ret := &Object{
+		inner: obj_global_null,
+	}
+	switch v := value.(type) {
+	case int:
+		ret.inner = &objectInteger{value: int64(v)}
+	case int8:
+		ret.inner = &objectInteger{value: int64(v)}
+	case int16:
+		ret.inner = &objectInteger{value: int64(v)}
+	case int32:
+		ret.inner = &objectInteger{value: int64(v)}
+	case int64:
+		ret.inner = &objectInteger{value: int64(v)}
+	case float32:
+		ret.inner = &objectInteger{value: int64(v)}
+	case float64:
+		ret.inner = &objectInteger{value: int64(v)}
+	default:
+		return ret, fmt.Errorf("unable to cast type as Int. unsupported type: %T", v)
+	}
+	return ret, nil
+}
+
+// casts a Go number to a morph Float Object so it can be used when defining custom functions
+// input must be one of: int, int8, int16, int32, int64, float32, float64
+func CastFloat(value interface{}) (*Object, error) {
+	ret := &Object{
+		inner: obj_global_null,
+	}
+	switch v := value.(type) {
+	case float32:
+		ret.inner = &objectFloat{value: float64(v)}
+	case float64:
+		ret.inner = &objectFloat{value: float64(v)}
+	case int:
+		ret.inner = &objectFloat{value: float64(v)}
+	case int8:
+		ret.inner = &objectFloat{value: float64(v)}
+	case int16:
+		ret.inner = &objectFloat{value: float64(v)}
+	case int32:
+		ret.inner = &objectFloat{value: float64(v)}
+	case int64:
+		ret.inner = &objectFloat{value: float64(v)}
+	default:
+		return ret, fmt.Errorf("unable to cast type as Float. unsupported type: %T", v)
+	}
+	return ret, nil
+}
+
+// casts a Go type to a morph String Object so it can be used when defining custom functions
+// input must be one of: int, int8, int16, int32, int64, float32, float64, string, bool
+func CastString(value interface{}) (*Object, error) {
+	ret := &Object{
+		inner: obj_global_null,
+	}
+	switch v := value.(type) {
+	case string:
+		ret.inner = &objectString{value: v}
+	case bool:
+		ret.inner = &objectString{value: fmt.Sprintf("%t", v)}
+	case float32:
+		ret.inner = &objectString{value: fmt.Sprintf("%f", v)}
+	case float64:
+		ret.inner = &objectString{value: fmt.Sprintf("%f", v)}
+	case int:
+		ret.inner = &objectString{value: fmt.Sprintf("%d", v)}
+	case int8:
+		ret.inner = &objectString{value: fmt.Sprintf("%d", v)}
+	case int16:
+		ret.inner = &objectString{value: fmt.Sprintf("%d", v)}
+	case int32:
+		ret.inner = &objectString{value: fmt.Sprintf("%d", v)}
+	case int64:
+		ret.inner = &objectString{value: fmt.Sprintf("%d", v)}
+	default:
+		return ret, fmt.Errorf("unable to cast type as Float. unsupported type: %T", v)
+	}
+	return ret, nil
+}
+
+// casts a Go type to a morph Boolean Object so it can be used when defining custom functions
+// input must be a bool
+func CastBool(value interface{}) (*Object, error) {
+	ret := &Object{
+		inner: obj_global_null,
+	}
+	switch v := value.(type) {
+	case bool:
+		ret.inner = &objectBoolean{value: v}
+	default:
+		return ret, fmt.Errorf("unable to cast type as Boolean. unsupported type: %T", v)
+	}
+	return ret, nil
+}
+
+// casts a Go type to a morph Map Object so it can be used when defining custom functions
+// input must be a map[string]interface{}, which is the default format of raw data maps being passed via morph statements and expressions
+func CastMap(value interface{}) (*Object, error) {
+	ret := &Object{
+		inner: obj_global_null,
+	}
+	switch v := value.(type) {
+	case map[string]interface{}:
+		m, err := rawParseMap(v, false)
 		if err != nil {
-			return reflect.Value{}, err
+			return ret, err
 		}
-		retMap[objK] = objV
+		ret.inner = m
+	default:
+		return ret, fmt.Errorf("unable to cast type as Boolean. unsupported type: %T", v)
 	}
-	return reflect.ValueOf(retMap), nil
+	return ret, nil
 }
 
-func objectToNativeType(obj object) (interface{}, error) {
-	switch v := obj.(type) {
-	case *objectInteger:
-		return v.value, nil
-	case *objectMap:
-		ret := make(map[string]interface{})
-		for k, pair := range v.kvPairs {
-			newVal, err := objectToNativeType(pair.value)
-			if err != nil {
-				return nil, err
-			}
-			ret[k] = newVal
-		}
+// casts a Go type to a morph Map Object so it can be used when defining custom functions
+// input must be a []interface{}, which is the default format of raw data arrays being passed via morph statements and expressions
+func CastArray(value interface{}) (*Object, error) {
+	ret := &Object{
+		inner: obj_global_null,
 	}
-	return nil, fmt.Errorf("unsupported object type for conversion")
+	switch v := value.(type) {
+	case []interface{}:
+		a, err := rawParseArray(v, false)
+		if err != nil {
+			return ret, err
+		}
+		ret.inner = a
+	default:
+		return ret, fmt.Errorf("unable to cast type as Array. unsupported type: %T", v)
+	}
+	return ret, nil
 }
