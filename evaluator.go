@@ -155,12 +155,6 @@ func (e *evaluator) evalNumberInfixExpression(leftObj object, operator string, r
 	}
 }
 
-const float_equality_tolerance = 1e-9
-
-func isFloatEqual(a float64, b float64) bool {
-	return math.Abs(a-b) <= float_equality_tolerance
-}
-
 func objHandleMathOperation(l float64, operator string, r float64, areBothInteger bool) object {
 
 	var result float64

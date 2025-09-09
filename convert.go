@@ -128,7 +128,7 @@ func convertObjectToNative(o object) (interface{}, error) {
 	case *objectString:
 		return v.value, nil
 	case *objectBoolean:
-		return objectFromBoolean(v.value), nil
+		return v.value, nil
 	default:
 		return obj_global_null, fmt.Errorf("unsupported object type: %T", v)
 	}

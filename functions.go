@@ -13,11 +13,11 @@ type Object struct {
 
 // wrappers for public types
 const (
-	T_INTEGER = t_integer
-	T_FLOAT   = t_float
-	T_BOOLEAN = t_boolean
-	T_MAP     = t_map
-	T_ARRAY   = t_array
+	INTEGER = t_integer
+	FLOAT   = t_float
+	BOOLEAN = t_boolean
+	MAP     = t_map
+	ARRAY   = t_array
 )
 
 func (o *Object) Type() string {
@@ -91,6 +91,7 @@ func (o *Object) AsMap() (map[string]interface{}, error) {
 
 // takes an object with an underlying map type, and attempts to marshal it into the target *struct.
 // you can check the underlying type as a string with Object.Type()
+// NOTE: requires that the fields you want to access in your struct are exported. Cannot marshal data into private fields
 func (o *Object) MapStruct(target interface{}) error {
 	m, err := o.AsMap()
 	if err != nil {
@@ -111,10 +112,14 @@ func (o *Object) MapStruct(target interface{}) error {
 	if err != nil {
 		return fmt.Errorf("MapStruct: cannot convert target to intermediate json format: %w", err)
 	}
-	return json.Unmarshal(b, target)
+	err = json.Unmarshal(b, target)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (o *Object) Array() ([]interface{}, error) {
+func (o *Object) AsArray() ([]interface{}, error) {
 	a, ok := o.inner.(*objectArray)
 	if !ok {
 		return nil, fmt.Errorf("unable to convert object to Array: underlying structure is not an array type. got=%s", o.inner.getType())
