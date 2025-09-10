@@ -55,6 +55,25 @@ func TestParseIndexExpression(t *testing.T) {
 	testLiteralExpression(t, indexExpr.index, 0)
 }
 
+func TestParseMapLiteral(t *testing.T) {
+	input := `{"key1": 1+1, "key2": {"nested1": 1 * 1, "nested2": "nested value"}, "key3": [1]}`
+	program := setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+	stmt := program.statements[0].(*expressionStatement)
+	mapLit, ok := stmt.expression.(*mapLiteral)
+	if !ok {
+		t.Fatalf("stmt.expression is not of type *mapLiteral. got=%T", stmt.expression)
+	}
+	if len(mapLit.pairs) != 3 {
+		t.Errorf("expected len of map literal to be 3. got=%d", len(mapLit.pairs))
+	}
+	wantStr := `{"key1": (1 + 1), "key2": {"nested1": (1 * 1), "nested2": "nested value"}, "key3": [1]}`
+	if mapLit.string() != wantStr {
+		t.Errorf("wrong map value.\n\twant=%s\n\tgot=%s", wantStr, mapLit.string())
+	}
+}
+
 func TestParseArrayLiteral(t *testing.T) {
 	input := `[1, "two", 2 * 2, 3 + 3]`
 	program := setupParserTest(t, input)
@@ -303,6 +322,10 @@ func TestParseOperatorPrecedence(t *testing.T) {
 		{
 			"true || !false == false && true",
 			"(true || (((!false) == false) && true))",
+		},
+		{
+			"func(a + b) + x * y",
+			"(func((a + b)) + (x * y))",
 		},
 	}
 	for _, tt := range tests {

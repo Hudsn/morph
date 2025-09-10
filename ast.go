@@ -2,6 +2,7 @@ package morph
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -176,6 +177,36 @@ func (ie *infixExpression) position() position {
 	return position{
 		start: ie.left.position().start,
 		end:   ie.right.position().end,
+	}
+}
+
+//
+
+type mapLiteral struct {
+	tok    token
+	pairs  map[string]expression
+	endPos int
+}
+
+func (m *mapLiteral) expressionNode() {}
+func (m *mapLiteral) token() token    { return m.tok }
+func (m *mapLiteral) string() string {
+	stringList := []string{}
+	keys := []string{}
+	for k := range m.pairs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		v := m.pairs[k]
+		stringList = append(stringList, fmt.Sprintf("%q: %s", k, v.string()))
+	}
+	return fmt.Sprintf("{%s}", strings.Join(stringList, ", "))
+}
+func (m *mapLiteral) position() position {
+	return position{
+		start: m.tok.start,
+		end:   m.endPos,
 	}
 }
 
@@ -421,3 +452,5 @@ func (c *callExpression) position() position {
 		end:   c.endPos,
 	}
 }
+
+//

@@ -4,6 +4,60 @@ import (
 	"testing"
 )
 
+func TestEvalMaps(t *testing.T) {
+	input := `
+	set msgparts = {"h": "hello", "w": "world", "num": 2 + 2}
+	set string = msgparts.h + " " + msgparts.w
+	set num = msgparts.num
+	`
+	tests := []struct {
+		key  string
+		want interface{}
+	}{
+		{"string", "hello world"},
+		{"num", 4},
+	}
+	env := newEnvironment()
+	evaluator := setupEvalTest(input)
+	if len(evaluator.parser.errors) > 0 {
+		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	}
+	program, err := evaluator.parser.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = evaluator.eval(program, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range tests {
+		got, found := env.get(tt.key)
+		if !found {
+			t.Fatalf("wanted result for env key %q but got no result", tt.key)
+		}
+		switch want := tt.want.(type) {
+		case int:
+			gotInt, ok := got.(*objectInteger)
+			if !ok {
+				t.Fatalf("result is not of type *objectInteger. got=%T", got)
+			}
+			if want != int(gotInt.value) {
+				t.Errorf("expected value for key %q to be %d. got=%d", tt.key, want, gotInt.value)
+			}
+		case string:
+			gotStr, ok := got.(*objectString)
+			if !ok {
+				t.Fatalf("result is not of type *objectString. got=%T", got)
+			}
+			if want != gotStr.value {
+				t.Errorf("expected value for key %q to be %s. got=%s", tt.key, want, gotStr.value)
+			}
+		default:
+			t.Fatalf("unsupported assertion type: %T", want)
+		}
+	}
+}
+
 func TestEvalArrays(t *testing.T) {
 
 	input := `
@@ -368,7 +422,7 @@ func TestEvalSetExpression(t *testing.T) {
 
 func TestEvalPathExpression(t *testing.T) {
 	env := newEnvironment()
-	dataMap, err := newObjectFromBytes([]byte(`{
+	dataMap, err := convertBytesToObject([]byte(`{
 		"nested": {
 			"key": 5
 		}

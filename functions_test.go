@@ -11,7 +11,7 @@ func TestFunctionCustom(t *testing.T) {
 	want := 5
 	inputObjs := []object{}
 	for _, arg := range inputArgs {
-		toAdd, err := rawParseAny(arg, false)
+		toAdd, err := convertAnyToObject(arg, false)
 		if err != nil {
 			t.Fatal(err)
 		}

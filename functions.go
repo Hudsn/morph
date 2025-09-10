@@ -245,7 +245,7 @@ func CastMap(value interface{}) (*Object, error) {
 	}
 	switch v := value.(type) {
 	case map[string]interface{}:
-		m, err := rawParseMap(v, false)
+		m, err := convertMapToObject(v, false)
 		if err != nil {
 			return ret, err
 		}
@@ -264,7 +264,7 @@ func CastArray(value interface{}) (*Object, error) {
 	}
 	switch v := value.(type) {
 	case []interface{}:
-		a, err := rawParseArray(v, false)
+		a, err := convertArrayToObject(v, false)
 		if err != nil {
 			return ret, err
 		}

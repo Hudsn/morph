@@ -76,6 +76,7 @@ func (p *parser) registerFuncs() {
 	p.registerPrefixFunc(tok_template_string, p.parseTemplateExpression)
 	p.registerPrefixFunc(tok_lparen, p.parseGroupedExpression)
 	p.registerPrefixFunc(tok_lsquare, p.parseArrayLiteral)
+	p.registerPrefixFunc(tok_lcurly, p.parseMapLiteral)
 
 	p.registerInfixFunc(tok_dot, p.parsePathExpression)
 	p.registerInfixFunc(tok_plus, p.parseInfixExpression)
@@ -179,6 +180,33 @@ func (p *parser) parseCallExpression(left expression) expression {
 	}
 	ret := &callExpression{tok: p.currentToken, name: funcName}
 	ret.arguments = p.parseExpressionList(tok_rparen)
+	ret.endPos = p.currentToken.end
+	return ret
+}
+
+func (p *parser) parseMapLiteral() expression {
+	ret := &mapLiteral{tok: p.currentToken}
+	ret.pairs = make(map[string]expression)
+	for !p.isPeekToken(tok_rcurly) {
+		p.next()
+		key := p.parseExpression(lowest)
+		strNode, ok := key.(*stringLiteral)
+		if !ok {
+			p.err("map key expression must be a string literal", key.position().start)
+			return nil
+		}
+		if !p.mustNextToken(tok_colon) {
+			return nil
+		}
+		p.next()
+		ret.pairs[strNode.value] = p.parseExpression(lowest)
+		if !p.isPeekToken(tok_rcurly) && !p.mustNextToken(tok_comma) {
+			return nil
+		}
+	}
+	if !p.mustNextToken(tok_rcurly) {
+		return nil
+	}
 	ret.endPos = p.currentToken.end
 	return ret
 }

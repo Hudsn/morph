@@ -9,7 +9,7 @@ func TestConvertObjectFromBytes(t *testing.T) {
 	"key": 5,
 	"arr": [1, 2, "three"]
 	}`)
-	obj, err := newObjectFromBytes(b)
+	obj, err := convertBytesToObject(b)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

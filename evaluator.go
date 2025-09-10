@@ -11,6 +11,7 @@ var (
 	obj_global_null  = &objectNull{}
 	obj_global_true  = &objectBoolean{value: true}
 	obj_global_false = &objectBoolean{value: false}
+	obj_global_term  = &objectTerminate{}
 )
 
 type evaluator struct {
@@ -53,6 +54,8 @@ func (e *evaluator) eval(astNode node, env *environment) (object, error) {
 		} else {
 			return obj_global_false, nil
 		}
+	case *mapLiteral:
+		return e.evalMapLiteral(astNode, env)
 	case *arrayLiteral:
 		return e.evalArrayLiteral(astNode, env)
 	case *indexExpression:
@@ -335,7 +338,6 @@ func (e *evaluator) evalTemplateExpression(templateExpr *templateExpression, env
 //path
 
 func (e *evaluator) evalPathExpression(pathExpr *pathExpression, env *environment) (object, error) {
-
 	// apply attribute value to
 	switch v := pathExpr.attribute.(type) {
 	case *stringLiteral:
@@ -363,6 +365,24 @@ func (e *evaluator) resolvePathEntryForKey(pathExpr *pathExpression, key string,
 		return obj_global_null, fmt.Errorf("%s: key not found: %s", e.lineColForNode(pathExpr.left), key)
 	}
 	return res.value, nil
+}
+
+// map
+func (e *evaluator) evalMapLiteral(mapLit *mapLiteral, env *environment) (object, error) {
+	objPairs := make(map[string]objectMapPair)
+	for key, expr := range mapLit.pairs {
+
+		toAdd, err := e.eval(expr, env)
+		if err != nil {
+			return obj_global_null, err
+		}
+		pair := objectMapPair{
+			key:   key,
+			value: toAdd,
+		}
+		objPairs[key] = pair
+	}
+	return &objectMap{kvPairs: objPairs}, nil
 }
 
 // arr

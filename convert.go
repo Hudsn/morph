@@ -8,55 +8,55 @@ import (
 // helpers for accessing objects from arbitrary types
 
 func newObjectFromAny(t interface{}) (object, error) {
-	return rawParseAny(t, false)
+	return convertAnyToObject(t, false)
 }
 
-func newObjectFromBytes(bytes []byte) (object, error) {
+func convertBytesToObject(bytes []byte) (object, error) {
 	var raw interface{}
 	err := json.Unmarshal(bytes, &raw)
 	if err != nil {
 		return nil, fmt.Errorf("invalid json: %w", err)
 	}
-	obj, err := rawParseAnyJSON(raw)
+	obj, err := convertAnyToObjectJSON(raw)
 	if err != nil {
 		return obj_global_null, err
 	}
 	return obj, nil
 }
 
-func rawParseAnyJSON(rawData interface{}) (object, error) {
+func convertAnyToObjectJSON(rawData interface{}) (object, error) {
 	switch v := rawData.(type) {
 	case float64:
-		return rawParseNumJson(v), nil
+		return convertNumberToObjectJSON(v), nil
 	default:
-		return rawParseAny(v, true)
+		return convertAnyToObject(v, true)
 	}
 }
 
-func rawParseAny(rawData interface{}, isJSON bool) (object, error) {
+func convertAnyToObject(rawData interface{}, isJSON bool) (object, error) {
 
 	switch v := rawData.(type) {
 	case int, int16, int32, int64, float32, float64:
-		return rawParseNum(v, isJSON)
+		return convertNumberToObject(v, isJSON)
 	case bool:
 		return objectFromBoolean(v), nil
 	case string:
 		return &objectString{value: v}, nil
 	case map[string]interface{}:
-		return rawParseMap(v, isJSON)
+		return convertMapToObject(v, isJSON)
 	case []interface{}:
-		return rawParseArray(v, isJSON)
+		return convertArrayToObject(v, isJSON)
 	default:
 		return obj_global_null, fmt.Errorf("unable to read data into object: %+v", v)
 	}
 }
 
-func rawParseMap(m map[string]interface{}, isJSON bool) (object, error) {
+func convertMapToObject(m map[string]interface{}, isJSON bool) (object, error) {
 	ret := &objectMap{
 		kvPairs: make(map[string]objectMapPair),
 	}
 	for k, v := range m {
-		valueToAdd, err := rawParseAny(v, isJSON)
+		valueToAdd, err := convertAnyToObject(v, isJSON)
 		if err != nil {
 			return obj_global_null, err
 		}
@@ -69,12 +69,12 @@ func rawParseMap(m map[string]interface{}, isJSON bool) (object, error) {
 	return ret, nil
 }
 
-func rawParseArray(array []interface{}, isJSON bool) (object, error) {
+func convertArrayToObject(array []interface{}, isJSON bool) (object, error) {
 	ret := &objectArray{
 		entries: []object{},
 	}
 	for _, entry := range array {
-		toAdd, err := rawParseAny(entry, isJSON)
+		toAdd, err := convertAnyToObject(entry, isJSON)
 		if err != nil {
 			return obj_global_null, err
 		}
@@ -83,7 +83,7 @@ func rawParseArray(array []interface{}, isJSON bool) (object, error) {
 	return ret, nil
 }
 
-func rawParseNum(num interface{}, isJSON bool) (object, error) {
+func convertNumberToObject(num interface{}, isJSON bool) (object, error) {
 	switch v := num.(type) {
 	case int:
 		return &objectInteger{value: int64(v)}, nil
@@ -97,7 +97,7 @@ func rawParseNum(num interface{}, isJSON bool) (object, error) {
 		return &objectFloat{value: float64(v)}, nil
 	case float64:
 		if isJSON {
-			return rawParseNumJson(v), nil
+			return convertNumberToObjectJSON(v), nil
 		}
 		return &objectFloat{value: float64(v)}, nil
 	default:
@@ -105,7 +105,7 @@ func rawParseNum(num interface{}, isJSON bool) (object, error) {
 	}
 }
 
-func rawParseNumJson(num float64) object {
+func convertNumberToObjectJSON(num float64) object {
 	if num == float64(int64(num)) {
 		return &objectInteger{value: int64(num)}
 	} else {
