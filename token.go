@@ -1,7 +1,5 @@
 package morph
 
-import "fmt"
-
 type token struct {
 	tokenType tokenType
 	value     string
@@ -79,23 +77,4 @@ func lookupTokenKeyword(ident string) tokenType {
 		return ret
 	}
 	return tok_ident
-}
-
-func lineColString(line int, col int) string {
-	return fmt.Sprintf("%d:%d", line, col)
-}
-
-func lineAndCol(input []rune, targetIdx int) (int, int) {
-	line := 1
-	col := 1
-	for _, r := range input[:targetIdx] {
-		switch r {
-		case '\n': // reset if newline
-			line++
-			col = 1
-		default:
-			col++
-		}
-	}
-	return line, col
 }

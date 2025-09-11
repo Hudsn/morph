@@ -4,27 +4,142 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
+	"strings"
 )
 
-// public wrapper of object to be used for implementing custom functions
-type Object struct {
-	inner object
+type functionStore struct {
+	std        *functionNamespace
+	namespaces map[string]*functionNamespace
 }
 
-// wrappers for public types
-const (
-	INTEGER = t_integer
-	FLOAT   = t_float
-	BOOLEAN = t_boolean
-	MAP     = t_map
-	ARRAY   = t_array
-)
-
-func (o *Object) Type() string {
-	return string(o.inner.getType())
+func (s *functionStore) Register(fn *functionEntry) {
+	s.std.register(fn)
+}
+func (s *functionStore) RegisterToNamespace(namespace string, fn *functionEntry) {
+	if _, ok := s.namespaces[namespace]; !ok {
+		s.namespaces[namespace] = newFunctionNamespace(namespace)
+	}
+	ns := s.namespaces[namespace]
+	ns.register(fn)
+}
+func (s *functionStore) get(name string) (*functionEntry, error) {
+	return s.std.get(name)
+}
+func (s *functionStore) getNamespace(namespace string, name string) (*functionEntry, error) {
+	if ns, ok := s.namespaces[namespace]; ok {
+		return ns.get(name)
+	}
+	return nil, fmt.Errorf("namespace %q does not found", namespace)
 }
 
-type Function func(args ...*Object) (*Object, error)
+type functionNamespace struct {
+	name  string
+	store map[string]*functionEntry
+}
+
+func newFunctionNamespace(name string) *functionNamespace {
+	return &functionNamespace{
+		name:  name,
+		store: make(map[string]*functionEntry),
+	}
+}
+
+func (n *functionNamespace) get(name string) (*functionEntry, error) {
+	if ret, ok := n.store[name]; ok {
+		return ret, nil
+	}
+	msg := fmt.Sprintf("function %q does not exist", name)
+	if n.name == "std" {
+		msg = fmt.Sprintf("%s in namespace %q", msg, n.name)
+	}
+	return nil, fmt.Errorf("%s", msg)
+}
+func (n *functionNamespace) register(fe *functionEntry) {
+	n.store[fe.name] = fe
+}
+
+func newFunctionStore() *functionStore {
+	return &functionStore{
+		std: &functionNamespace{
+			name:  "std",
+			store: make(map[string]*functionEntry),
+		},
+		namespaces: make(map[string]*functionNamespace),
+	}
+}
+
+type functionEntry struct {
+	name        string
+	description string
+	ret         *functionIO
+	args        []functionIO
+	function    Function
+	attributes  []functionAttribute
+}
+
+func NewFunctionEntry(name string, function Function) *functionEntry {
+	return &functionEntry{
+		name:       name,
+		function:   function,
+		args:       []functionIO{},
+		attributes: []functionAttribute{},
+	}
+}
+func (fe *functionEntry) SetDescription(desc string) *functionEntry {
+	fe.description = desc
+	return fe
+}
+func (fe *functionEntry) SetArgument(name string, description string, types ...publicObject) *functionEntry {
+	toAdd := functionIO{
+		name:        name,
+		description: description,
+		types:       types,
+	}
+	fe.args = append(fe.args, toAdd)
+	return fe
+}
+func (fe *functionEntry) SetReturn(name string, description string, types ...publicObject) *functionEntry {
+	fe.ret = &functionIO{
+		name:        name,
+		description: description,
+		types:       types,
+	}
+	return fe
+}
+func (fe *functionEntry) SetAttributes(attrs ...functionAttribute) *functionEntry {
+	fe.attributes = attrs
+	return fe
+}
+func (fe *functionEntry) string() string {
+	argStrList := []string{}
+	for _, a := range fe.args {
+		argStrList = append(argStrList, a.formatString())
+	}
+	args := strings.Join(argStrList, ", ")
+	ret := ""
+	if fe.ret != nil {
+		ret = fe.ret.formatString()
+	}
+	return fmt.Sprintf("%s(%s) %s", fe.name, args, ret)
+}
+
+func (fio *functionIO) formatString() string {
+	typeStringList := []string{}
+	for _, t := range fio.types {
+		typeStringList = append(typeStringList, string(t))
+	}
+	typeString := fio.typesString()
+	return fmt.Sprintf("%s:%s", fio.name, typeString)
+}
+
+func (fio *functionIO) typesString() string {
+	strs := []string{}
+	for _, t := range fio.types {
+		strs = append(strs, string(t))
+	}
+	return strings.Join(strs, "|")
+}
 
 func evalFunction(fn Function, args ...object) (object, error) {
 	objList := []*Object{}
@@ -38,12 +153,86 @@ func evalFunction(fn Function, args ...object) (object, error) {
 	return obj.inner, err
 }
 
-func EnforceFunctionArgCount(wantArgNum int, args []*Object) error {
-	if wantArgNum != len(args) {
-		return fmt.Errorf("incorrect number of arguments. expected=%d got=%d", wantArgNum, len(args))
+func (fe *functionEntry) eval(args ...object) (object, error) {
+	if len(args) < len(fe.args) {
+		return obj_global_null, fmt.Errorf("invalid number of args for function %q: too few arguments supplied. want=%d got=%d", fe.name, len(fe.args), len(args))
+	}
+	for argIdx, wantArg := range fe.args {
+		arg := args[argIdx]
+		if !slices.Contains(wantArg.types, publicObject(arg.getType())) {
+			return obj_global_null, fmt.Errorf("function %q invalid argument type for %q. want=%s. got=%s", fe.name, wantArg.name, wantArg.typesString(), arg.getType())
+		}
+	}
+	if err := fe.checkVariadic(args...); err != nil {
+		return obj_global_null, err
+	}
+	return evalFunction(fe.function, args...)
+}
+
+func (fe *functionEntry) checkVariadic(args ...object) error {
+	if len(args) == 0 {
+		return nil
+	}
+	isVariadic := slices.Contains(fe.attributes, FUNCTION_ATTRIBUTE_VARIADIC)
+	if len(args) > len(fe.args) && !isVariadic {
+		return fmt.Errorf("invalid number of args for function %q: too many arguments supplied. want=%d got=%d", fe.name, len(fe.args), len(args))
+	}
+	if !isVariadic {
+		return nil
+	}
+	lastWantArg := fe.args[len(fe.args)-1]
+	curIdx := len(fe.args) - 1
+	lastArgs := args[curIdx:]
+	for _, arg := range lastArgs {
+		if !slices.Contains(lastWantArg.types, publicObject(arg.getType())) {
+			return fmt.Errorf("type error for function %q: argument at zero-indexed position %d does not match any type of variadic parameter %q (%s)", fe.name, curIdx, lastWantArg.name, lastWantArg.typesString())
+		}
+		curIdx++
 	}
 	return nil
 }
+
+type functionAttribute string
+
+const (
+	FUNCTION_ATTRIBUTE_VARIADIC = "VARIADIC"
+)
+
+type functionIO struct {
+	name        string
+	description string
+	types       []publicObject
+}
+
+type Function func(args ...*Object) (*Object, error)
+
+// public wrapper of object to be used for implementing custom functions
+type Object struct {
+	inner object
+}
+
+func (o *Object) Type() string {
+	return string(o.inner.getType())
+}
+
+type publicObject string
+
+// wrappers for public types
+const (
+	INTEGER publicObject = publicObject(t_integer)
+	FLOAT   publicObject = publicObject(t_float)
+	BOOLEAN publicObject = publicObject(t_boolean)
+	STRING  publicObject = publicObject(t_string)
+	MAP     publicObject = publicObject(t_map)
+	ARRAY   publicObject = publicObject(t_array)
+)
+
+// func EnforceFunctionArgCount(wantArgNum int, args []*Object) error {
+// 	if wantArgNum != len(args) {
+// 		return fmt.Errorf("incorrect number of arguments. expected=%d got=%d", wantArgNum, len(args))
+// 	}
+// 	return nil
+// }
 
 func (o *Object) AsInt() (int64, error) {
 	i, ok := o.inner.(*objectInteger)
