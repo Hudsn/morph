@@ -452,5 +452,3 @@ func (c *callExpression) position() position {
 		end:   c.endPos,
 	}
 }
-
-//

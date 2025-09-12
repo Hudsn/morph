@@ -42,7 +42,7 @@ func TestFunctionRegistry(t *testing.T) {
 			wantName: "my_cool_func",
 			wantDesc: "a very cool function",
 			wantStr:  "my_cool_func(a:INTEGER, b:INTEGER) result:INTEGER",
-			args:     []interface{}{"2", 2, 3, "4"},
+			args:     []interface{}{2, 2, 3, 4},
 			wantRes:  4,
 		},
 		{

@@ -340,6 +340,7 @@ func (p *parser) parseIntegerLiteral() expression {
 	if err != nil {
 		msg := fmt.Sprintf("invalid integer: %s", p.currentToken.value)
 		p.err(msg, p.currentToken.start)
+		return nil
 	}
 	ret.value = num
 	return ret
@@ -352,6 +353,7 @@ func (p *parser) parseFloatLiteral() expression {
 	if err != nil {
 		msg := fmt.Sprintf("invalid float: %s", p.currentToken.value)
 		p.err(msg, p.currentToken.start)
+		return nil
 	}
 	ret.value = num
 	return ret

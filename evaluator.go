@@ -32,6 +32,8 @@ func (e *evaluator) eval(astNode node, env *environment) (object, error) {
 		return e.evalWhenStatement(astNode, env)
 	case *expressionStatement:
 		return e.eval(astNode.expression, env)
+	case *callExpression:
+		return e.evalCallExpression(astNode, env)
 	case *pathExpression:
 		return e.evalPathExpression(astNode, env)
 	case *identifierExpression:
@@ -343,7 +345,6 @@ func (e *evaluator) evalPathExpression(pathExpr *pathExpression, env *environmen
 	case *stringLiteral:
 		return e.resolvePathEntryForKey(pathExpr, v.value, env)
 	case *identifierExpression:
-		// TODO: move this down to resolvePathForKey
 		return e.resolvePathEntryForKey(pathExpr, v.value, env)
 	default:
 		return obj_global_null, fmt.Errorf("%s: invalid path part: %s", e.lineColForNode(v), v.string())
@@ -429,20 +430,17 @@ func (e *evaluator) evalIndexExpression(indexExpr *indexExpression, env *environ
 	return arrObj.entries[targetIdx], nil
 }
 
-// err helpers
-
-// func objectNewErr(format string, a ...interface{}) *objectError {
-// 	return &objectError{message: fmt.Sprintf(format, a...)}
-// }
-
-// func objectIsError(obj object) bool {
-// 	if obj != nil {
-// 		return obj.getType() == t_error
-// 	}
-// 	return false
-// }
-
 //
+
+func (e *evaluator) evalCallExpression(callExpr *callExpression, env *environment) (object, error) {
+	return nil, nil
+}
+
+func (e *evaluator) evalFunctionPath(pathExpr *pathExpression, env *environment) (object, error) {
+	return nil, nil
+}
+
+// helpers
 
 func (e *evaluator) lineColForNode(n node) string {
 	return lineColString(lineAndCol(e.parser.lexer.input, n.position().start))

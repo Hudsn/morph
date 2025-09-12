@@ -125,10 +125,6 @@ func (fe *functionEntry) string() string {
 }
 
 func (fio *functionIO) formatString() string {
-	typeStringList := []string{}
-	for _, t := range fio.types {
-		typeStringList = append(typeStringList, string(t))
-	}
 	typeString := fio.typesString()
 	return fmt.Sprintf("%s:%s", fio.name, typeString)
 }
