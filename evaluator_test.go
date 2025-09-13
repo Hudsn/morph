@@ -17,7 +17,7 @@ func TestEvalMaps(t *testing.T) {
 		{"string", "hello world"},
 		{"num", 4},
 	}
-	env := newEnvironment()
+	env := newEnvironment(nil)
 	evaluator := setupEvalTest(input)
 	if len(evaluator.parser.errors) > 0 {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
@@ -68,7 +68,7 @@ func TestEvalArrays(t *testing.T) {
 	SET myresult2 = myarr[1 + 1]
 	set myresult3 = myarr[9 / 3]
 	`
-	env := newEnvironment()
+	env := newEnvironment(nil)
 	evaluator := setupEvalTest(input)
 	if len(evaluator.parser.errors) > 0 {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
@@ -128,7 +128,7 @@ func TestEvalStringAdd(t *testing.T) {
 		{`"raw" + " " + 'templ${"ate"}'`, "raw template"},
 	}
 	for _, tt := range cases {
-		env := newEnvironment()
+		env := newEnvironment(nil)
 		evaluator := setupEvalTest(tt.input)
 		if len(evaluator.parser.errors) > 0 {
 			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
@@ -163,7 +163,7 @@ func TestEvalNumberEquality(t *testing.T) {
 		{"5 < 5.5", true},
 	}
 	for _, tt := range cases {
-		env := newEnvironment()
+		env := newEnvironment(nil)
 		evaluator := *setupEvalTest(tt.input)
 		if len(evaluator.parser.errors) > 0 {
 			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
@@ -198,7 +198,7 @@ func TestEvalMathFloats(t *testing.T) {
 		{"5.5 / 5.5", 1.0},
 	}
 	for _, tt := range cases {
-		env := newEnvironment()
+		env := newEnvironment(nil)
 		evaluator := *setupEvalTest(tt.input)
 		if len(evaluator.parser.errors) > 0 {
 			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
@@ -229,7 +229,7 @@ func TestEvalMathInts(t *testing.T) {
 		{"36 / 6", 6},
 	}
 	for _, tt := range cases {
-		env := newEnvironment()
+		env := newEnvironment(nil)
 		evaluator := *setupEvalTest(tt.input)
 		if len(evaluator.parser.errors) > 0 {
 			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
@@ -250,7 +250,7 @@ func TestEvalMathInts(t *testing.T) {
 }
 
 func TestEvalTemplateExpression(t *testing.T) {
-	env := newEnvironment()
+	env := newEnvironment(nil)
 	evaluator := setupEvalTest(`
 	SET hellovar = "hello"
 	SET worldvar = "world"
@@ -280,7 +280,7 @@ func TestEvalTemplateExpression(t *testing.T) {
 }
 
 func TestEvalStringLitera(t *testing.T) {
-	env := newEnvironment()
+	env := newEnvironment(nil)
 	evaluator := setupEvalTest(`"this is my string" "this is my other string"`)
 	if len(evaluator.parser.errors) > 0 {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
@@ -315,7 +315,7 @@ func TestEvalStringLitera(t *testing.T) {
 }
 
 func TestEvalPrefixExpression(t *testing.T) {
-	env := newEnvironment()
+	env := newEnvironment(nil)
 	evaluator := setupEvalTest("!false")
 	if len(evaluator.parser.errors) > 0 {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
@@ -333,7 +333,7 @@ func TestEvalPrefixExpression(t *testing.T) {
 		t.Errorf("wrong value for exclamation prefix. want=%t got=%t", true, gotBool.value)
 	}
 
-	env = newEnvironment()
+	env = newEnvironment(nil)
 	evaluator = setupEvalTest("-.123")
 	if len(evaluator.parser.errors) > 0 {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
@@ -353,7 +353,7 @@ func TestEvalPrefixExpression(t *testing.T) {
 }
 
 func TestEvalWhenStatement(t *testing.T) {
-	env := newEnvironment()
+	env := newEnvironment(nil)
 	evaluator := setupEvalTest("WHEN true :: SET my.path.var = 10")
 	if len(evaluator.parser.errors) > 0 {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
@@ -385,7 +385,7 @@ func TestEvalSetExpression(t *testing.T) {
 	if len(evaluator.parser.errors) > 0 {
 		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
 	}
-	env := newEnvironment()
+	env := newEnvironment(nil)
 	_, err := evaluator.eval(program, env)
 	if err != nil {
 		t.Fatal(err)
@@ -421,7 +421,7 @@ func TestEvalSetExpression(t *testing.T) {
 }
 
 func TestEvalPathExpression(t *testing.T) {
-	env := newEnvironment()
+	env := newEnvironment(nil)
 	dataMap, err := convertBytesToObject([]byte(`{
 		"nested": {
 			"key": 5

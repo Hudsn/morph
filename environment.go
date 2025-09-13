@@ -1,12 +1,13 @@
 package morph
 
 type environment struct {
-	outer *environment
-	store map[string]object
+	outer     *environment
+	store     map[string]object
+	functions *functionStore
 }
 
-func newEnvironment() *environment {
-	return &environment{outer: nil, store: make(map[string]object)}
+func newEnvironment(fstore *functionStore) *environment {
+	return &environment{outer: nil, functions: fstore, store: make(map[string]object)}
 }
 
 func (e *environment) get(name string) (object, bool) {

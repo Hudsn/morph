@@ -433,12 +433,77 @@ func (e *evaluator) evalIndexExpression(indexExpr *indexExpression, env *environ
 //
 
 func (e *evaluator) evalCallExpression(callExpr *callExpression, env *environment) (object, error) {
-	return nil, nil
+	var fnEntry *functionEntry
+	var err error
+	switch v := callExpr.name.(type) {
+	case *identifierExpression:
+		fnEntry, err = env.functions.get(v.value)
+		if err != nil {
+			return obj_global_null, err
+		}
+	case *pathExpression:
+		fnEntry, err = e.evalFunctionNamePath(v, env)
+		if err != nil {
+			return obj_global_null, err
+		}
+	}
+
+	args := []object{}
+	for _, argExpr := range callExpr.arguments {
+		toAdd, err := e.eval(argExpr, env)
+		if err != nil {
+			return obj_global_null, err
+		}
+		args = append(args, toAdd)
+	}
+	return fnEntry.eval(args...)
 }
 
-func (e *evaluator) evalFunctionPath(pathExpr *pathExpression, env *environment) (object, error) {
-	return nil, nil
+func (e *evaluator) evalFunctionNamePath(pathExpr *pathExpression, env *environment) (*functionEntry, error) {
+	switch v := pathExpr.attribute.(type) {
+	case *identifierExpression:
+		return e.resolvePathForFunction(pathExpr, v.value, env)
+	}
+	return nil, fmt.Errorf("%s: function path must be composed of valid identifiers", e.lineColForNode(pathExpr))
 }
+
+func (e *evaluator) resolvePathForFunction(pathExpr *pathExpression, key string, env *environment) (*functionEntry, error) {
+	switch v := pathExpr.left.(type) {
+	case *identifierExpression:
+		namespace := v.value
+		return env.functions.getNamespace(namespace, key)
+	}
+	return nil, fmt.Errorf("%s: function path must be composed of valid identifiers", e.lineColForNode(pathExpr))
+}
+
+// func (e *evaluator) evalPathExpression(pathExpr *pathExpression, env *environment) (object, error) {
+// 	// apply attribute value to
+// 	switch v := pathExpr.attribute.(type) {
+// 	case *stringLiteral:
+// 		return e.resolvePathEntryForKey(pathExpr, v.value, env)
+// 	case *identifierExpression:
+// 		return e.resolvePathEntryForKey(pathExpr, v.value, env)
+// 	default:
+// 		return obj_global_null, fmt.Errorf("%s: invalid path part: %s", e.lineColForNode(v), v.string())
+// 	}
+// }
+
+// func (e *evaluator) resolvePathEntryForKey(pathExpr *pathExpression, key string, env *environment) (object, error) {
+// 	// get left side value via eval
+// 	leftObj, err := e.eval(pathExpr.left, env)
+// 	if err != nil {
+// 		return obj_global_null, err
+// 	}
+// 	leftMap, ok := leftObj.(*objectMap)
+// 	if !ok {
+// 		return obj_global_null, fmt.Errorf("%s: cannot access a path on a non-map object", e.lineColForNode(pathExpr.left))
+// 	}
+// 	res, ok := leftMap.kvPairs[key]
+// 	if !ok {
+// 		return obj_global_null, fmt.Errorf("%s: key not found: %s", e.lineColForNode(pathExpr.left), key)
+// 	}
+// 	return res.value, nil
+// }
 
 // helpers
 
