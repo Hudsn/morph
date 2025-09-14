@@ -118,6 +118,8 @@ func (l *lexer) tokenize() token {
 		tok = token{tokenType: tok_rparen, value: ")", start: l.currentIdx, end: l.nextIdx}
 	case '$':
 		tok = l.handleDollarSign()
+	case '~':
+		tok = l.handleTilde()
 	default:
 		if isDigit(l.currentChar) {
 			tok = l.readNumber()
@@ -149,6 +151,25 @@ func (l *lexer) handleEOF() token {
 		value:     string(l.currentChar),
 		start:     0,
 		end:       0,
+	}
+}
+
+func (l *lexer) handleTilde() token {
+	if l.peek() != '>' {
+		return token{
+			tokenType: tok_illegal,
+			value:     "unexpected input character",
+			start:     l.currentIdx,
+			end:       l.nextIdx,
+		}
+	}
+	start := l.currentIdx
+	l.next()
+	return token{
+		tokenType: tok_arrow,
+		value:     string(l.input[start:l.nextIdx]),
+		start:     start,
+		end:       l.nextIdx,
 	}
 }
 

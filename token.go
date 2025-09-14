@@ -19,6 +19,7 @@ const (
 	tok_template_string tokenType = "TEMPLATE_STRING"
 
 	// separators
+	tok_arrow        tokenType = "~>"
 	tok_assign       tokenType = "="
 	tok_dot          tokenType = "."
 	tok_colon        tokenType = ":"

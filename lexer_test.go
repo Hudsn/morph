@@ -4,6 +4,34 @@ import (
 	"testing"
 )
 
+func TestLexArrow(t *testing.T) {
+	input := `asdf ~> 123`
+	tests := []testCase{
+		{
+			tokenType:  tok_ident,
+			start:      0,
+			end:        4,
+			value:      "asdf",
+			rangeValue: "asdf",
+		},
+		{
+			tokenType:  tok_arrow,
+			start:      5,
+			end:        7,
+			value:      "~>",
+			rangeValue: "~>",
+		},
+		{
+			tokenType:  tok_int,
+			start:      8,
+			end:        11,
+			value:      "123",
+			rangeValue: "123",
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
 func TestLexComma(t *testing.T) {
 	input := `[1, "asdf", '${myvar}', 2]`
 	tests := []testCase{
