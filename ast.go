@@ -13,8 +13,9 @@ type node interface {
 }
 
 type position struct {
-	start int
-	end   int
+	start   int
+	end     int
+	lineCol string
 }
 
 type statement interface {
@@ -29,6 +30,7 @@ type expression interface {
 
 type program struct {
 	tok        token
+	lineCol    string
 	statements []statement
 }
 
@@ -43,7 +45,7 @@ func (p *program) string() string {
 	return strings.Join(strs, "\n")
 }
 func (p *program) position() position {
-	ret := position{start: 0, end: 0}
+	ret := position{start: 0, end: 0, lineCol: p.lineCol}
 	if len(p.statements) == 0 {
 		return ret
 	}
@@ -56,9 +58,10 @@ func (p *program) position() position {
 //
 
 type setStatement struct {
-	tok    token
-	target assignable
-	value  expression
+	tok     token
+	target  assignable
+	value   expression
+	lineCol string
 }
 
 type assignable interface {
@@ -91,8 +94,9 @@ func (s *setStatement) string() string {
 }
 func (s *setStatement) position() position {
 	return position{
-		start: s.target.position().start,
-		end:   s.value.position().end,
+		start:   s.target.position().start,
+		end:     s.value.position().end,
+		lineCol: s.lineCol,
 	}
 }
 
@@ -102,6 +106,7 @@ type whenStatement struct {
 	tok         token
 	condition   expression
 	consequence statement
+	linecol     string
 }
 
 func (ws *whenStatement) statementNode() {}
@@ -111,8 +116,9 @@ func (ws *whenStatement) string() string {
 }
 func (ws *whenStatement) position() position {
 	return position{
-		start: ws.tok.start,
-		end:   ws.consequence.position().end,
+		start:   ws.tok.start,
+		end:     ws.consequence.position().end,
+		lineCol: ws.linecol,
 	}
 }
 
@@ -132,10 +138,7 @@ func (es *expressionStatement) string() string {
 }
 func (es *expressionStatement) token() token { return es.tok }
 func (es *expressionStatement) position() position {
-	return position{
-		start: es.expression.position().start,
-		end:   es.expression.position().end,
-	}
+	return es.expression.position()
 }
 
 // expressions
@@ -145,6 +148,7 @@ type prefixExpression struct {
 	tok      token
 	operator string
 	right    expression
+	lineCol  string
 }
 
 func (pe *prefixExpression) expressionNode() {}
@@ -154,8 +158,9 @@ func (pe *prefixExpression) string() string {
 }
 func (pe *prefixExpression) position() position {
 	return position{
-		start: pe.tok.start,
-		end:   pe.right.position().end,
+		start:   pe.tok.start,
+		end:     pe.right.position().end,
+		lineCol: pe.lineCol,
 	}
 }
 
@@ -164,8 +169,9 @@ func (pe *prefixExpression) position() position {
 type infixExpression struct {
 	tok      token
 	left     expression
-	operator string
 	right    expression
+	operator string
+	lineCol  string
 }
 
 func (ie *infixExpression) expressionNode() {}
@@ -175,8 +181,9 @@ func (ie *infixExpression) string() string {
 }
 func (ie *infixExpression) position() position {
 	return position{
-		start: ie.left.position().start,
-		end:   ie.right.position().end,
+		start:   ie.left.position().start,
+		end:     ie.right.position().end,
+		lineCol: ie.lineCol,
 	}
 }
 

@@ -105,7 +105,7 @@ func (p *parser) next() {
 }
 
 func (p *parser) parseProgram() (*program, error) {
-	program := &program{statements: []statement{}}
+	program := &program{statements: []statement{}, lineCol: p.lineColString(p.currentToken.start)}
 	for !p.isCurrentToken(tok_eof) && !p.isCurrentToken(tok_illegal) {
 		statement := p.parseStatement()
 		program.statements = append(program.statements, statement)
@@ -155,7 +155,7 @@ func (p *parser) parseExpression(precedence int) expression {
 }
 
 func (p *parser) parseInfixExpression(left expression) expression {
-	ret := &infixExpression{tok: p.currentToken, left: left, operator: p.currentToken.value}
+	ret := &infixExpression{tok: p.currentToken, left: left, operator: p.currentToken.value, lineCol: p.lineColString(p.currentToken.start)}
 	precedence := lookupPrecedence(p.currentToken.tokenType)
 	p.next()
 	ret.right = p.parseExpression(precedence)
@@ -163,7 +163,7 @@ func (p *parser) parseInfixExpression(left expression) expression {
 }
 
 func (p *parser) parsePrefixExpression() expression {
-	ret := &prefixExpression{tok: p.currentToken, operator: p.currentToken.value}
+	ret := &prefixExpression{tok: p.currentToken, operator: p.currentToken.value, lineCol: p.lineColString(p.currentToken.start)}
 	p.next()
 	ret.right = p.parseExpression(prefix)
 	return ret
@@ -383,7 +383,7 @@ func (p *parser) parseStringLiteral() expression {
 // specific statement parsers
 
 func (p *parser) parseSetStatement() *setStatement {
-	ret := &setStatement{tok: p.currentToken}
+	ret := &setStatement{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
 	start := p.currentToken.start
 	if !p.mustNextToken(tok_ident) { // ident is fine here since paths always start with ident
 		return nil
@@ -408,6 +408,7 @@ func (p *parser) parseSetStatement() *setStatement {
 
 func (p *parser) parseWhenStatement() *whenStatement {
 	ret := &whenStatement{tok: p.currentToken}
+	ret.linecol = p.lineColString(p.currentToken.start)
 	p.next() // to expr
 	ret.condition = p.parseExpression(lowest)
 	if !p.mustNextToken(tok_double_colon) {
@@ -458,6 +459,10 @@ func (p *parser) err(message string, position int) {
 
 func (p *parser) rawStringFromStartEnd(start, end int) string {
 	return string(p.lexer.input[start:end])
+}
+
+func (p *parser) lineColString(targetIdx int) string {
+	return lineColString(lineAndCol(p.lexer.input, targetIdx))
 }
 
 func (p *parser) registerPrefixFunc(t tokenType, fn prefixFunc) {
