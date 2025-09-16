@@ -190,9 +190,10 @@ func (ie *infixExpression) position() position {
 //
 
 type mapLiteral struct {
-	tok    token
-	pairs  map[string]expression
-	endPos int
+	tok     token
+	pairs   map[string]expression
+	endPos  int
+	lineCol string
 }
 
 func (m *mapLiteral) expressionNode() {}
@@ -212,8 +213,9 @@ func (m *mapLiteral) string() string {
 }
 func (m *mapLiteral) position() position {
 	return position{
-		start: m.tok.start,
-		end:   m.endPos,
+		start:   m.tok.start,
+		end:     m.endPos,
+		lineCol: m.lineCol,
 	}
 }
 
@@ -223,6 +225,7 @@ type arrayLiteral struct {
 	tok     token
 	entries []expression
 	endPos  int
+	lineCol string
 }
 
 func (a *arrayLiteral) expressionNode() {}
@@ -236,8 +239,9 @@ func (a *arrayLiteral) string() string {
 }
 func (a *arrayLiteral) position() position {
 	return position{
-		start: a.tok.start,
-		end:   a.endPos,
+		start:   a.tok.start,
+		end:     a.endPos,
+		lineCol: a.lineCol,
 	}
 }
 
@@ -258,16 +262,18 @@ func (ie *indexExpression) string() string {
 }
 func (ie *indexExpression) position() position {
 	return position{
-		start: ie.left.position().start,
-		end:   ie.endPos,
+		start:   ie.left.position().start,
+		end:     ie.endPos,
+		lineCol: ie.left.position().lineCol,
 	}
 }
 
 //
 
 type identifierExpression struct {
-	tok   token
-	value string
+	tok     token
+	value   string
+	lineCol string
 }
 
 func (ie *identifierExpression) expressionNode() {}
@@ -276,8 +282,9 @@ func (ie *identifierExpression) token() token    { return ie.tok }
 func (ie *identifierExpression) string() string  { return ie.value }
 func (ie *identifierExpression) position() position {
 	return position{
-		start: ie.tok.start,
-		end:   ie.tok.end,
+		start:   ie.tok.start,
+		end:     ie.tok.end,
+		lineCol: ie.lineCol,
 	}
 }
 func (ie *identifierExpression) toAssignPath() *assignPath {
@@ -296,6 +303,7 @@ type pathExpression struct {
 	left      pathPartExpression
 	tok       token
 	attribute pathPartExpression
+	lineCol   string
 }
 
 func (pe *pathExpression) expressionNode() {}
@@ -303,8 +311,9 @@ func (pe *pathExpression) pathPartNode()   {}
 func (pe *pathExpression) token() token    { return pe.tok }
 func (pe *pathExpression) position() position {
 	return position{
-		start: pe.left.position().start,
-		end:   pe.attribute.position().end,
+		start:   pe.left.position().start,
+		end:     pe.attribute.position().end,
+		lineCol: pe.lineCol,
 	}
 }
 func (pe *pathExpression) string() string {
@@ -340,8 +349,9 @@ func handlePathStepAttribute(attr pathPartExpression) (assignStepType, string) {
 //
 
 type integerLiteral struct {
-	tok   token
-	value int64
+	tok     token
+	value   int64
+	lineCol string
 }
 
 func (il *integerLiteral) expressionNode() {}
@@ -349,16 +359,18 @@ func (il *integerLiteral) token() token    { return il.tok }
 func (il *integerLiteral) string() string  { return il.tok.value }
 func (il *integerLiteral) position() position {
 	return position{
-		start: il.tok.start,
-		end:   il.tok.end,
+		start:   il.tok.start,
+		end:     il.tok.end,
+		lineCol: il.lineCol,
 	}
 }
 
 //
 
 type floatLiteral struct {
-	tok   token
-	value float64
+	tok     token
+	value   float64
+	lineCol string
 }
 
 func (fl *floatLiteral) expressionNode() {}
@@ -366,16 +378,18 @@ func (fl *floatLiteral) token() token    { return fl.tok }
 func (fl *floatLiteral) string() string  { return fl.tok.value }
 func (fl *floatLiteral) position() position {
 	return position{
-		start: fl.tok.start,
-		end:   fl.tok.end,
+		start:   fl.tok.start,
+		end:     fl.tok.end,
+		lineCol: fl.lineCol,
 	}
 }
 
 //
 
 type booleanLiteral struct {
-	tok   token
-	value bool
+	tok     token
+	value   bool
+	lineCol string
 }
 
 func (bl *booleanLiteral) expressionNode() {}
@@ -383,16 +397,18 @@ func (bl *booleanLiteral) token() token    { return bl.tok }
 func (bl *booleanLiteral) string() string  { return bl.tok.value }
 func (bl *booleanLiteral) position() position {
 	return position{
-		start: bl.tok.start,
-		end:   bl.tok.end,
+		start:   bl.tok.start,
+		end:     bl.tok.end,
+		lineCol: bl.lineCol,
 	}
 }
 
 //
 
 type stringLiteral struct {
-	tok   token
-	value string
+	tok     token
+	value   string
+	lineCol string
 }
 
 func (sl *stringLiteral) expressionNode() {}
@@ -401,8 +417,9 @@ func (sl *stringLiteral) token() token    { return sl.tok }
 func (sl *stringLiteral) string() string  { return fmt.Sprintf("\"%s\"", sl.value) }
 func (sl *stringLiteral) position() position {
 	return position{
-		start: sl.tok.start,
-		end:   sl.tok.end,
+		start:   sl.tok.start,
+		end:     sl.tok.end,
+		lineCol: sl.lineCol,
 	}
 }
 
@@ -455,7 +472,8 @@ func (c *callExpression) string() string {
 }
 func (c *callExpression) position() position {
 	return position{
-		start: c.name.position().start,
-		end:   c.endPos,
+		start:   c.name.position().start,
+		end:     c.endPos,
+		lineCol: c.name.position().lineCol,
 	}
 }

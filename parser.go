@@ -185,7 +185,7 @@ func (p *parser) parseCallExpression(left expression) expression {
 }
 
 func (p *parser) parseMapLiteral() expression {
-	ret := &mapLiteral{tok: p.currentToken}
+	ret := &mapLiteral{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
 	ret.pairs = make(map[string]expression)
 	for !p.isPeekToken(tok_rcurly) {
 		p.next()
@@ -213,7 +213,7 @@ func (p *parser) parseMapLiteral() expression {
 
 // arrays
 func (p *parser) parseArrayLiteral() expression {
-	ret := &arrayLiteral{tok: p.currentToken}
+	ret := &arrayLiteral{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
 	ret.entries = p.parseExpressionList(tok_rsquare)
 	ret.endPos = p.currentToken.end
 	return ret
@@ -309,7 +309,7 @@ func (p *parser) parseTemplateInnerExpression() (expression, bool) {
 }
 
 func (p *parser) parsePathExpression(left expression) expression {
-	ret := &pathExpression{tok: p.currentToken}
+	ret := &pathExpression{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
 	precedence := lookupPrecedence(p.currentToken.tokenType)
 	leftPart, ok := left.(pathPartExpression)
 	if !ok {
@@ -330,11 +330,11 @@ func (p *parser) parsePathExpression(left expression) expression {
 }
 
 func (p *parser) parseIdentiferExpression() expression {
-	return &identifierExpression{tok: p.currentToken, value: p.currentToken.value}
+	return &identifierExpression{tok: p.currentToken, value: p.currentToken.value, lineCol: p.lineColString(p.currentToken.start)}
 }
 
 func (p *parser) parseIntegerLiteral() expression {
-	ret := &integerLiteral{tok: p.currentToken}
+	ret := &integerLiteral{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
 
 	num, err := strconv.ParseInt(p.currentToken.value, 10, 64)
 	if err != nil {
@@ -347,7 +347,7 @@ func (p *parser) parseIntegerLiteral() expression {
 }
 
 func (p *parser) parseFloatLiteral() expression {
-	ret := &floatLiteral{tok: p.currentToken}
+	ret := &floatLiteral{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
 
 	num, err := strconv.ParseFloat(p.currentToken.value, 64)
 	if err != nil {
@@ -360,7 +360,7 @@ func (p *parser) parseFloatLiteral() expression {
 }
 
 func (p *parser) parseBooleanLiteral() expression {
-	ret := &booleanLiteral{tok: p.currentToken}
+	ret := &booleanLiteral{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
 	switch p.currentToken.value {
 	case "true":
 		ret.value = true
@@ -375,7 +375,7 @@ func (p *parser) parseBooleanLiteral() expression {
 }
 
 func (p *parser) parseStringLiteral() expression {
-	return &stringLiteral{tok: p.currentToken, value: p.currentToken.value}
+	return &stringLiteral{tok: p.currentToken, value: p.currentToken.value, lineCol: p.lineColString(p.currentToken.start)}
 }
 
 //

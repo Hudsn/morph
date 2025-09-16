@@ -4,8 +4,9 @@ type token struct {
 	tokenType tokenType
 	value     string
 
-	start int
-	end   int
+	start   int
+	end     int
+	lineCol string
 }
 
 type tokenType string

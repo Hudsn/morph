@@ -149,8 +149,9 @@ func (l *lexer) handleEOF() token {
 	return token{
 		tokenType: tok_eof,
 		value:     string(l.currentChar),
-		start:     0,
+		start:     0, // just set to 0 at this point since we're done anyway
 		end:       0,
+		lineCol:   l.lineColString(len(l.input)),
 	}
 }
 
@@ -444,6 +445,10 @@ func (l *lexer) stringFromToken(t token) string {
 	return string(l.input[t.start:t.end])
 }
 
+func (l *lexer) lineColString(targetIdx int) string {
+	return lineColString(lineAndCol(l.input, targetIdx))
+}
+
 // reader helpers
 
 func (l *lexer) readIdentifier() token {
@@ -521,7 +526,7 @@ type lexContext struct {
 	incrTriggerToken tokenType
 	decrTriggerToken tokenType
 	depthCounter     int
-	stackLength      int
+	// stackLength      int
 }
 
 var defaultLexContext *lexContext = &lexContext{
@@ -536,7 +541,7 @@ func (l *lexer) newEnclosedContext(t lexContextType, incr tokenType, decr tokenT
 		incrTriggerToken: incr,
 		decrTriggerToken: decr,
 		depthCounter:     initCounter,
-		stackLength:      l.context.stackLength + 1,
+		// stackLength:      l.context.stackLength + 1,
 	}
 	l.context = new
 }

@@ -1,6 +1,8 @@
 package morph
 
 import (
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -792,14 +794,6 @@ func TestLexIdent(t *testing.T) {
 	checkLexTestCase(t, input, tests)
 }
 
-type testCase struct {
-	tokenType  tokenType
-	value      string
-	start      int
-	end        int
-	rangeValue string // the literal value captured by the start and end markers; for ex in a string "asdf", it would include the quotes as well even though the value is just asdf
-}
-
 func TestLexMinus(t *testing.T) {
 	input := "-5"
 	tests := []testCase{
@@ -842,6 +836,16 @@ func TestLexExclamation(t *testing.T) {
 	checkLexTestCase(t, input, tests)
 }
 
+type testCase struct {
+	tokenType  tokenType
+	value      string
+	start      int
+	end        int
+	rangeValue string // the literal value captured by the start and end markers; for ex in a string "asdf", it would include the quotes as well even though the value is just asdf
+	line       int
+	col        int
+}
+
 //helepr
 
 func checkLexTestCase(t *testing.T, input string, cases []testCase) {
@@ -862,6 +866,24 @@ func checkLexTestCase(t *testing.T, input string, cases []testCase) {
 		}
 		if tt.rangeValue != lexer.stringFromToken(tok) {
 			t.Errorf("case %d: wrong token literal derived from range: want=%s, got=%s", idx+1, tt.rangeValue, lexer.stringFromToken(tok))
+		}
+		lineColSplit := strings.Split(tok.lineCol, ":")
+		if len(lineColSplit) != 2 {
+			t.Fatalf("improperly formatted linecol string: %q", tok.lineCol)
+		}
+		gotLine, err := strconv.Atoi(lineColSplit[0])
+		if err != nil {
+			t.Fatalf("case %d: fatal err %s", idx+1, err.Error())
+		}
+		gotCol, err := strconv.Atoi(lineColSplit[1])
+		if err != nil {
+			t.Fatalf("case %d: fatal err %s", idx+1, err.Error())
+		}
+		if tt.line != gotLine {
+			t.Errorf("case %d: wrong line value: want=%d, got=%d", idx+1, tt.line, gotLine)
+		}
+		if tt.col != gotCol {
+			t.Errorf("case %d: wrong col value: want=%d, got=%d", idx+1, tt.col, gotCol)
 		}
 	}
 }
