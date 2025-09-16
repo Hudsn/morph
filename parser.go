@@ -105,7 +105,7 @@ func (p *parser) next() {
 }
 
 func (p *parser) parseProgram() (*program, error) {
-	program := &program{statements: []statement{}, lineCol: p.lineColString(p.currentToken.start)}
+	program := &program{statements: []statement{}}
 	for !p.isCurrentToken(tok_eof) && !p.isCurrentToken(tok_illegal) {
 		statement := p.parseStatement()
 		program.statements = append(program.statements, statement)
@@ -155,7 +155,7 @@ func (p *parser) parseExpression(precedence int) expression {
 }
 
 func (p *parser) parseInfixExpression(left expression) expression {
-	ret := &infixExpression{tok: p.currentToken, left: left, operator: p.currentToken.value, lineCol: p.lineColString(p.currentToken.start)}
+	ret := &infixExpression{tok: p.currentToken, left: left, operator: p.currentToken.value}
 	precedence := lookupPrecedence(p.currentToken.tokenType)
 	p.next()
 	ret.right = p.parseExpression(precedence)
@@ -163,7 +163,7 @@ func (p *parser) parseInfixExpression(left expression) expression {
 }
 
 func (p *parser) parsePrefixExpression() expression {
-	ret := &prefixExpression{tok: p.currentToken, operator: p.currentToken.value, lineCol: p.lineColString(p.currentToken.start)}
+	ret := &prefixExpression{tok: p.currentToken, operator: p.currentToken.value}
 	p.next()
 	ret.right = p.parseExpression(prefix)
 	return ret
@@ -185,7 +185,7 @@ func (p *parser) parseCallExpression(left expression) expression {
 }
 
 func (p *parser) parseMapLiteral() expression {
-	ret := &mapLiteral{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
+	ret := &mapLiteral{tok: p.currentToken}
 	ret.pairs = make(map[string]expression)
 	for !p.isPeekToken(tok_rcurly) {
 		p.next()
@@ -213,7 +213,7 @@ func (p *parser) parseMapLiteral() expression {
 
 // arrays
 func (p *parser) parseArrayLiteral() expression {
-	ret := &arrayLiteral{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
+	ret := &arrayLiteral{tok: p.currentToken}
 	ret.entries = p.parseExpressionList(tok_rsquare)
 	ret.endPos = p.currentToken.end
 	return ret
@@ -309,7 +309,7 @@ func (p *parser) parseTemplateInnerExpression() (expression, bool) {
 }
 
 func (p *parser) parsePathExpression(left expression) expression {
-	ret := &pathExpression{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
+	ret := &pathExpression{tok: p.currentToken}
 	precedence := lookupPrecedence(p.currentToken.tokenType)
 	leftPart, ok := left.(pathPartExpression)
 	if !ok {
@@ -330,11 +330,11 @@ func (p *parser) parsePathExpression(left expression) expression {
 }
 
 func (p *parser) parseIdentiferExpression() expression {
-	return &identifierExpression{tok: p.currentToken, value: p.currentToken.value, lineCol: p.lineColString(p.currentToken.start)}
+	return &identifierExpression{tok: p.currentToken, value: p.currentToken.value}
 }
 
 func (p *parser) parseIntegerLiteral() expression {
-	ret := &integerLiteral{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
+	ret := &integerLiteral{tok: p.currentToken}
 
 	num, err := strconv.ParseInt(p.currentToken.value, 10, 64)
 	if err != nil {
@@ -347,7 +347,7 @@ func (p *parser) parseIntegerLiteral() expression {
 }
 
 func (p *parser) parseFloatLiteral() expression {
-	ret := &floatLiteral{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
+	ret := &floatLiteral{tok: p.currentToken}
 
 	num, err := strconv.ParseFloat(p.currentToken.value, 64)
 	if err != nil {
@@ -360,7 +360,7 @@ func (p *parser) parseFloatLiteral() expression {
 }
 
 func (p *parser) parseBooleanLiteral() expression {
-	ret := &booleanLiteral{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
+	ret := &booleanLiteral{tok: p.currentToken}
 	switch p.currentToken.value {
 	case "true":
 		ret.value = true
@@ -375,7 +375,7 @@ func (p *parser) parseBooleanLiteral() expression {
 }
 
 func (p *parser) parseStringLiteral() expression {
-	return &stringLiteral{tok: p.currentToken, value: p.currentToken.value, lineCol: p.lineColString(p.currentToken.start)}
+	return &stringLiteral{tok: p.currentToken, value: p.currentToken.value}
 }
 
 //
@@ -383,7 +383,7 @@ func (p *parser) parseStringLiteral() expression {
 // specific statement parsers
 
 func (p *parser) parseSetStatement() *setStatement {
-	ret := &setStatement{tok: p.currentToken, lineCol: p.lineColString(p.currentToken.start)}
+	ret := &setStatement{tok: p.currentToken}
 	start := p.currentToken.start
 	if !p.mustNextToken(tok_ident) { // ident is fine here since paths always start with ident
 		return nil
@@ -408,7 +408,6 @@ func (p *parser) parseSetStatement() *setStatement {
 
 func (p *parser) parseWhenStatement() *whenStatement {
 	ret := &whenStatement{tok: p.currentToken}
-	ret.linecol = p.lineColString(p.currentToken.start)
 	p.next() // to expr
 	ret.condition = p.parseExpression(lowest)
 	if !p.mustNextToken(tok_double_colon) {

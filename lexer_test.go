@@ -15,6 +15,8 @@ func TestLexArrow(t *testing.T) {
 			end:        4,
 			value:      "asdf",
 			rangeValue: "asdf",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_arrow,
@@ -22,6 +24,8 @@ func TestLexArrow(t *testing.T) {
 			end:        7,
 			value:      "~>",
 			rangeValue: "~>",
+			line:       1,
+			col:        6,
 		},
 		{
 			tokenType:  tok_int,
@@ -29,6 +33,8 @@ func TestLexArrow(t *testing.T) {
 			end:        11,
 			value:      "123",
 			rangeValue: "123",
+			line:       1,
+			col:        9,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -43,6 +49,8 @@ func TestLexComma(t *testing.T) {
 			end:        1,
 			value:      "[",
 			rangeValue: "[",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_int,
@@ -50,6 +58,8 @@ func TestLexComma(t *testing.T) {
 			end:        2,
 			value:      "1",
 			rangeValue: "1",
+			line:       1,
+			col:        2,
 		},
 		{
 			tokenType:  tok_comma,
@@ -57,6 +67,8 @@ func TestLexComma(t *testing.T) {
 			end:        3,
 			value:      ",",
 			rangeValue: ",",
+			line:       1,
+			col:        3,
 		},
 		{
 			tokenType:  tok_string,
@@ -64,6 +76,8 @@ func TestLexComma(t *testing.T) {
 			end:        10,
 			value:      "asdf",
 			rangeValue: `"asdf"`,
+			line:       1,
+			col:        5,
 		},
 		{
 			tokenType:  tok_comma,
@@ -71,6 +85,8 @@ func TestLexComma(t *testing.T) {
 			end:        11,
 			value:      ",",
 			rangeValue: `,`,
+			line:       1,
+			col:        11,
 		},
 		{
 			tokenType:  tok_template_string,
@@ -78,6 +94,8 @@ func TestLexComma(t *testing.T) {
 			end:        13,
 			value:      "",
 			rangeValue: "'",
+			line:       1,
+			col:        13,
 		},
 		{
 			tokenType:  tok_template_start,
@@ -85,6 +103,8 @@ func TestLexComma(t *testing.T) {
 			end:        15,
 			value:      "${",
 			rangeValue: "${",
+			line:       1,
+			col:        14,
 		},
 		{
 			tokenType:  tok_ident,
@@ -92,6 +112,8 @@ func TestLexComma(t *testing.T) {
 			end:        20,
 			value:      "myvar",
 			rangeValue: "myvar",
+			line:       1,
+			col:        16,
 		},
 		{
 			tokenType:  tok_rcurly,
@@ -99,6 +121,8 @@ func TestLexComma(t *testing.T) {
 			end:        21,
 			value:      "}",
 			rangeValue: "}",
+			line:       1,
+			col:        21,
 		},
 		{
 			tokenType:  tok_template_string,
@@ -106,6 +130,8 @@ func TestLexComma(t *testing.T) {
 			end:        22,
 			value:      "",
 			rangeValue: "'",
+			line:       1,
+			col:        22,
 		},
 		{
 			tokenType:  tok_comma,
@@ -113,6 +139,8 @@ func TestLexComma(t *testing.T) {
 			end:        23,
 			value:      ",",
 			rangeValue: ",",
+			line:       1,
+			col:        23,
 		},
 		{
 			tokenType:  tok_int,
@@ -120,6 +148,9 @@ func TestLexComma(t *testing.T) {
 			end:        25,
 			value:      "2",
 			rangeValue: "2",
+			line:       1,
+			col:        25,
+			// `[1, "asdf", '${myvar}', 2]`
 		},
 		{
 			tokenType:  tok_rsquare,
@@ -127,6 +158,8 @@ func TestLexComma(t *testing.T) {
 			end:        26,
 			value:      "]",
 			rangeValue: "]",
+			line:       1,
+			col:        26,
 		},
 		{
 			tokenType:  tok_eof,
@@ -134,6 +167,8 @@ func TestLexComma(t *testing.T) {
 			end:        0,
 			value:      string(nullchar),
 			rangeValue: "",
+			line:       1,
+			col:        27,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -148,6 +183,8 @@ func TestLexBinaryOperators(t *testing.T) {
 			end:        2,
 			value:      "&&",
 			rangeValue: "&&",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_binary_or,
@@ -155,6 +192,8 @@ func TestLexBinaryOperators(t *testing.T) {
 			end:        5,
 			value:      "||",
 			rangeValue: "||",
+			line:       1,
+			col:        4,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -169,6 +208,8 @@ func TestLexParentheses(t *testing.T) {
 			end:        1,
 			value:      "(",
 			rangeValue: "(",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_rparen,
@@ -176,6 +217,8 @@ func TestLexParentheses(t *testing.T) {
 			end:        2,
 			value:      ")",
 			rangeValue: ")",
+			line:       1,
+			col:        2,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -189,6 +232,8 @@ func TestLexSquareBrackets(t *testing.T) {
 			end:        1,
 			value:      "[",
 			rangeValue: "[",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_rsquare,
@@ -196,6 +241,8 @@ func TestLexSquareBrackets(t *testing.T) {
 			end:        2,
 			value:      "]",
 			rangeValue: "]",
+			line:       1,
+			col:        2,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -210,6 +257,8 @@ func TestLexGTEQ(t *testing.T) {
 			end:        1,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_gteq,
@@ -217,6 +266,8 @@ func TestLexGTEQ(t *testing.T) {
 			end:        4,
 			value:      ">=",
 			rangeValue: ">=",
+			line:       1,
+			col:        3,
 		},
 		{
 			tokenType:  tok_int,
@@ -224,6 +275,8 @@ func TestLexGTEQ(t *testing.T) {
 			end:        6,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        6,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -237,6 +290,8 @@ func TestLexLTEQ(t *testing.T) {
 			end:        1,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_lteq,
@@ -244,6 +299,8 @@ func TestLexLTEQ(t *testing.T) {
 			end:        4,
 			value:      "<=",
 			rangeValue: "<=",
+			line:       1,
+			col:        3,
 		},
 		{
 			tokenType:  tok_int,
@@ -251,6 +308,8 @@ func TestLexLTEQ(t *testing.T) {
 			end:        6,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        6,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -264,6 +323,8 @@ func TestLexLT(t *testing.T) {
 			end:        1,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_lt,
@@ -271,6 +332,8 @@ func TestLexLT(t *testing.T) {
 			end:        3,
 			value:      "<",
 			rangeValue: "<",
+			line:       1,
+			col:        3,
 		},
 		{
 			tokenType:  tok_int,
@@ -278,6 +341,8 @@ func TestLexLT(t *testing.T) {
 			end:        5,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        5,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -291,6 +356,8 @@ func TestLexGT(t *testing.T) {
 			end:        1,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_gt,
@@ -298,6 +365,8 @@ func TestLexGT(t *testing.T) {
 			end:        3,
 			value:      ">",
 			rangeValue: ">",
+			line:       1,
+			col:        3,
 		},
 		{
 			tokenType:  tok_int,
@@ -305,6 +374,8 @@ func TestLexGT(t *testing.T) {
 			end:        5,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        5,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -319,6 +390,8 @@ func TestLexMod(t *testing.T) {
 			end:        1,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_mod,
@@ -326,6 +399,8 @@ func TestLexMod(t *testing.T) {
 			end:        3,
 			value:      "%",
 			rangeValue: "%",
+			line:       1,
+			col:        3,
 		},
 		{
 			tokenType:  tok_int,
@@ -333,6 +408,8 @@ func TestLexMod(t *testing.T) {
 			end:        5,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        5,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -346,6 +423,8 @@ func TestLexSlash(t *testing.T) {
 			end:        1,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_slash,
@@ -353,6 +432,8 @@ func TestLexSlash(t *testing.T) {
 			end:        3,
 			value:      "/",
 			rangeValue: "/",
+			line:       1,
+			col:        3,
 		},
 		{
 			tokenType:  tok_int,
@@ -360,6 +441,8 @@ func TestLexSlash(t *testing.T) {
 			end:        5,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        5,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -374,6 +457,8 @@ func TestLexAsterisk(t *testing.T) {
 			end:        1,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_asterisk,
@@ -381,6 +466,8 @@ func TestLexAsterisk(t *testing.T) {
 			end:        3,
 			value:      "*",
 			rangeValue: "*",
+			line:       1,
+			col:        3,
 		},
 		{
 			tokenType:  tok_int,
@@ -388,6 +475,8 @@ func TestLexAsterisk(t *testing.T) {
 			end:        5,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        5,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -402,6 +491,8 @@ func TestLexEqual(t *testing.T) {
 			end:        1,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_equal,
@@ -409,6 +500,8 @@ func TestLexEqual(t *testing.T) {
 			end:        4,
 			value:      "==",
 			rangeValue: "==",
+			line:       1,
+			col:        3,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -423,6 +516,8 @@ func TestLexNotEqual(t *testing.T) {
 			end:        1,
 			value:      "5",
 			rangeValue: "5",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_not_equal,
@@ -430,6 +525,8 @@ func TestLexNotEqual(t *testing.T) {
 			end:        4,
 			value:      "!=",
 			rangeValue: "!=",
+			line:       1,
+			col:        3,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -444,6 +541,8 @@ func TestLexDoubleQuoteEscapeError(t *testing.T) {
 			end:        20,
 			value:      "invalid escape sequence",
 			rangeValue: `"my\ncool\"string\v"`,
+			line:       1,
+			col:        1,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -459,6 +558,8 @@ func TestLexDoubleQuoteNewlineError(t *testing.T) {
 			end:        3,
 			value:      "string literal not terminated",
 			rangeValue: `"my`,
+			line:       1,
+			col:        1,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -473,6 +574,8 @@ func TestLexDoubleQuote(t *testing.T) {
 			end:        11,
 			value:      "my string",
 			rangeValue: `"my string"`,
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_string,
@@ -480,6 +583,8 @@ func TestLexDoubleQuote(t *testing.T) {
 			end:        29,
 			value:      "my other string",
 			rangeValue: `"my other string"`,
+			line:       1,
+			col:        13,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -494,6 +599,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        10,
 			value:      "mystring ",
 			rangeValue: "'mystring ",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_template_start,
@@ -501,6 +608,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        12,
 			value:      "${",
 			rangeValue: "${",
+			line:       1,
+			col:        11,
 		},
 		{
 			tokenType:  tok_ident,
@@ -508,6 +617,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        17,
 			value:      "myvar",
 			rangeValue: "myvar",
+			line:       1,
+			col:        13,
 		},
 		{
 			tokenType:  tok_rcurly,
@@ -515,6 +626,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        18,
 			value:      "}",
 			rangeValue: "}",
+			line:       1,
+			col:        18,
 		},
 		{
 			tokenType:  tok_template_string,
@@ -522,6 +635,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        24,
 			value:      " nest ",
 			rangeValue: " nest ",
+			line:       1,
+			col:        19,
 		},
 		{
 			tokenType:  tok_template_start,
@@ -529,6 +644,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        26,
 			value:      "${",
 			rangeValue: "${",
+			line:       1,
+			col:        25,
 		},
 		{
 			tokenType:  tok_template_string,
@@ -536,6 +653,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        39,
 			value:      "nest string ",
 			rangeValue: "'nest string ",
+			line:       1,
+			col:        27,
 		},
 		{
 			tokenType:  tok_template_start,
@@ -543,6 +662,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        41,
 			value:      "${",
 			rangeValue: "${",
+			line:       1,
+			col:        40,
 		},
 		{
 			tokenType:  tok_ident,
@@ -550,6 +671,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        49,
 			value:      "nest_var",
 			rangeValue: "nest_var",
+			line:       1,
+			col:        42,
 		},
 		{
 			tokenType:  tok_rcurly,
@@ -557,6 +680,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        50,
 			value:      "}",
 			rangeValue: "}",
+			line:       1,
+			col:        50,
 		},
 		{
 			tokenType:  tok_template_string,
@@ -564,6 +689,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        52,
 			value:      "!",
 			rangeValue: "!'",
+			line:       1,
+			col:        51,
 		},
 		{
 			tokenType:  tok_rcurly,
@@ -571,6 +698,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        53,
 			value:      "}",
 			rangeValue: "}",
+			line:       1,
+			col:        53,
 		},
 		{
 			tokenType:  tok_template_string,
@@ -578,6 +707,8 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        54,
 			value:      "",
 			rangeValue: "'",
+			line:       1,
+			col:        54,
 		},
 		{
 			tokenType:  tok_eof,
@@ -585,13 +716,15 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 			end:        0,
 			value:      string(nullchar),
 			rangeValue: "",
+			line:       1,
+			col:        55,
 		},
 	}
 	checkLexTestCase(t, input, tests)
-	l := newLexer([]rune(input))
-	for range tests {
-		l.tokenize()
-	}
+	// l := newLexer([]rune(input))
+	// for range tests {
+	// 	l.tokenize()
+	// }
 }
 func TestLexSingleQuoteEscapeError(t *testing.T) {
 	input := `'mystring\v'`
@@ -602,6 +735,8 @@ func TestLexSingleQuoteEscapeError(t *testing.T) {
 			end:        12,
 			value:      "invalid escape sequence",
 			rangeValue: "'mystring\\v'",
+			line:       1,
+			col:        1,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -615,6 +750,8 @@ func TestLexSingleQuoteEscape(t *testing.T) {
 			end:        14,
 			value:      "mystring\n\t",
 			rangeValue: "'mystring\\n\\t'",
+			line:       1,
+			col:        1,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -628,6 +765,8 @@ func TestLexSingleQuoteBase(t *testing.T) {
 			end:        10,
 			value:      "mystring",
 			rangeValue: "'mystring'",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_template_string,
@@ -635,6 +774,8 @@ func TestLexSingleQuoteBase(t *testing.T) {
 			end:        22,
 			value:      "endstring",
 			rangeValue: "'endstring'",
+			line:       1,
+			col:        12,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -649,6 +790,8 @@ func TestLexColon(t *testing.T) {
 			end:        1,
 			value:      ":",
 			rangeValue: ":",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_double_colon,
@@ -656,6 +799,8 @@ func TestLexColon(t *testing.T) {
 			end:        4,
 			value:      "::",
 			rangeValue: "::",
+			line:       1,
+			col:        3,
 		},
 		{
 			tokenType:  tok_colon,
@@ -663,6 +808,8 @@ func TestLexColon(t *testing.T) {
 			end:        6,
 			value:      ":",
 			rangeValue: ":",
+			line:       1,
+			col:        6,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -677,6 +824,8 @@ func TestLexBoolean(t *testing.T) {
 			start:      0,
 			end:        4,
 			rangeValue: "true",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_false,
@@ -684,6 +833,8 @@ func TestLexBoolean(t *testing.T) {
 			start:      5,
 			end:        10,
 			rangeValue: "false",
+			line:       1,
+			col:        6,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -698,6 +849,8 @@ func TestLexAssign(t *testing.T) {
 			start:      0,
 			end:        1,
 			rangeValue: "=",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_eof,
@@ -705,6 +858,8 @@ func TestLexAssign(t *testing.T) {
 			start:      0,
 			end:        0,
 			rangeValue: "",
+			line:       1,
+			col:        2,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -719,6 +874,8 @@ func TestLexDot(t *testing.T) {
 			start:      0,
 			end:        1,
 			rangeValue: ".",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_eof,
@@ -726,6 +883,8 @@ func TestLexDot(t *testing.T) {
 			start:      0,
 			end:        0,
 			rangeValue: "",
+			line:       1,
+			col:        2,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -740,6 +899,8 @@ func TestLexNumber(t *testing.T) {
 			start:      0,
 			end:        3,
 			rangeValue: "123",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_float,
@@ -747,6 +908,8 @@ func TestLexNumber(t *testing.T) {
 			start:      4,
 			end:        8,
 			rangeValue: "1.23",
+			line:       1,
+			col:        5,
 		},
 		{
 			tokenType:  tok_float,
@@ -754,6 +917,8 @@ func TestLexNumber(t *testing.T) {
 			start:      9,
 			end:        13,
 			rangeValue: ".123",
+			line:       1,
+			col:        10,
 		},
 		{
 			tokenType:  tok_eof,
@@ -761,6 +926,8 @@ func TestLexNumber(t *testing.T) {
 			start:      0,
 			end:        0,
 			rangeValue: "",
+			line:       1,
+			col:        14,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -775,6 +942,8 @@ func TestLexIdent(t *testing.T) {
 			start:      0,
 			end:        3,
 			rangeValue: "abc",
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_dot,
@@ -782,6 +951,8 @@ func TestLexIdent(t *testing.T) {
 			start:      3,
 			end:        4,
 			rangeValue: ".",
+			line:       1,
+			col:        4,
 		},
 		{
 			tokenType:  tok_ident,
@@ -789,6 +960,8 @@ func TestLexIdent(t *testing.T) {
 			start:      4,
 			end:        7,
 			rangeValue: "def",
+			line:       1,
+			col:        5,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -803,6 +976,8 @@ func TestLexMinus(t *testing.T) {
 			rangeValue: "-",
 			start:      0,
 			end:        1,
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_int,
@@ -810,6 +985,8 @@ func TestLexMinus(t *testing.T) {
 			rangeValue: "5",
 			start:      1,
 			end:        2,
+			line:       1,
+			col:        2,
 		},
 	}
 	checkLexTestCase(t, input, tests)
@@ -824,6 +1001,8 @@ func TestLexExclamation(t *testing.T) {
 			rangeValue: "!",
 			start:      0,
 			end:        1,
+			line:       1,
+			col:        1,
 		},
 		{
 			tokenType:  tok_int,
@@ -831,6 +1010,8 @@ func TestLexExclamation(t *testing.T) {
 			rangeValue: "5",
 			start:      1,
 			end:        2,
+			line:       1,
+			col:        2,
 		},
 	}
 	checkLexTestCase(t, input, tests)

@@ -68,7 +68,7 @@ func (l *lexer) tokenize() token {
 	case '>':
 		tok = l.handleGT()
 	case ',':
-		tok = token{tokenType: tok_comma, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+		tok = token{tokenType: tok_comma, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar), lineCol: l.lineColString(l.currentIdx)}
 	case '.':
 		tok = l.handleDot()
 		if tok.tokenType == tok_float {
@@ -78,15 +78,15 @@ func (l *lexer) tokenize() token {
 	case ':':
 		tok = l.handleColon()
 	case '+':
-		tok = token{tokenType: tok_plus, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+		tok = token{tokenType: tok_plus, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar), lineCol: l.lineColString(l.currentIdx)}
 	case '-':
-		tok = token{tokenType: tok_minus, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+		tok = token{tokenType: tok_minus, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar), lineCol: l.lineColString(l.currentIdx)}
 	case '*':
-		tok = token{tokenType: tok_asterisk, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+		tok = token{tokenType: tok_asterisk, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar), lineCol: l.lineColString(l.currentIdx)}
 	case '/':
-		tok = token{tokenType: tok_slash, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+		tok = token{tokenType: tok_slash, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar), lineCol: l.lineColString(l.currentIdx)}
 	case '%':
-		tok = token{tokenType: tok_mod, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar)}
+		tok = token{tokenType: tok_mod, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar), lineCol: l.lineColString(l.currentIdx)}
 	case '!':
 		tok = l.handleExclamation()
 	case '\'':
@@ -94,6 +94,7 @@ func (l *lexer) tokenize() token {
 		l.next() // step inside quote; useful for mode switching so we can only worry about having to check for a closing ' rather than risking advancing as the first action inside the function where we could accidentally go from a closed template literal to a quote, and miss the end quote. For example: 'hello ${world}'  could pick up the string parsing again after the }, and if we called next inside the handler with it starting on ', and then skip it.
 		tok = l.handleSingleQuote()
 		tok.start = start
+		tok.lineCol = l.lineColString(start)
 		return tok
 	case '&':
 		tok = l.handleAmpersand()
@@ -104,18 +105,19 @@ func (l *lexer) tokenize() token {
 		l.next()
 		tok = l.handleDoubleQuote()
 		tok.start = start
+		tok.lineCol = l.lineColString(start)
 	case '{':
 		tok = l.handleLCurly()
 	case '}':
 		tok = l.handleRCurly()
 	case '[':
-		tok = token{tokenType: tok_lsquare, value: "[", start: l.currentIdx, end: l.nextIdx}
+		tok = token{tokenType: tok_lsquare, value: "[", start: l.currentIdx, end: l.nextIdx, lineCol: l.lineColString(l.currentIdx)}
 	case ']':
-		tok = token{tokenType: tok_rsquare, value: "]", start: l.currentIdx, end: l.nextIdx}
+		tok = token{tokenType: tok_rsquare, value: "]", start: l.currentIdx, end: l.nextIdx, lineCol: l.lineColString(l.currentIdx)}
 	case '(':
-		tok = token{tokenType: tok_lparen, value: "(", start: l.currentIdx, end: l.nextIdx}
+		tok = token{tokenType: tok_lparen, value: "(", start: l.currentIdx, end: l.nextIdx, lineCol: l.lineColString(l.currentIdx)}
 	case ')':
-		tok = token{tokenType: tok_rparen, value: ")", start: l.currentIdx, end: l.nextIdx}
+		tok = token{tokenType: tok_rparen, value: ")", start: l.currentIdx, end: l.nextIdx, lineCol: l.lineColString(l.currentIdx)}
 	case '$':
 		tok = l.handleDollarSign()
 	case '~':
@@ -162,6 +164,7 @@ func (l *lexer) handleTilde() token {
 			value:     "unexpected input character",
 			start:     l.currentIdx,
 			end:       l.nextIdx,
+			lineCol:   l.lineColString(l.currentIdx),
 		}
 	}
 	start := l.currentIdx
@@ -171,6 +174,7 @@ func (l *lexer) handleTilde() token {
 		value:     string(l.input[start:l.nextIdx]),
 		start:     start,
 		end:       l.nextIdx,
+		lineCol:   l.lineColString(start),
 	}
 }
 
@@ -181,6 +185,7 @@ func (l *lexer) handleAmpersand() token {
 			value:     "invalid ampersand use",
 			start:     l.currentIdx,
 			end:       l.nextIdx,
+			lineCol:   l.lineColString(l.currentIdx),
 		}
 	}
 	start := l.currentIdx
@@ -190,6 +195,7 @@ func (l *lexer) handleAmpersand() token {
 		value:     string(l.input[start:l.nextIdx]),
 		start:     start,
 		end:       l.nextIdx,
+		lineCol:   l.lineColString(start),
 	}
 }
 
@@ -202,6 +208,7 @@ func (l *lexer) handlePipe() token {
 			start:     start,
 			end:       l.nextIdx,
 			value:     string(l.input[start:l.nextIdx]),
+			lineCol:   l.lineColString(start),
 		}
 	}
 	return token{
@@ -209,6 +216,7 @@ func (l *lexer) handlePipe() token {
 		start:     start,
 		end:       l.nextIdx,
 		value:     string(l.input[start:l.nextIdx]),
+		lineCol:   l.lineColString(start),
 	}
 }
 
@@ -221,6 +229,7 @@ func (l *lexer) handleLT() token {
 			start:     start,
 			end:       l.nextIdx,
 			value:     string(l.input[start:l.nextIdx]),
+			lineCol:   l.lineColString(start),
 		}
 	}
 	return token{
@@ -228,6 +237,7 @@ func (l *lexer) handleLT() token {
 		start:     start,
 		end:       l.nextIdx,
 		value:     string(l.input[start:l.nextIdx]),
+		lineCol:   l.lineColString(start),
 	}
 }
 
@@ -240,6 +250,7 @@ func (l *lexer) handleGT() token {
 			start:     start,
 			end:       l.nextIdx,
 			value:     string(l.input[start:l.nextIdx]),
+			lineCol:   l.lineColString(start),
 		}
 	}
 	return token{
@@ -247,6 +258,7 @@ func (l *lexer) handleGT() token {
 		start:     start,
 		end:       l.nextIdx,
 		value:     string(l.input[start:l.nextIdx]),
+		lineCol:   l.lineColString(start),
 	}
 }
 
@@ -259,6 +271,7 @@ func (l *lexer) handleEqual() token {
 			value:     string(l.input[start:l.nextIdx]),
 			start:     start,
 			end:       l.nextIdx,
+			lineCol:   l.lineColString(start),
 		}
 	}
 	return token{
@@ -266,6 +279,7 @@ func (l *lexer) handleEqual() token {
 		value:     string(l.currentChar),
 		start:     l.currentIdx,
 		end:       l.nextIdx,
+		lineCol:   l.lineColString(l.currentIdx),
 	}
 }
 
@@ -278,6 +292,7 @@ func (l *lexer) handleDot() token {
 		value:     string(l.currentChar),
 		start:     l.currentIdx,
 		end:       l.nextIdx,
+		lineCol:   l.lineColString(l.currentIdx),
 	}
 }
 
@@ -290,6 +305,7 @@ func (l *lexer) handleExclamation() token {
 			value:     string(l.input[start:l.nextIdx]),
 			start:     start,
 			end:       l.nextIdx,
+			lineCol:   l.lineColString(start),
 		}
 	}
 	return token{
@@ -297,6 +313,7 @@ func (l *lexer) handleExclamation() token {
 		value:     string(l.input[l.currentIdx:l.nextIdx]),
 		start:     l.currentIdx,
 		end:       l.nextIdx,
+		lineCol:   l.lineColString(l.currentIdx),
 	}
 }
 
@@ -305,6 +322,7 @@ func (l *lexer) handleColon() token {
 	tok := token{
 		tokenType: tok_colon,
 		start:     start,
+		lineCol:   l.lineColString(start),
 	}
 	if l.peek() == ':' {
 		tok.tokenType = tok_double_colon
@@ -320,6 +338,7 @@ func (l *lexer) handleDoubleQuote() token {
 	tok := token{
 		tokenType: tok_string,
 		start:     start,
+		lineCol:   l.lineColString(start),
 	}
 	str := []rune{}
 	for l.currentChar != '"' {
@@ -355,6 +374,7 @@ func (l *lexer) handleSingleQuote() token {
 	tok := token{
 		tokenType: tok_template_string,
 		start:     start,
+		lineCol:   l.lineColString(start),
 	}
 	for l.currentChar != '\'' && l.currentChar != nullchar {
 		toAdd := l.currentChar
@@ -418,9 +438,10 @@ func (l *lexer) handleDollarSign() token {
 			value:     "invalid template expression syntax",
 			start:     l.currentIdx,
 			end:       l.nextIdx,
+			lineCol:   l.lineColString(l.currentIdx),
 		}
 	}
-	tok := token{tokenType: tok_template_start, start: l.currentIdx, value: "${"}
+	tok := token{tokenType: tok_template_start, start: l.currentIdx, value: "${", lineCol: l.lineColString(l.currentIdx)}
 	l.next()
 	tok.end = l.nextIdx
 	return tok
@@ -428,12 +449,12 @@ func (l *lexer) handleDollarSign() token {
 
 func (l *lexer) handleRCurly() token {
 	l.maybeIncrDecrContext(tok_rcurly)
-	return token{tokenType: tok_rcurly, value: "}", start: l.currentIdx, end: l.nextIdx}
+	return token{tokenType: tok_rcurly, value: "}", start: l.currentIdx, end: l.nextIdx, lineCol: l.lineColString(l.currentIdx)}
 }
 
 func (l *lexer) handleLCurly() token {
 	l.maybeIncrDecrContext(tok_lcurly)
-	return token{tokenType: tok_lcurly, value: "{", start: l.currentIdx, end: l.nextIdx}
+	return token{tokenType: tok_lcurly, value: "{", start: l.currentIdx, end: l.nextIdx, lineCol: l.lineColString(l.currentIdx)}
 }
 
 // formatting helprs
@@ -466,6 +487,7 @@ func (l *lexer) readIdentifier() token {
 		value:     val,
 		start:     start,
 		end:       endIdx,
+		lineCol:   l.lineColString(start),
 	}
 }
 
@@ -488,6 +510,7 @@ func (l *lexer) readNumber() token {
 	if l.isEnd {
 		tok.end = l.nextIdx
 	}
+	tok.lineCol = l.lineColString(start)
 	tok.value = string(l.input[tok.start:tok.end])
 	return tok
 }
