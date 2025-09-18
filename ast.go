@@ -449,3 +449,32 @@ func (c *callExpression) position() position {
 		end:   c.endPos,
 	}
 }
+
+//
+
+type arrowFunctionExpression struct {
+	tok       token
+	paramName assignable
+	block     []statement
+	endPos    int
+}
+
+func (af *arrowFunctionExpression) expressionNode() {}
+func (af *arrowFunctionExpression) token() token    { return af.tok }
+func (af *arrowFunctionExpression) string() string {
+	blockString := "{}"
+	statementStringList := []string{}
+	for _, stmt := range af.block {
+		statementStringList = append(statementStringList, stmt.string())
+	}
+	if len(blockString) > 0 {
+		blockString = fmt.Sprintf("{\n\t%s\n}", strings.Join(statementStringList, "\n\t"))
+	}
+	return fmt.Sprintf("%s ~> %s", af.paramName.string(), blockString)
+}
+func (af *arrowFunctionExpression) position() position {
+	return position{
+		start: af.paramName.position().start,
+		end:   af.endPos,
+	}
+}

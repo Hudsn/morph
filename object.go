@@ -15,6 +15,8 @@ type object interface {
 }
 
 const (
+	t_arrow objectType = "ARROW"
+
 	t_integer objectType = "INTEGER"
 	t_float   objectType = "FLOAT"
 	t_boolean objectType = "BOOLEAN"

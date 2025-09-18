@@ -215,20 +215,14 @@ type publicObject string
 
 // wrappers for public types
 const (
-	INTEGER publicObject = publicObject(t_integer)
-	FLOAT   publicObject = publicObject(t_float)
-	BOOLEAN publicObject = publicObject(t_boolean)
-	STRING  publicObject = publicObject(t_string)
-	MAP     publicObject = publicObject(t_map)
-	ARRAY   publicObject = publicObject(t_array)
+	INTEGER   publicObject = publicObject(t_integer)
+	FLOAT     publicObject = publicObject(t_float)
+	BOOLEAN   publicObject = publicObject(t_boolean)
+	STRING    publicObject = publicObject(t_string)
+	MAP       publicObject = publicObject(t_map)
+	ARRAY     publicObject = publicObject(t_array)
+	ARROWFUNC publicObject = publicObject(t_arrow)
 )
-
-// func EnforceFunctionArgCount(wantArgNum int, args []*Object) error {
-// 	if wantArgNum != len(args) {
-// 		return fmt.Errorf("incorrect number of arguments. expected=%d got=%d", wantArgNum, len(args))
-// 	}
-// 	return nil
-// }
 
 func (o *Object) AsInt() (int64, error) {
 	i, ok := o.inner.(*objectInteger)

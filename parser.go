@@ -9,6 +9,7 @@ const (
 	_ int = iota
 	lowest
 	assign
+	arrow_func // ~>
 	binary_or  // ||
 	binary_and // &&
 	equality   // includes inequality like !=, <= >, etc...
@@ -19,6 +20,8 @@ const (
 )
 
 var precedenceMap = map[tokenType]int{
+	tok_assign:     assign,
+	tok_arrow:      arrow_func,
 	tok_equal:      equality,
 	tok_not_equal:  equality,
 	tok_lt:         equality,
@@ -94,6 +97,7 @@ func (p *parser) registerFuncs() {
 	p.registerInfixFunc(tok_binary_or, p.parseInfixExpression)
 	p.registerInfixFunc(tok_lsquare, p.parseIndexExpression)
 	p.registerInfixFunc(tok_lparen, p.parseCallExpression)
+	p.registerInfixFunc(tok_arrow, p.parseArrowFunctionExpression)
 }
 
 func (p *parser) next() {
@@ -170,6 +174,30 @@ func (p *parser) parsePrefixExpression() expression {
 }
 
 // specific expression parsers
+
+// arrow fn
+func (p *parser) parseArrowFunctionExpression(left expression) expression {
+	paramName, ok := left.(assignable)
+	if !ok {
+		p.err(fmt.Sprintf("invalid parameter name %q", left.string()), left.position().start)
+		return nil
+	}
+	ret := &arrowFunctionExpression{tok: p.currentToken, paramName: paramName, block: []statement{}}
+	if !p.mustNextToken(tok_lcurly) {
+		return nil
+	}
+
+	for !p.isPeekToken(tok_rcurly) {
+		p.next()
+		ret.block = append(ret.block, p.parseStatement())
+	}
+	if !p.mustNextToken(tok_rcurly) {
+		return nil
+	}
+	ret.endPos = p.currentToken.end
+
+	return ret
+}
 
 // fn call
 func (p *parser) parseCallExpression(left expression) expression {

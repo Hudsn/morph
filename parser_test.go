@@ -4,6 +4,32 @@ import (
 	"testing"
 )
 
+func TestParseArrowFunction(t *testing.T) {
+	input := `myvar ~> {
+		set innervar = 10
+		randomFunc()
+		set inner2 = otherFunc(innervar)
+	}`
+	program := setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+	stmt := program.statements[0].(*expressionStatement)
+	arrowFnExp, ok := stmt.expression.(*arrowFunctionExpression)
+	if !ok {
+		t.Fatalf("stmt.expression is not of type *arrowFunctionExpression. got=%T", stmt.expression)
+	}
+	if len(arrowFnExp.block) != 3 {
+		t.Errorf("expected length of arrowFunc statements to be 2. got=%d", len(arrowFnExp.block))
+	}
+	name, ok := arrowFnExp.paramName.(*identifierExpression)
+	if !ok {
+		t.Fatalf("arrowFnExp.ParamName is not of type *identifierExpression. got=%T", arrowFnExp.paramName)
+	}
+	if name.value != "myvar" {
+		t.Errorf("expected arrowFnExp value to be %s. got=%s", "myvar", name.value)
+	}
+}
+
 func TestParseFunctionCall(t *testing.T) {
 	input := `myfunc(ident1, "three", 6)`
 	program := setupParserTest(t, input)
