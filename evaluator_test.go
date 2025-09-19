@@ -18,15 +18,15 @@ func TestEvalMaps(t *testing.T) {
 		{"num", 4},
 	}
 	env := newEnvironment(nil)
-	evaluator := setupEvalTest(input)
-	if len(evaluator.parser.errors) > 0 {
-		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	parser := setupEvalTestParser(input)
+	if len(parser.errors) > 0 {
+		t.Fatalf("parser error: %s", parser.errors[0])
 	}
-	program, err := evaluator.parser.parseProgram()
+	program, err := parser.parseProgram()
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = evaluator.eval(program, env)
+	_, err = eval(program, env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,15 +69,15 @@ func TestEvalArrays(t *testing.T) {
 	set myresult3 = myarr[9 / 3]
 	`
 	env := newEnvironment(nil)
-	evaluator := setupEvalTest(input)
-	if len(evaluator.parser.errors) > 0 {
-		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	parser := setupEvalTestParser(input)
+	if len(parser.errors) > 0 {
+		t.Fatalf("parser error: %s", parser.errors[0])
 	}
-	program, err := evaluator.parser.parseProgram()
+	program, err := parser.parseProgram()
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = evaluator.eval(program, env)
+	_, err = eval(program, env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,12 +129,12 @@ func TestEvalStringAdd(t *testing.T) {
 	}
 	for _, tt := range cases {
 		env := newEnvironment(nil)
-		evaluator := setupEvalTest(tt.input)
-		if len(evaluator.parser.errors) > 0 {
-			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+		parser := setupEvalTestParser(tt.input)
+		if len(parser.errors) > 0 {
+			t.Fatalf("parser error: %s", parser.errors[0])
 		}
-		stmt := evaluator.parser.parseExpressionStatement()
-		res, err := evaluator.eval(stmt, env)
+		stmt := parser.parseExpressionStatement()
+		res, err := eval(stmt, env)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -164,12 +164,12 @@ func TestEvalNumberEquality(t *testing.T) {
 	}
 	for _, tt := range cases {
 		env := newEnvironment(nil)
-		evaluator := *setupEvalTest(tt.input)
-		if len(evaluator.parser.errors) > 0 {
-			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+		parser := setupEvalTestParser(tt.input)
+		if len(parser.errors) > 0 {
+			t.Fatalf("parser error: %s", parser.errors[0])
 		}
-		stmt := evaluator.parser.parseExpressionStatement()
-		res, err := evaluator.eval(stmt, env)
+		stmt := parser.parseExpressionStatement()
+		res, err := eval(stmt, env)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -199,12 +199,12 @@ func TestEvalMathFloats(t *testing.T) {
 	}
 	for _, tt := range cases {
 		env := newEnvironment(nil)
-		evaluator := *setupEvalTest(tt.input)
-		if len(evaluator.parser.errors) > 0 {
-			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+		parser := setupEvalTestParser(tt.input)
+		if len(parser.errors) > 0 {
+			t.Fatalf("parser error: %s", parser.errors[0])
 		}
-		stmt := evaluator.parser.parseExpressionStatement()
-		res, err := evaluator.eval(stmt, env)
+		stmt := parser.parseExpressionStatement()
+		res, err := eval(stmt, env)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -230,12 +230,12 @@ func TestEvalMathInts(t *testing.T) {
 	}
 	for _, tt := range cases {
 		env := newEnvironment(nil)
-		evaluator := *setupEvalTest(tt.input)
-		if len(evaluator.parser.errors) > 0 {
-			t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+		parser := setupEvalTestParser(tt.input)
+		if len(parser.errors) > 0 {
+			t.Fatalf("parser error: %s", parser.errors[0])
 		}
-		stmt := evaluator.parser.parseExpressionStatement()
-		res, err := evaluator.eval(stmt, env)
+		stmt := parser.parseExpressionStatement()
+		res, err := eval(stmt, env)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -251,20 +251,20 @@ func TestEvalMathInts(t *testing.T) {
 
 func TestEvalTemplateExpression(t *testing.T) {
 	env := newEnvironment(nil)
-	evaluator := setupEvalTest(`
+	parser := setupEvalTestParser(`
 	SET hellovar = "hello"
 	SET worldvar = "world"
 	SET helloworld = '${hellovar}
 	${worldvar}!'
 	`)
-	if len(evaluator.parser.errors) > 0 {
-		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	if len(parser.errors) > 0 {
+		t.Fatalf("parser error: %s", parser.errors[0])
 	}
-	program, err := evaluator.parser.parseProgram()
+	program, err := parser.parseProgram()
 	if err != nil {
 		t.Fatal(err)
 	}
-	evaluator.eval(program, env)
+	eval(program, env)
 
 	obj, found := env.get("helloworld")
 	if !found {
@@ -281,12 +281,12 @@ func TestEvalTemplateExpression(t *testing.T) {
 
 func TestEvalStringLitera(t *testing.T) {
 	env := newEnvironment(nil)
-	evaluator := setupEvalTest(`"this is my string" "this is my other string"`)
-	if len(evaluator.parser.errors) > 0 {
-		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	parser := setupEvalTestParser(`"this is my string" "this is my other string"`)
+	if len(parser.errors) > 0 {
+		t.Fatalf("parser error: %s", parser.errors[0])
 	}
-	stmt1 := evaluator.parser.parseStatement()
-	got, err := evaluator.eval(stmt1, env)
+	stmt1 := parser.parseStatement()
+	got, err := eval(stmt1, env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,9 +299,9 @@ func TestEvalStringLitera(t *testing.T) {
 	}
 	//
 	//
-	evaluator.parser.next()
-	stmt2 := evaluator.parser.parseStatement()
-	got, err = evaluator.eval(stmt2, env)
+	parser.next()
+	stmt2 := parser.parseStatement()
+	got, err = eval(stmt2, env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -316,12 +316,12 @@ func TestEvalStringLitera(t *testing.T) {
 
 func TestEvalPrefixExpression(t *testing.T) {
 	env := newEnvironment(nil)
-	evaluator := setupEvalTest("!false")
-	if len(evaluator.parser.errors) > 0 {
-		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	parser := setupEvalTestParser("!false")
+	if len(parser.errors) > 0 {
+		t.Fatalf("parser error: %s", parser.errors[0])
 	}
-	program := evaluator.parser.parseStatement()
-	got, err := evaluator.eval(program, env)
+	program := parser.parseStatement()
+	got, err := eval(program, env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,12 +334,12 @@ func TestEvalPrefixExpression(t *testing.T) {
 	}
 
 	env = newEnvironment(nil)
-	evaluator = setupEvalTest("-.123")
-	if len(evaluator.parser.errors) > 0 {
-		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	parser = setupEvalTestParser("-.123")
+	if len(parser.errors) > 0 {
+		t.Fatalf("parser error: %s", parser.errors[0])
 	}
-	program = evaluator.parser.parseStatement()
-	got, err = evaluator.eval(program, env)
+	program = parser.parseStatement()
+	got, err = eval(program, env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,19 +354,19 @@ func TestEvalPrefixExpression(t *testing.T) {
 
 func TestEvalWhenStatement(t *testing.T) {
 	env := newEnvironment(nil)
-	evaluator := setupEvalTest("WHEN true :: SET my.path.var = 10")
-	if len(evaluator.parser.errors) > 0 {
-		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	parser := setupEvalTestParser("WHEN true :: SET my.path.var = 10")
+	if len(parser.errors) > 0 {
+		t.Fatalf("parser error: %s", parser.errors[0])
 	}
-	program := evaluator.parser.parseStatement()
-	evaluator.eval(program, env)
+	program := parser.parseStatement()
+	eval(program, env)
 
-	evaluator = setupEvalTest("my.path.var")
-	program = evaluator.parser.parseStatement()
-	if len(evaluator.parser.errors) > 0 {
-		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	parser = setupEvalTestParser("my.path.var")
+	program = parser.parseStatement()
+	if len(parser.errors) > 0 {
+		t.Fatalf("parser error: %s", parser.errors[0])
 	}
-	got, err := evaluator.eval(program, env)
+	got, err := eval(program, env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -380,13 +380,13 @@ func TestEvalWhenStatement(t *testing.T) {
 }
 
 func TestEvalSetExpression(t *testing.T) {
-	evaluator := setupEvalTest("SET my.path.var = 5")
-	program := evaluator.parser.parseStatement()
-	if len(evaluator.parser.errors) > 0 {
-		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	parser := setupEvalTestParser("SET my.path.var = 5")
+	program := parser.parseStatement()
+	if len(parser.errors) > 0 {
+		t.Fatalf("parser error: %s", parser.errors[0])
 	}
 	env := newEnvironment(nil)
-	_, err := evaluator.eval(program, env)
+	_, err := eval(program, env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -431,12 +431,12 @@ func TestEvalPathExpression(t *testing.T) {
 		t.Fatal(err)
 	}
 	env.set("myobj", dataMap)
-	evaluator := setupEvalTest("myobj.nested.key")
-	program := evaluator.parser.parseStatement()
-	if len(evaluator.parser.errors) > 0 {
-		t.Fatalf("parser error: %s", evaluator.parser.errors[0])
+	parser := setupEvalTestParser("myobj.nested.key")
+	program := parser.parseStatement()
+	if len(parser.errors) > 0 {
+		t.Fatalf("parser error: %s", parser.errors[0])
 	}
-	got, err := evaluator.eval(program, env)
+	got, err := eval(program, env)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -449,8 +449,7 @@ func TestEvalPathExpression(t *testing.T) {
 	}
 }
 
-func setupEvalTest(input string) *evaluator {
+func setupEvalTestParser(input string) *parser {
 	l := newLexer([]rune(input))
-	p := newParser(l)
-	return newEvaluator(p)
+	return newParser(l)
 }

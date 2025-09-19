@@ -142,6 +142,31 @@ func (b *objectBoolean) isTruthy() bool { return b.value }
 
 //
 
+type objectArrowFunction struct {
+	paramName  string
+	statements []statement
+	env        *environment
+}
+
+func (af *objectArrowFunction) getType() objectType { return t_arrow }
+func (af *objectArrowFunction) inspect() string {
+	blockString := "{}"
+	statementStringList := []string{}
+	for _, stmt := range af.statements {
+		statementStringList = append(statementStringList, stmt.string())
+	}
+	if len(blockString) > 0 {
+		blockString = fmt.Sprintf("{\n\t%s\n}", strings.Join(statementStringList, "\n\t"))
+	}
+	return fmt.Sprintf("%s ~> %s", af.paramName, blockString)
+}
+func (af *objectArrowFunction) clone() object {
+	return af
+}
+func (b *objectArrowFunction) isTruthy() bool { return false }
+
+//
+
 type objectNull struct{}
 
 func (n *objectNull) getType() objectType { return t_null }
@@ -154,11 +179,13 @@ func (n *objectNull) isTruthy() bool { return false }
 //
 
 // returned by builtin funcs when signaling to halt further processing and return the env values as-is.
-type objectTerminate struct{}
+type objectTerminate struct {
+	shouldReturnNull bool
+}
 
 func (t *objectTerminate) getType() objectType { return t_terminate }
 func (t *objectTerminate) inspect() string     { return "TERMINATE" }
 func (t *objectTerminate) clone() object {
-	return t
+	return &objectTerminate{shouldReturnNull: t.shouldReturnNull}
 }
 func (t *objectTerminate) isTruthy() bool { return false }
