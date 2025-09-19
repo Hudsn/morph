@@ -402,17 +402,17 @@ func TestEvalSetExpression(t *testing.T) {
 	if !ok {
 		t.Fatal("expected my.path to exist")
 	}
-	attrPathMap, ok := attrPathObj.value.(*objectMap)
+	attrPathMap, ok := attrPathObj.(*objectMap)
 	if !ok {
-		t.Fatalf("expected my.path to be an *objectMap. got=%T", attrPathObj.value)
+		t.Fatalf("expected my.path to be an *objectMap. got=%T", attrPathObj)
 	}
 	attrVarObj, ok := attrPathMap.kvPairs["var"]
 	if !ok {
 		t.Fatal("expected my.path.var to exist")
 	}
-	attrVarInt, ok := attrVarObj.value.(*objectInteger)
+	attrVarInt, ok := attrVarObj.(*objectInteger)
 	if !ok {
-		t.Fatalf("expected my.path.var to be an integer. got=%T", attrVarObj.value)
+		t.Fatalf("expected my.path.var to be an integer. got=%T", attrVarObj)
 	}
 
 	if attrVarInt.value != 5 {

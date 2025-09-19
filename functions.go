@@ -314,6 +314,44 @@ func (o *Object) AsArray() ([]interface{}, error) {
 	return ret, nil
 }
 
+type ObjectArrowFN struct {
+	inner *objectArrowFunction
+}
+
+func (af *ObjectArrowFN) Run(input interface{}) (interface{}, error) {
+	env := newEnvironment(af.inner.functions)
+	startingObj, err := convertAnyToObject(input, false)
+	if err != nil {
+		return nil, err
+	}
+	env.set(af.inner.paramName, startingObj)
+	for _, stmt := range af.inner.statements {
+		obj, err := eval(stmt, env)
+		if err != nil {
+			return nil, err
+		}
+		if obj.getType() == t_terminate {
+			term := obj.(*objectTerminate)
+			if term.shouldReturnNull {
+				return nil, nil
+			}
+			break
+		}
+	}
+	return convertMapStringObjectToNative(env.store)
+}
+
+func (o *Object) AsArrowFunction() (*ObjectArrowFN, error) {
+	arrow, ok := o.inner.(*objectArrowFunction)
+	if !ok {
+		return nil, fmt.Errorf("unable to convert object to ArrowFunction: underlying structure is not an Arrow Function type. got=%s", o.inner.getType())
+	}
+	return &ObjectArrowFN{
+		inner: arrow,
+	}, nil
+}
+
+//
 // typecast helpers
 
 // casts a Go number to a morph Integer Object so it can be used when defining custom functions

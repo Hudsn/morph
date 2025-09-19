@@ -257,7 +257,7 @@ func evalSetStatementHandleENV(current *assignPath, valToSet object, env *enviro
 	}
 	existing, ok := env.get(current.partName)
 	if !ok {
-		newMap := &objectMap{kvPairs: make(map[string]objectMapPair)}
+		newMap := &objectMap{kvPairs: make(map[string]object)}
 		return env.set(current.partName, newMap)
 	} else {
 		return existing
@@ -270,24 +270,16 @@ func evalSetStatementHandleMAP(objHandle object, current *assignPath, valToSet o
 		return obj_global_null, fmt.Errorf("%s: invalid path part for SET statement: cannot use a path expression on a non-map object", setTarget.token().lineCol)
 	}
 	if current.next == nil {
-		pair := objectMapPair{
-			key:   current.partName,
-			value: valToSet,
-		}
-		mapObj.kvPairs[current.partName] = pair
+		mapObj.kvPairs[current.partName] = valToSet
 		return obj_global_null, nil
 	}
 	existing, ok := mapObj.kvPairs[current.partName]
 	if !ok {
-		newMap := &objectMap{kvPairs: make(map[string]objectMapPair)}
-		pair := objectMapPair{
-			key:   current.partName,
-			value: newMap,
-		}
-		mapObj.kvPairs[current.partName] = pair
+		newMap := &objectMap{kvPairs: make(map[string]object)}
+		mapObj.kvPairs[current.partName] = newMap
 		return newMap, nil
 	}
-	return existing.value, nil
+	return existing, nil
 }
 
 //when
@@ -356,23 +348,19 @@ func evalResolvePathEntryForKey(pathExpr *pathExpression, key string, env *envir
 	if !ok {
 		return obj_global_null, fmt.Errorf("%s: key not found: %s", pathExpr.left.token().lineCol, key)
 	}
-	return res.value, nil
+	return res, nil
 }
 
 // map
 func evalMapLiteral(mapLit *mapLiteral, env *environment) (object, error) {
-	objPairs := make(map[string]objectMapPair)
+	objPairs := make(map[string]object)
 	for key, expr := range mapLit.pairs {
 
-		toAdd, err := eval(expr, env)
+		objToAdd, err := eval(expr, env)
 		if err != nil {
 			return obj_global_null, err
 		}
-		pair := objectMapPair{
-			key:   key,
-			value: toAdd,
-		}
-		objPairs[key] = pair
+		objPairs[key] = objToAdd
 	}
 	return &objectMap{kvPairs: objPairs}, nil
 }

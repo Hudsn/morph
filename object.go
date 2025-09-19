@@ -58,33 +58,30 @@ func (a *objectArray) isTruthy() bool {
 
 //
 
-type objectMapPair struct {
-	key   string
-	value object
-}
+// type objectMapPair struct {
+// 	key   string
+// 	value object
+// }
 
 type objectMap struct {
-	kvPairs map[string]objectMapPair
+	kvPairs map[string]object
 }
 
 func (m *objectMap) getType() objectType { return t_map }
 func (m *objectMap) inspect() string {
 	pairs := []string{}
-	for _, pair := range m.kvPairs {
-		pairString := fmt.Sprintf("%s: %s", pair.key, pair.value.inspect())
+	for key, obj := range m.kvPairs {
+		pairString := fmt.Sprintf("%s: %s", key, obj.inspect())
 		pairs = append(pairs, pairString)
 	}
 	return fmt.Sprintf("{%s}", strings.Join(pairs, ", "))
 }
 func (m *objectMap) clone() object {
 	ret := &objectMap{
-		kvPairs: make(map[string]objectMapPair),
+		kvPairs: make(map[string]object),
 	}
-	for key, pair := range m.kvPairs {
-		ret.kvPairs[key] = objectMapPair{
-			key:   pair.key,
-			value: pair.value.clone(),
-		}
+	for key, obj := range m.kvPairs {
+		ret.kvPairs[key] = obj.clone()
 	}
 	return ret
 }
@@ -145,7 +142,7 @@ func (b *objectBoolean) isTruthy() bool { return b.value }
 type objectArrowFunction struct {
 	paramName  string
 	statements []statement
-	env        *environment
+	functions  *functionStore
 }
 
 func (af *objectArrowFunction) getType() objectType { return t_arrow }

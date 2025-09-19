@@ -34,6 +34,9 @@ func convertAnyToObjectJSON(rawData interface{}) (object, error) {
 }
 
 func convertAnyToObject(rawData interface{}, isJSON bool) (object, error) {
+	if rawData == nil {
+		return obj_global_null, nil
+	}
 
 	switch v := rawData.(type) {
 	case int, int16, int32, int64, float32, float64:
@@ -53,18 +56,14 @@ func convertAnyToObject(rawData interface{}, isJSON bool) (object, error) {
 
 func convertMapToObject(m map[string]interface{}, isJSON bool) (object, error) {
 	ret := &objectMap{
-		kvPairs: make(map[string]objectMapPair),
+		kvPairs: make(map[string]object),
 	}
 	for k, v := range m {
-		valueToAdd, err := convertAnyToObject(v, isJSON)
+		objToAdd, err := convertAnyToObject(v, isJSON)
 		if err != nil {
 			return obj_global_null, err
 		}
-		kvPair := objectMapPair{
-			key:   k,
-			value: valueToAdd,
-		}
-		ret.kvPairs[k] = kvPair
+		ret.kvPairs[k] = objToAdd
 	}
 	return ret, nil
 }
@@ -147,9 +146,12 @@ func convertArrayToNative(a *objectArray) (interface{}, error) {
 }
 
 func convertMapToNative(m *objectMap) (interface{}, error) {
+	return convertMapStringObjectToNative(m.kvPairs)
+}
+
+func convertMapStringObjectToNative(m map[string]object) (interface{}, error) {
 	ret := make(map[string]interface{})
-	for k, pair := range m.kvPairs {
-		vObj := pair.value
+	for k, vObj := range m {
 		v, err := convertObjectToNative(vObj)
 		if err != nil {
 			return obj_global_null, err

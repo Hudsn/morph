@@ -123,7 +123,7 @@ func testConvertObjectMap(t *testing.T, data object, want map[string]interface{}
 			t.Errorf("objectMap does not contain desired key: %s", wantKey)
 			return false
 		}
-		if !testConvertObject(t, gotVal.value, wantVal) {
+		if !testConvertObject(t, gotVal, wantVal) {
 			return false
 		}
 	}
