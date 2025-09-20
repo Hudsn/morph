@@ -8,25 +8,50 @@ import (
 	"strings"
 )
 
+// creates a new function store using default builtin functions
+// this store can still be extended by registering custom functions
+func NewDefaultFunctionStore() *functionStore {
+	return newBuiltinFuncStore()
+}
+
+// creates a new function store without any builtin functions
+// you must implment any builtin functions you wish to use
+func NewEmptyFunctionStore() *functionStore {
+	return newFunctionStore()
+}
+
 type functionStore struct {
 	std        *functionNamespace
 	namespaces map[string]*functionNamespace
 }
 
 func (s *functionStore) Register(fn *functionEntry) {
+	fn.docInfo.namespace = "std"
 	s.std.register(fn)
 }
 func (s *functionStore) RegisterToNamespace(namespace string, fn *functionEntry) {
+	namespace = strings.ToLower(namespace)
+	namespace = strings.TrimSpace(namespace)
+	if namespace == "std" {
+		s.Register(fn)
+		return
+	}
 	if _, ok := s.namespaces[namespace]; !ok {
 		s.namespaces[namespace] = newFunctionNamespace(namespace)
 	}
 	ns := s.namespaces[namespace]
+	fn.docInfo.namespace = namespace
 	ns.register(fn)
 }
 func (s *functionStore) get(name string) (*functionEntry, error) {
 	return s.std.get(name)
 }
 func (s *functionStore) getNamespace(namespace string, name string) (*functionEntry, error) {
+	namespace = strings.ToLower(namespace)
+	namespace = strings.TrimSpace(namespace)
+	if namespace == "std" {
+		return s.get(name)
+	}
 	if ns, ok := s.namespaces[namespace]; ok {
 		return ns.get(name)
 	}
@@ -34,14 +59,22 @@ func (s *functionStore) getNamespace(namespace string, name string) (*functionEn
 }
 
 type functionNamespace struct {
-	name  string
-	store map[string]*functionEntry
+	name       string
+	categories []string
+	store      map[string]*functionEntry
 }
+
+const (
+	FUNC_CAT_GENERAL   string = "General"
+	FUNC_CAT_CONTROL   string = "Control Flow"
+	FUNC_CAT_AGGREGATE string = "Aggregations"
+)
 
 func newFunctionNamespace(name string) *functionNamespace {
 	return &functionNamespace{
-		name:  name,
-		store: make(map[string]*functionEntry),
+		name:       name,
+		store:      make(map[string]*functionEntry),
+		categories: []string{FUNC_CAT_GENERAL},
 	}
 }
 
@@ -56,6 +89,7 @@ func (n *functionNamespace) get(name string) (*functionEntry, error) {
 	return nil, fmt.Errorf("%s", msg)
 }
 func (n *functionNamespace) register(fe *functionEntry) {
+	fe.docInfo.signature = fe.string()
 	n.store[fe.name] = fe
 }
 
@@ -70,12 +104,22 @@ func newFunctionStore() *functionStore {
 }
 
 type functionEntry struct {
+	name       string
+	ret        *functionIO
+	args       []functionIO
+	attributes []functionAttribute
+	function   Function
+	docInfo    *functionDocInfo
+}
+
+type functionDocInfo struct {
+	namespace   string
+	category    string
 	name        string
 	description string
-	ret         *functionIO
-	args        []functionIO
-	function    Function
-	attributes  []functionAttribute
+	signature   string
+	exampleOut  string
+	exampleIn   []string
 }
 
 func NewFunctionEntry(name string, function Function) *functionEntry {
@@ -84,10 +128,19 @@ func NewFunctionEntry(name string, function Function) *functionEntry {
 		function:   function,
 		args:       []functionIO{},
 		attributes: []functionAttribute{},
+		docInfo: &functionDocInfo{
+			name: name,
+		},
 	}
 }
+
+func (fe *functionEntry) SetCategory(cat string) *functionEntry {
+	fe.docInfo.category = cat
+	return fe
+}
+
 func (fe *functionEntry) SetDescription(desc string) *functionEntry {
-	fe.description = desc
+	fe.docInfo.description = desc
 	return fe
 }
 func (fe *functionEntry) SetArgument(name string, description string, types ...publicObject) *functionEntry {
@@ -109,6 +162,14 @@ func (fe *functionEntry) SetReturn(name string, description string, types ...pub
 }
 func (fe *functionEntry) SetAttributes(attrs ...functionAttribute) *functionEntry {
 	fe.attributes = attrs
+	return fe
+}
+func (fe *functionEntry) SetExampleInput(exStrings ...string) *functionEntry {
+	fe.docInfo.exampleIn = exStrings
+	return fe
+}
+func (fe *functionEntry) SetExampleOut(exString string) *functionEntry {
+	fe.docInfo.exampleOut = exString
 	return fe
 }
 func (fe *functionEntry) string() string {
@@ -153,7 +214,11 @@ func (fe *functionEntry) eval(args ...object) (object, error) {
 	if len(args) < len(fe.args) {
 		return obj_global_null, fmt.Errorf("invalid number of args for function %q: too few arguments supplied. want=%d got=%d", fe.name, len(fe.args), len(args))
 	}
+
 	for argIdx, wantArg := range fe.args {
+		if len(wantArg.types) == 0 {
+			continue
+		}
 		arg := args[argIdx]
 		if !slices.Contains(wantArg.types, publicObject(arg.getType())) {
 			return obj_global_null, fmt.Errorf("function %q invalid argument type for %q. want=%s. got=%s", fe.name, wantArg.name, wantArg.typesString(), arg.getType())
@@ -162,7 +227,16 @@ func (fe *functionEntry) eval(args ...object) (object, error) {
 	if err := fe.checkVariadic(args...); err != nil {
 		return obj_global_null, err
 	}
-	return evalFunction(fe.function, args...)
+	ret, err := evalFunction(fe.function, args...)
+	if err != nil {
+		return obj_global_null, err
+	}
+	if fe.ret != nil {
+		if !slices.Contains(fe.ret.types, publicObject(ret.getType())) {
+			return obj_global_null, fmt.Errorf("function %q invalid return type. want=%s got=%s", fe.name, fe.ret.typesString(), ret.getType())
+		}
+	}
+	return ret, nil
 }
 
 func (fe *functionEntry) checkVariadic(args ...object) error {
@@ -222,6 +296,8 @@ const (
 	MAP       publicObject = publicObject(t_map)
 	ARRAY     publicObject = publicObject(t_array)
 	ARROWFUNC publicObject = publicObject(t_arrow)
+	TERMINATE publicObject = publicObject(t_terminate)
+	NULL      publicObject = publicObject(t_null)
 )
 
 func (o *Object) AsInt() (int64, error) {
@@ -350,6 +426,10 @@ func (o *Object) AsArrowFunction() (*ObjectArrowFN, error) {
 		inner: arrow,
 	}, nil
 }
+
+var ObjectNull = &Object{inner: obj_global_false}
+var ObjectTerminate = &Object{inner: obj_global_term}
+var ObjectTerminateDrop = &Object{inner: obj_global_term_drop}
 
 //
 // typecast helpers

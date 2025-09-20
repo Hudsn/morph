@@ -8,16 +8,17 @@ import (
 )
 
 var (
-	obj_global_null  = &objectNull{}
-	obj_global_true  = &objectBoolean{value: true}
-	obj_global_false = &objectBoolean{value: false}
-	obj_global_term  = &objectTerminate{}
+	obj_global_null      = &objectNull{}
+	obj_global_true      = &objectBoolean{value: true}
+	obj_global_false     = &objectBoolean{value: false}
+	obj_global_term      = &objectTerminate{shouldReturnNull: false}
+	obj_global_term_drop = &objectTerminate{shouldReturnNull: true}
 )
 
 func eval(astNode node, env *environment) (object, error) {
 	switch astNode := astNode.(type) {
 	case *program:
-		return evalProgramStatements(astNode, env)
+		return evalProgram(astNode, env)
 	case *setStatement:
 		return evalSetStatement(astNode, env)
 	case *whenStatement:
@@ -59,11 +60,18 @@ func eval(astNode node, env *environment) (object, error) {
 	}
 }
 
-func evalProgramStatements(programNode *program, env *environment) (object, error) {
+func evalProgram(programNode *program, env *environment) (object, error) {
 	for _, stmt := range programNode.statements {
-		_, err := eval(stmt, env)
+		obj, err := eval(stmt, env)
 		if err != nil {
 			return obj_global_null, err
+		}
+		if obj.getType() == t_terminate {
+			term := obj.(*objectTerminate)
+			if term.shouldReturnNull {
+				env.store = map[string]object{}
+			}
+			break
 		}
 	}
 	return obj_global_null, nil

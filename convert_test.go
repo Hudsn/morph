@@ -37,7 +37,7 @@ func testConvertObject(t *testing.T, data object, want interface{}) bool {
 	case []interface{}:
 		return testConvertObjectArray(t, data, v)
 	default:
-		t.Errorf("testCovnertObject: unsupported type. got=%T", want)
+		t.Errorf("testConvertObject: unsupported type. got=%T", want)
 		return false
 	}
 }

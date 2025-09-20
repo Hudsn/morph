@@ -39,16 +39,56 @@ func TestBuiltinLen(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected sum field to be populated in env")
 	}
-	iany, err := convertObjectToNative(res)
-	if err != nil {
-		t.Error(err)
+
+	testConvertObjectInt(t, res, int64(want))
+}
+
+func TestBuiltinMin(t *testing.T) {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	want := 5
+	input := `
+	set my.num = min(5, len("mylongstring"))
+	`
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	stmt := p.parseStatement()
+	if len(p.errors) > 0 {
+		t.Fatal(p.errors[0])
 	}
-	got, ok := iany.(int64)
+	_, err := eval(stmt, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, ok := env.get("my")
 	if !ok {
-		t.Errorf("resulting sum field of env is not of type int. got=%T", iany)
+		t.Fatalf("expected my.num field to be populated in env")
+	}
+	testConvertObject(t, res, map[string]interface{}{
+		"num": want,
+	})
+}
+
+func TestBuiltinDrop(t *testing.T) {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	input := `
+	set num = "mydatastring"
+	drop()
+	set otherThing = 5
+	`
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	program, err := p.parseProgram()
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if got != int64(want) {
-		t.Errorf("wrong value for env.sum want=%d got=%d", want, got)
+	_, err = evalProgram(program, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(env.store) != 0 {
+		t.Errorf("expected drop() to cause the env to be empty. got len=%d", len(env.store))
 	}
 }

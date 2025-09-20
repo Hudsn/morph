@@ -16,6 +16,8 @@ func TestFunctionRegistry(t *testing.T) {
 	fnEntry.SetArgument("a", "first item to add", INTEGER)
 	fnEntry.SetArgument("b", "second item to add", INTEGER)
 	fnEntry.SetReturn("result", "total of a + b", INTEGER)
+	fnEntry.SetExampleInput("1", "2")
+	fnEntry.SetExampleOut("3")
 	fnEntry.SetAttributes(FUNCTION_ATTRIBUTE_VARIADIC)
 	registry.Register(fnEntry)
 
@@ -25,33 +27,41 @@ func TestFunctionRegistry(t *testing.T) {
 	fnEntry2.SetDescription(desc2)
 	fnEntry2.SetArgument("a", "first item to add", INTEGER)
 	fnEntry2.SetArgument("b", "second item to add", INTEGER)
+	fnEntry2.SetExampleInput("3", "2")
+	fnEntry2.SetExampleOut("5")
 	fnEntry2.SetReturn("result", "total of a + b", INTEGER, STRING)
 
 	registry.RegisterToNamespace("custom", fnEntry2)
 
 	tests := []struct {
-		fnEntry  *functionEntry
-		wantName string
-		wantDesc string
-		wantStr  string
-		args     []interface{}
-		wantRes  int
+		fnEntry   *functionEntry
+		wantName  string
+		wantDesc  string
+		wantStr   string
+		wantExIn  []string
+		wantExOut string
+		args      []interface{}
+		wantRes   int
 	}{
 		{
-			fnEntry:  fnEntry,
-			wantName: "my_cool_func",
-			wantDesc: "a very cool function",
-			wantStr:  "my_cool_func(a:INTEGER, b:INTEGER) result:INTEGER",
-			args:     []interface{}{2, 2, 3, 4},
-			wantRes:  4,
+			fnEntry:   fnEntry,
+			wantName:  "my_cool_func",
+			wantDesc:  "a very cool function",
+			wantStr:   "my_cool_func(a:INTEGER, b:INTEGER) result:INTEGER",
+			wantExIn:  []string{"1", "2"},
+			wantExOut: "3",
+			args:      []interface{}{2, 2, 3, 4},
+			wantRes:   4,
 		},
 		{
-			fnEntry:  fnEntry2,
-			wantName: "my_other_func",
-			wantDesc: "really its the same function",
-			wantStr:  "my_other_func(a:INTEGER, b:INTEGER) result:INTEGER|STRING",
-			args:     []interface{}{7, 3},
-			wantRes:  10,
+			fnEntry:   fnEntry2,
+			wantName:  "my_other_func",
+			wantDesc:  "really its the same function",
+			wantStr:   "my_other_func(a:INTEGER, b:INTEGER) result:INTEGER|STRING",
+			wantExIn:  []string{"3", "2"},
+			wantExOut: "5",
+			args:      []interface{}{7, 3},
+			wantRes:   10,
 		},
 	}
 	for _, tt := range tests {
@@ -79,14 +89,26 @@ func TestFunctionRegistry(t *testing.T) {
 		if resInt != int64(tt.wantRes) {
 			t.Errorf("expected result of custom function to be %d. got=%d", tt.wantRes, resInt)
 		}
-		if entry.description != tt.wantDesc {
-			t.Errorf("expected description to be %q. got=%q", tt.wantDesc, entry.description)
+		if entry.docInfo.description != tt.wantDesc {
+			t.Errorf("expected description to be %q. got=%q", tt.wantDesc, entry.docInfo.description)
 		}
 		if entry.name != tt.wantName {
 			t.Errorf("expected name to be %q. got=%q", tt.wantName, entry.name)
 		}
 		if entry.string() != tt.wantStr {
 			t.Errorf("expected string output to be %q. got=%q", tt.wantStr, entry.string())
+		}
+		if len(tt.wantExIn) != len(entry.docInfo.exampleIn) {
+			t.Fatalf("incorrect length of example inputs. want=%d got=%d", len(tt.wantExIn), len(entry.docInfo.exampleIn))
+		}
+		for idx, want := range tt.wantExIn {
+			got := entry.docInfo.exampleIn[idx]
+			if want != got {
+				t.Errorf("incorrect example arg. want=%s got=%s", want, got)
+			}
+		}
+		if entry.docInfo.exampleOut != tt.wantExOut {
+			t.Errorf("incorrect example return. want=%s got=%s", tt.wantExOut, entry.docInfo.exampleOut)
 		}
 	}
 

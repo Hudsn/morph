@@ -9,6 +9,8 @@ func newBuiltinFuncStore() *functionStore {
 	store := newFunctionStore()
 
 	store.Register(builtinLenEntry())
+	store.Register(builtinMinEntry())
+	store.Register(builtinDropEntry())
 
 	return store
 }
@@ -19,6 +21,9 @@ func builtinLenEntry() *functionEntry {
 	l.SetDescription("return the length of the target object. object must be a string, array, or map")
 	l.SetArgument("target", "target object for length operation", STRING, ARRAY, MAP)
 	l.SetReturn("length", "length of the object", INTEGER)
+	l.SetCategory(FUNC_CAT_GENERAL)
+	l.SetExampleInput("mystring")
+	l.SetExampleOut("8")
 	return l
 }
 
@@ -54,6 +59,66 @@ func builtinLen(args ...*Object) (*Object, error) {
 	}
 	return CastInt(ret)
 }
+
+func builtinMinEntry() *functionEntry {
+	fe := NewFunctionEntry("min", builtinMin)
+	fe.SetDescription("returns the minimum value between two numbers")
+	fe.SetArgument("num1", "first number to compare", INTEGER, FLOAT)
+	fe.SetArgument("num2", "second number to compare", INTEGER, FLOAT)
+	fe.SetReturn("minimum", "smallest number of num1 and num2", INTEGER, FLOAT)
+	fe.SetCategory(FUNC_CAT_GENERAL)
+	fe.SetExampleInput("1", "1.234")
+	fe.SetExampleOut("1")
+	return fe
+}
+
+func builtinMin(args ...*Object) (*Object, error) {
+	if len(args) != 2 {
+		return nil, fmt.Errorf("function min() requires a single argument. got=%d", len(args))
+	}
+	bothInt := (args[0].Type() == args[1].Type()) && (args[0].Type() == string(INTEGER))
+
+	cmpList := []float64{}
+	for idx, arg := range args[:2] {
+		switch arg.Type() {
+		case string(INTEGER):
+			i, err := arg.AsInt()
+			if err != nil {
+				return nil, fmt.Errorf("min(): argument at position %d is an invalid INTEGER", idx+1)
+			}
+			cmpList = append(cmpList, float64(i))
+		case string(FLOAT):
+			f, err := arg.AsFloat()
+			if err != nil {
+				return nil, fmt.Errorf("min(): argument at position %d is an invalid INTEGER", idx+1)
+			}
+			cmpList = append(cmpList, f)
+		}
+	}
+	min := slices.Min(cmpList)
+	if bothInt {
+		return CastInt(min)
+	}
+	return CastFloat(min)
+}
+
+// drop
+func builtinDropEntry() *functionEntry {
+	fe := NewFunctionEntry("drop", builtinDrop)
+	fe.SetDescription("return early, effectively clearing all current data being processed and returning nothing")
+	fe.SetCategory(FUNC_CAT_CONTROL)
+	return fe
+}
+
+func builtinDrop(args ...*Object) (*Object, error) {
+	if len(args) != 0 {
+		return nil, fmt.Errorf("function drop() should have 0 arguments. got=%d", len(args))
+	}
+	return ObjectTerminateDrop, nil
+}
+
+//
+// emit
 
 //
 // map
