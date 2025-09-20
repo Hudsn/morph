@@ -409,7 +409,7 @@ func (af *ObjectArrowFN) Run(input interface{}) (interface{}, error) {
 		if obj.getType() == t_terminate {
 			term := obj.(*objectTerminate)
 			if term.shouldReturnNull {
-				return nil, nil
+				env.store = map[string]object{}
 			}
 			break
 		}

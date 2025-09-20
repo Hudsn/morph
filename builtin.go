@@ -10,6 +10,7 @@ func newBuiltinFuncStore() *functionStore {
 
 	store.Register(builtinLenEntry())
 	store.Register(builtinMinEntry())
+	store.Register(builtinMaxEntry())
 	store.Register(builtinDropEntry())
 
 	return store
@@ -60,9 +61,11 @@ func builtinLen(args ...*Object) (*Object, error) {
 	return CastInt(ret)
 }
 
+//min
+
 func builtinMinEntry() *functionEntry {
 	fe := NewFunctionEntry("min", builtinMin)
-	fe.SetDescription("returns the minimum value between two numbers")
+	fe.SetDescription("returns the minimum value of two numbers")
 	fe.SetArgument("num1", "first number to compare", INTEGER, FLOAT)
 	fe.SetArgument("num2", "second number to compare", INTEGER, FLOAT)
 	fe.SetReturn("minimum", "smallest number of num1 and num2", INTEGER, FLOAT)
@@ -100,6 +103,49 @@ func builtinMin(args ...*Object) (*Object, error) {
 		return CastInt(min)
 	}
 	return CastFloat(min)
+}
+
+// max
+
+func builtinMaxEntry() *functionEntry {
+	fe := NewFunctionEntry("max", builtinMax)
+	fe.SetDescription("returns the maximum value of two numbers")
+	fe.SetArgument("num1", "first number to compare", INTEGER, FLOAT)
+	fe.SetArgument("num2", "second number to compare", INTEGER, FLOAT)
+	fe.SetReturn("minimum", "largest number of num1 and num2", INTEGER, FLOAT)
+	fe.SetCategory(FUNC_CAT_GENERAL)
+	fe.SetExampleInput("1", "1.234")
+	fe.SetExampleOut("1.234")
+	return fe
+}
+func builtinMax(args ...*Object) (*Object, error) {
+	if len(args) != 2 {
+		return nil, fmt.Errorf("function min() requires a single argument. got=%d", len(args))
+	}
+	bothInt := (args[0].Type() == args[1].Type()) && (args[0].Type() == string(INTEGER))
+
+	cmpList := []float64{}
+	for idx, arg := range args[:2] {
+		switch arg.Type() {
+		case string(INTEGER):
+			i, err := arg.AsInt()
+			if err != nil {
+				return nil, fmt.Errorf("min(): argument at position %d is an invalid INTEGER", idx+1)
+			}
+			cmpList = append(cmpList, float64(i))
+		case string(FLOAT):
+			f, err := arg.AsFloat()
+			if err != nil {
+				return nil, fmt.Errorf("min(): argument at position %d is an invalid INTEGER", idx+1)
+			}
+			cmpList = append(cmpList, f)
+		}
+	}
+	max := slices.Max(cmpList)
+	if bothInt {
+		return CastInt(max)
+	}
+	return CastFloat(max)
 }
 
 // drop

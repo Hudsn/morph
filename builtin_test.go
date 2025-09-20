@@ -68,6 +68,31 @@ func TestBuiltinMin(t *testing.T) {
 		"num": want,
 	})
 }
+func TestBuiltinMax(t *testing.T) {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	want := 12
+	input := `
+	set my.num = max(5, len("mylongstring"))
+	`
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	stmt := p.parseStatement()
+	if len(p.errors) > 0 {
+		t.Fatal(p.errors[0])
+	}
+	_, err := eval(stmt, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, ok := env.get("my")
+	if !ok {
+		t.Fatalf("expected my.num field to be populated in env")
+	}
+	testConvertObject(t, res, map[string]interface{}{
+		"num": want,
+	})
+}
 
 func TestBuiltinDrop(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
