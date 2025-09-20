@@ -12,6 +12,7 @@ func newBuiltinFuncStore() *functionStore {
 	store.Register(builtinMinEntry())
 	store.Register(builtinMaxEntry())
 	store.Register(builtinDropEntry())
+	store.Register(builtinEmitEntry())
 
 	return store
 }
@@ -163,8 +164,20 @@ func builtinDrop(args ...*Object) (*Object, error) {
 	return ObjectTerminateDrop, nil
 }
 
-//
 // emit
+func builtinEmitEntry() *functionEntry {
+	fe := NewFunctionEntry("emit", builtinEmit)
+	fe.SetDescription("return early, returning data as-is")
+	fe.SetCategory(FUNC_CAT_CONTROL)
+	return fe
+}
+
+func builtinEmit(args ...*Object) (*Object, error) {
+	if len(args) != 0 {
+		return nil, fmt.Errorf("function drop() should have 0 arguments. got=%d", len(args))
+	}
+	return ObjectTerminate, nil
+}
 
 //
 // map

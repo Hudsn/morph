@@ -98,7 +98,7 @@ func TestBuiltinDrop(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
 	env := newEnvironment(fnStore)
 	input := `
-	set num = "mydatastring"
+	set str = "mydatastring"
 	drop()
 	set otherThing = 5
 	`
@@ -116,4 +116,32 @@ func TestBuiltinDrop(t *testing.T) {
 	if len(env.store) != 0 {
 		t.Errorf("expected drop() to cause the env to be empty. got len=%d", len(env.store))
 	}
+}
+func TestBuiltinEmit(t *testing.T) {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	input := `
+	set str = "mydatastring"
+	emit()
+	set otherThing = 5
+	`
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	program, err := p.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = evalProgram(program, env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(env.store) != 1 {
+		t.Errorf("expected emit() to cause the env to have a len of 1. got len=%d", len(env.store))
+	}
+	res, ok := env.get("str")
+	if !ok {
+		t.Fatalf("expected str field to be populated in env")
+	}
+	testConvertObject(t, res, "mydatastring")
 }
