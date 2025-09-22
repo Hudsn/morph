@@ -67,16 +67,16 @@ func TestFunctionRegistry(t *testing.T) {
 	for _, tt := range tests {
 		inputObjs := []object{}
 		for _, arg := range tt.args {
-			toAdd, err := convertAnyToObject(arg, false)
-			if err != nil {
-				t.Fatal(err)
+			toAdd := convertAnyToObject(arg, false)
+			if isObjectErr(toAdd) {
+				t.Fatal(objectToError(toAdd))
 			}
 			inputObjs = append(inputObjs, toAdd)
 		}
 		entry := tt.fnEntry
-		resObj, err := entry.eval(inputObjs...)
-		if err != nil {
-			t.Fatal(err)
+		resObj := entry.eval(inputObjs...)
+		if isObjectErr(resObj) {
+			t.Fatal(objectToError(resObj))
 		}
 		res, err := convertObjectToNative(resObj)
 		if err != nil {
@@ -122,14 +122,14 @@ func TestFunctionRegistry(t *testing.T) {
 	}
 }
 
-func testFunctionCustomSum(args ...*Object) (*Object, error) {
+func testFunctionCustomSum(args ...*Object) *Object {
 	argInt, err := args[0].AsInt()
 	if err != nil {
-		return nil, err
+		return ObjectError(err.Error())
 	}
 	argInt2, err := args[1].AsInt()
 	if err != nil {
-		return nil, err
+		return ObjectError(err.Error())
 	}
 	return CastInt(argInt + argInt2)
 }
@@ -146,9 +146,9 @@ func TestFunctionInt(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		obj, err := CastInt(tt.start)
-		if err != nil {
-			t.Error(err)
+		obj := CastInt(tt.start)
+		if isObjectErr(obj.inner) {
+			t.Fatal(objectToError(obj.inner))
 		}
 		testFunctionObjectMethods(t, obj, tt.want)
 	}
@@ -165,9 +165,9 @@ func TestFunctionFloat(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		obj, err := CastFloat(tt.start)
-		if err != nil {
-			t.Error(err)
+		obj := CastFloat(tt.start)
+		if isObjectErr(obj.inner) {
+			t.Fatal(objectToError(obj.inner))
 		}
 		testFunctionObjectMethods(t, obj, tt.want)
 	}
@@ -178,9 +178,9 @@ func TestFunctionString(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		obj, err := CastString(tt)
-		if err != nil {
-			t.Error(err)
+		obj := CastString(tt)
+		if isObjectErr(obj.inner) {
+			t.Fatal(objectToError(obj.inner))
 		}
 		testFunctionObjectMethods(t, obj, tt)
 	}
@@ -191,9 +191,9 @@ func TestFunctionBool(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		obj, err := CastBool(tt)
-		if err != nil {
-			t.Error(err)
+		obj := CastBool(tt)
+		if isObjectErr(obj.inner) {
+			t.Fatal(objectToError(obj.inner))
 		}
 		testFunctionObjectMethods(t, obj, tt)
 	}
@@ -203,9 +203,9 @@ func TestFunctionArray(t *testing.T) {
 	testArr := []interface{}{
 		int64(1), float64(2), "three", false,
 	}
-	obj, err := CastArray(testArr)
-	if err != nil {
-		t.Fatal(err)
+	obj := CastArray(testArr)
+	if isObjectErr(obj.inner) {
+		t.Fatal(objectToError(obj.inner))
 	}
 	testFunctionObjectMethods(t, obj, testArr)
 }
@@ -228,14 +228,14 @@ func TestFunctionMap(t *testing.T) {
 		} `json:"myotherkey"`
 	}{}
 
-	obj, err := CastMap(testMap)
-	if err != nil {
-		t.Fatal(err)
+	obj := CastMap(testMap)
+	if isObjectErr(obj.inner) {
+		t.Fatal(objectToError(obj.inner))
 	}
 
 	testFunctionObjectMethods(t, obj, testMap)
 
-	err = obj.MapStruct(&testStruct)
+	err := obj.MapStruct(&testStruct)
 	if err != nil {
 		t.Fatal(err)
 	}

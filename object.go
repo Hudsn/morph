@@ -27,6 +27,8 @@ const (
 
 	t_terminate objectType = "TERMINATE"
 	t_null      objectType = "NULL"
+
+	t_error objectType = "ERROR"
 )
 
 //
@@ -186,3 +188,16 @@ func (t *objectTerminate) clone() object {
 	return &objectTerminate{shouldReturnNull: t.shouldReturnNull}
 }
 func (t *objectTerminate) isTruthy() bool { return false }
+
+//
+
+type objectError struct {
+	message string
+}
+
+func (e *objectError) getType() objectType { return t_error }
+func (e *objectError) inspect() string     { return e.message }
+func (e *objectError) clone() object {
+	return &objectError{message: e.message}
+}
+func (e *objectError) isTruthy() bool { return false }

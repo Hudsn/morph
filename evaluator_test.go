@@ -26,9 +26,9 @@ func TestEvalMaps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = eval(program, env)
-	if err != nil {
-		t.Fatal(err)
+	res := program.eval(env)
+	if isObjectErr(res) {
+		t.Fatal(objectToError(res))
 	}
 	for _, tt := range tests {
 		got, found := env.get(tt.key)
@@ -77,9 +77,9 @@ func TestEvalArrays(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = eval(program, env)
-	if err != nil {
-		t.Fatal(err)
+	res := program.eval(env)
+	if isObjectErr(res) {
+		t.Fatal(objectToError(res))
 	}
 	tests := []struct {
 		key  string
@@ -134,9 +134,9 @@ func TestEvalStringAdd(t *testing.T) {
 			t.Fatalf("parser error: %s", parser.errors[0])
 		}
 		stmt := parser.parseExpressionStatement()
-		res, err := eval(stmt, env)
-		if err != nil {
-			t.Fatal(err)
+		res := stmt.eval(env)
+		if isObjectErr(res) {
+			t.Fatal(objectToError(res))
 		}
 		strRes, ok := res.(*objectString)
 		if !ok {
@@ -169,10 +169,11 @@ func TestEvalNumberEquality(t *testing.T) {
 			t.Fatalf("parser error: %s", parser.errors[0])
 		}
 		stmt := parser.parseExpressionStatement()
-		res, err := eval(stmt, env)
-		if err != nil {
-			t.Fatal(err)
+		res := stmt.eval(env)
+		if isObjectErr(res) {
+			t.Fatal(objectToError(res))
 		}
+
 		boolRes, ok := res.(*objectBoolean)
 		if !ok {
 			t.Fatalf("expected result to be type *objectFloat. got=%T", res)
@@ -204,9 +205,9 @@ func TestEvalMathFloats(t *testing.T) {
 			t.Fatalf("parser error: %s", parser.errors[0])
 		}
 		stmt := parser.parseExpressionStatement()
-		res, err := eval(stmt, env)
-		if err != nil {
-			t.Fatal(err)
+		res := stmt.eval(env)
+		if isObjectErr(res) {
+			t.Fatal(objectToError(res))
 		}
 		flRes, ok := res.(*objectFloat)
 		if !ok {
@@ -235,9 +236,9 @@ func TestEvalMathInts(t *testing.T) {
 			t.Fatalf("parser error: %s", parser.errors[0])
 		}
 		stmt := parser.parseExpressionStatement()
-		res, err := eval(stmt, env)
-		if err != nil {
-			t.Fatal(err)
+		res := stmt.eval(env)
+		if isObjectErr(res) {
+			t.Fatal(objectToError(res))
 		}
 		intRes, ok := res.(*objectInteger)
 		if !ok {
@@ -264,7 +265,10 @@ func TestEvalTemplateExpression(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eval(program, env)
+	res := program.eval(env)
+	if isObjectErr(res) {
+		t.Fatal(objectToError(res))
+	}
 
 	obj, found := env.get("helloworld")
 	if !found {
@@ -286,9 +290,9 @@ func TestEvalStringLitera(t *testing.T) {
 		t.Fatalf("parser error: %s", parser.errors[0])
 	}
 	stmt1 := parser.parseStatement()
-	got, err := eval(stmt1, env)
-	if err != nil {
-		t.Fatal(err)
+	got := stmt1.eval(env)
+	if isObjectErr(got) {
+		t.Fatal(objectToError(got))
 	}
 	if got.getType() != t_string {
 		t.Fatalf("expected result type to be %s. got=%s", t_string, got.getType())
@@ -301,9 +305,9 @@ func TestEvalStringLitera(t *testing.T) {
 	//
 	parser.next()
 	stmt2 := parser.parseStatement()
-	got, err = eval(stmt2, env)
-	if err != nil {
-		t.Fatal(err)
+	got = stmt2.eval(env)
+	if isObjectErr(got) {
+		t.Fatal(objectToError(got))
 	}
 	if got.getType() != t_string {
 		t.Fatalf("expected result type to be %s. got=%s", t_string, got.getType())
@@ -321,9 +325,9 @@ func TestEvalPrefixExpression(t *testing.T) {
 		t.Fatalf("parser error: %s", parser.errors[0])
 	}
 	program := parser.parseStatement()
-	got, err := eval(program, env)
-	if err != nil {
-		t.Fatal(err)
+	got := program.eval(env)
+	if isObjectErr(got) {
+		t.Fatal(objectToError(got))
 	}
 	if got.getType() != t_boolean {
 		t.Fatalf("expected result type to be %s. got=%s", t_boolean, got.getType())
@@ -339,9 +343,9 @@ func TestEvalPrefixExpression(t *testing.T) {
 		t.Fatalf("parser error: %s", parser.errors[0])
 	}
 	program = parser.parseStatement()
-	got, err = eval(program, env)
-	if err != nil {
-		t.Fatal(err)
+	got = program.eval(env)
+	if isObjectErr(got) {
+		t.Fatal(objectToError(got))
 	}
 	if got.getType() != t_float {
 		t.Fatalf("expected result type to be %s. got=%s", t_float, got.getType())
@@ -359,16 +363,19 @@ func TestEvalWhenStatement(t *testing.T) {
 		t.Fatalf("parser error: %s", parser.errors[0])
 	}
 	program := parser.parseStatement()
-	eval(program, env)
+	res := program.eval(env)
+	if isObjectErr(res) {
+		t.Fatal(objectToError(res))
+	}
 
 	parser = setupEvalTestParser("my.path.var")
 	program = parser.parseStatement()
 	if len(parser.errors) > 0 {
 		t.Fatalf("parser error: %s", parser.errors[0])
 	}
-	got, err := eval(program, env)
-	if err != nil {
-		t.Fatal(err)
+	got := program.eval(env)
+	if isObjectErr(got) {
+		t.Fatal(objectToError(got))
 	}
 	if got.getType() != t_integer {
 		t.Fatalf("expected result type to be %s. got=%s", t_integer, got.getType())
@@ -386,9 +393,9 @@ func TestEvalSetExpression(t *testing.T) {
 		t.Fatalf("parser error: %s", parser.errors[0])
 	}
 	env := newEnvironment(nil)
-	_, err := eval(program, env)
-	if err != nil {
-		t.Fatal(err)
+	res := program.eval(env)
+	if isObjectErr(res) {
+		t.Fatal(objectToError(res))
 	}
 	objRoot, ok := env.get("my")
 	if !ok {
@@ -422,13 +429,13 @@ func TestEvalSetExpression(t *testing.T) {
 
 func TestEvalPathExpression(t *testing.T) {
 	env := newEnvironment(nil)
-	dataMap, err := convertBytesToObject([]byte(`{
+	dataMap := convertBytesToObject([]byte(`{
 		"nested": {
 			"key": 5
 		}
 	}`))
-	if err != nil {
-		t.Fatal(err)
+	if isObjectErr(dataMap) {
+		t.Fatal(objectToError(dataMap))
 	}
 	env.set("myobj", dataMap)
 	parser := setupEvalTestParser("myobj.nested.key")
@@ -436,9 +443,9 @@ func TestEvalPathExpression(t *testing.T) {
 	if len(parser.errors) > 0 {
 		t.Fatalf("parser error: %s", parser.errors[0])
 	}
-	got, err := eval(program, env)
-	if err != nil {
-		t.Fatal(err)
+	got := program.eval(env)
+	if isObjectErr(got) {
+		t.Fatal(objectToError(got))
 	}
 	if got.getType() != t_integer {
 		t.Fatalf("expected result type to be %s. got=%s", t_integer, got.getType())

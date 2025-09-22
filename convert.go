@@ -7,100 +7,100 @@ import (
 
 // helpers for accessing objects from arbitrary types
 
-func newObjectFromAny(t interface{}) (object, error) {
+func newObjectFromAny(t interface{}) object {
 	return convertAnyToObject(t, false)
 }
 
-func convertBytesToObject(bytes []byte) (object, error) {
+func convertBytesToObject(bytes []byte) object {
 	var raw interface{}
 	err := json.Unmarshal(bytes, &raw)
 	if err != nil {
-		return nil, fmt.Errorf("invalid json: %w", err)
+		return newObjectErr("invalid json: %s", err.Error())
 	}
-	obj, err := convertAnyToObjectJSON(raw)
-	if err != nil {
-		return obj_global_null, err
+	obj := convertAnyToObjectJSON(raw)
+	if isObjectErr(obj) {
+		return obj
 	}
-	return obj, nil
+	return obj
 }
 
-func convertAnyToObjectJSON(rawData interface{}) (object, error) {
+func convertAnyToObjectJSON(rawData interface{}) object {
 	switch v := rawData.(type) {
 	case float64:
-		return convertNumberToObjectJSON(v), nil
+		return convertNumberToObjectJSON(v)
 	default:
 		return convertAnyToObject(v, true)
 	}
 }
 
-func convertAnyToObject(rawData interface{}, isJSON bool) (object, error) {
+func convertAnyToObject(rawData interface{}, isJSON bool) object {
 	if rawData == nil {
-		return obj_global_null, nil
+		return obj_global_null
 	}
 
 	switch v := rawData.(type) {
 	case int, int16, int32, int64, float32, float64:
 		return convertNumberToObject(v, isJSON)
 	case bool:
-		return objectFromBoolean(v), nil
+		return objectFromBoolean(v)
 	case string:
-		return &objectString{value: v}, nil
+		return &objectString{value: v}
 	case map[string]interface{}:
 		return convertMapToObject(v, isJSON)
 	case []interface{}:
 		return convertArrayToObject(v, isJSON)
 	default:
-		return obj_global_null, fmt.Errorf("unable to read data into object: %+v", v)
+		return newObjectErr("unable to read data into object: %+v", v)
 	}
 }
 
-func convertMapToObject(m map[string]interface{}, isJSON bool) (object, error) {
+func convertMapToObject(m map[string]interface{}, isJSON bool) object {
 	ret := &objectMap{
 		kvPairs: make(map[string]object),
 	}
 	for k, v := range m {
-		objToAdd, err := convertAnyToObject(v, isJSON)
-		if err != nil {
-			return obj_global_null, err
+		objToAdd := convertAnyToObject(v, isJSON)
+		if isObjectErr(objToAdd) {
+			return objToAdd
 		}
 		ret.kvPairs[k] = objToAdd
 	}
-	return ret, nil
+	return ret
 }
 
-func convertArrayToObject(array []interface{}, isJSON bool) (object, error) {
+func convertArrayToObject(array []interface{}, isJSON bool) object {
 	ret := &objectArray{
 		entries: []object{},
 	}
 	for _, entry := range array {
-		toAdd, err := convertAnyToObject(entry, isJSON)
-		if err != nil {
-			return obj_global_null, err
+		toAdd := convertAnyToObject(entry, isJSON)
+		if isObjectErr(toAdd) {
+			return toAdd
 		}
 		ret.entries = append(ret.entries, toAdd)
 	}
-	return ret, nil
+	return ret
 }
 
-func convertNumberToObject(num interface{}, isJSON bool) (object, error) {
+func convertNumberToObject(num interface{}, isJSON bool) object {
 	switch v := num.(type) {
 	case int:
-		return &objectInteger{value: int64(v)}, nil
+		return &objectInteger{value: int64(v)}
 	case int16:
-		return &objectInteger{value: int64(v)}, nil
+		return &objectInteger{value: int64(v)}
 	case int32:
-		return &objectInteger{value: int64(v)}, nil
+		return &objectInteger{value: int64(v)}
 	case int64:
-		return &objectInteger{value: v}, nil
+		return &objectInteger{value: v}
 	case float32:
-		return &objectFloat{value: float64(v)}, nil
+		return &objectFloat{value: float64(v)}
 	case float64:
 		if isJSON {
-			return convertNumberToObjectJSON(v), nil
+			return convertNumberToObjectJSON(v)
 		}
-		return &objectFloat{value: float64(v)}, nil
+		return &objectFloat{value: float64(v)}
 	default:
-		return obj_global_null, fmt.Errorf("unsupported number type: %T", v) // should only occur in custom functions
+		return newObjectErr("unsupported number type: %T", v) // should only occur in custom functions
 	}
 }
 

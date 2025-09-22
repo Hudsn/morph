@@ -9,9 +9,9 @@ func TestConvertObjectFromBytes(t *testing.T) {
 	"key": 5,
 	"arr": [1, 2, "three"]
 	}`)
-	obj, err := convertBytesToObject(b)
-	if err != nil {
-		t.Fatal(err.Error())
+	obj := convertBytesToObject(b)
+	if isObjectErr(obj) {
+		t.Fatal(objectToError(obj))
 	}
 	want := map[string]interface{}{
 		"key": 5,

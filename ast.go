@@ -10,6 +10,7 @@ type node interface {
 	token() token
 	string() string
 	position() position
+	eval(env *environment) object
 }
 
 type position struct {
@@ -454,7 +455,7 @@ func (c *callExpression) position() position {
 
 type arrowFunctionExpression struct {
 	tok       token
-	paramName assignable
+	paramName *identifierExpression
 	block     []statement
 	endPos    int
 }

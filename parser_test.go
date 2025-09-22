@@ -21,12 +21,12 @@ func TestParseArrowFunction(t *testing.T) {
 	if len(arrowFnExp.block) != 3 {
 		t.Errorf("expected length of arrowFunc statements to be 2. got=%d", len(arrowFnExp.block))
 	}
-	name, ok := arrowFnExp.paramName.(*identifierExpression)
-	if !ok {
-		t.Fatalf("arrowFnExp.ParamName is not of type *identifierExpression. got=%T", arrowFnExp.paramName)
-	}
-	if name.value != "myvar" {
-		t.Errorf("expected arrowFnExp value to be %s. got=%s", "myvar", name.value)
+	// name, ok := arrowFnExp.paramName.(*identifierExpression)
+	// if !ok {
+	// 	t.Fatalf("arrowFnExp.ParamName is not of type *identifierExpression. got=%T", arrowFnExp.paramName)
+	// }
+	if arrowFnExp.paramName.value != "myvar" {
+		t.Errorf("expected arrowFnExp value to be %s. got=%s", "myvar", arrowFnExp.paramName.value)
 	}
 }
 

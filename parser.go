@@ -177,9 +177,9 @@ func (p *parser) parsePrefixExpression() expression {
 
 // arrow fn
 func (p *parser) parseArrowFunctionExpression(left expression) expression {
-	paramName, ok := left.(assignable)
+	paramName, ok := left.(*identifierExpression)
 	if !ok {
-		p.err(fmt.Sprintf("invalid parameter name %q", left.string()), left.position().start)
+		p.err(fmt.Sprintf("invalid parameter name %q: must be an identifier expression", left.string()), left.position().start)
 		return nil
 	}
 	ret := &arrowFunctionExpression{tok: p.currentToken, paramName: paramName, block: []statement{}}

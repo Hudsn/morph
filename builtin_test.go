@@ -5,19 +5,19 @@ import "testing"
 func TestBuiltinLen(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
 	env := newEnvironment(fnStore)
-	arr, err := convertArrayToObject([]interface{}{"a", "b", "c"}, false)
-	if err != nil {
-		t.Fatal(err)
+	arr := convertArrayToObject([]interface{}{"a", "b", "c"}, false)
+	if isObjectErr(arr) {
+		t.Fatal(objectToError(arr))
 	}
 	env.set("myarr", arr)
-	m, err := convertMapToObject(map[string]interface{}{"mykey": 1}, false)
-	if err != nil {
-		t.Fatal(err)
+	m := convertMapToObject(map[string]interface{}{"mykey": 1}, false)
+	if isObjectErr(m) {
+		t.Fatal(objectToError(m))
 	}
 	env.set("mymap", m)
-	str, err := convertAnyToObject("mystringvalue", false)
-	if err != nil {
-		t.Fatal(err)
+	str := convertAnyToObject("mystringvalue", false)
+	if isObjectErr(str) {
+		t.Fatal(objectToError(str))
 	}
 	env.set("mystring", str)
 
@@ -31,9 +31,9 @@ func TestBuiltinLen(t *testing.T) {
 	if len(p.errors) > 0 {
 		t.Fatal(p.errors[0])
 	}
-	_, err = eval(stmt, env)
-	if err != nil {
-		t.Fatal(err)
+	evalRes := stmt.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
 	}
 	res, ok := env.get("sum")
 	if !ok {
@@ -56,9 +56,9 @@ func TestBuiltinMin(t *testing.T) {
 	if len(p.errors) > 0 {
 		t.Fatal(p.errors[0])
 	}
-	_, err := eval(stmt, env)
-	if err != nil {
-		t.Fatal(err)
+	evalRes := stmt.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
 	}
 	res, ok := env.get("my")
 	if !ok {
@@ -81,9 +81,9 @@ func TestBuiltinMax(t *testing.T) {
 	if len(p.errors) > 0 {
 		t.Fatal(p.errors[0])
 	}
-	_, err := eval(stmt, env)
-	if err != nil {
-		t.Fatal(err)
+	evalRes := stmt.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
 	}
 	res, ok := env.get("my")
 	if !ok {
@@ -109,9 +109,9 @@ func TestBuiltinDrop(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = evalProgram(program, env)
-	if err != nil {
-		t.Fatal(err)
+	evalRes := program.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
 	}
 	if len(env.store) != 0 {
 		t.Errorf("expected drop() to cause the env to be empty. got len=%d", len(env.store))
@@ -132,10 +132,11 @@ func TestBuiltinEmit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = evalProgram(program, env)
-	if err != nil {
-		t.Fatal(err)
+	evalRes := program.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
 	}
+
 	if len(env.store) != 1 {
 		t.Errorf("expected emit() to cause the env to have a len of 1. got len=%d", len(env.store))
 	}
@@ -144,4 +145,29 @@ func TestBuiltinEmit(t *testing.T) {
 		t.Fatalf("expected str field to be populated in env")
 	}
 	testConvertObject(t, res, "mydatastring")
+}
+
+func TestBuiltinInt(t *testing.T) {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	input := `
+	set myvar = "5"
+	set res = int(myvar)`
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	program, err := p.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	evalRes := program.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
+	}
+	want := 5
+	res, ok := env.get("res")
+	if !ok {
+		t.Fatalf("expected res field to exist in env")
+	}
+	testConvertObjectInt(t, res, int64(want))
 }

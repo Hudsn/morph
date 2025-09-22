@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -198,21 +199,18 @@ func (fio *functionIO) typesString() string {
 	return strings.Join(strs, "|")
 }
 
-func evalFunction(fn Function, args ...object) (object, error) {
+func evalFunction(fn Function, args ...object) object {
 	objList := []*Object{}
 	for _, arg := range args {
 		objList = append(objList, &Object{inner: arg})
 	}
-	obj, err := fn(objList...)
-	if err != nil {
-		return obj_global_null, err
-	}
-	return obj.inner, err
+	obj := fn(objList...)
+	return obj.inner
 }
 
-func (fe *functionEntry) eval(args ...object) (object, error) {
+func (fe *functionEntry) eval(args ...object) object {
 	if len(args) < len(fe.args) {
-		return obj_global_null, fmt.Errorf("invalid number of args for function %q: too few arguments supplied. want=%d got=%d", fe.name, len(fe.args), len(args))
+		return newObjectErr("invalid number of args for function %q: too few arguments supplied. want=%d got=%d", fe.name, len(fe.args), len(args))
 	}
 
 	for argIdx, wantArg := range fe.args {
@@ -221,22 +219,22 @@ func (fe *functionEntry) eval(args ...object) (object, error) {
 		}
 		arg := args[argIdx]
 		if !slices.Contains(wantArg.types, publicObject(arg.getType())) {
-			return obj_global_null, fmt.Errorf("function %q invalid argument type for %q. want=%s. got=%s", fe.name, wantArg.name, wantArg.typesString(), arg.getType())
+			return newObjectErr("function %q invalid argument type for %q. want=%s. got=%s", fe.name, wantArg.name, wantArg.typesString(), arg.getType())
 		}
 	}
 	if err := fe.checkVariadic(args...); err != nil {
-		return obj_global_null, err
+		return newObjectErr(err.Error())
 	}
-	ret, err := evalFunction(fe.function, args...)
-	if err != nil {
-		return obj_global_null, err
+	ret := evalFunction(fe.function, args...)
+	if isObjectErr(ret) {
+		return ret
 	}
 	if fe.ret != nil {
 		if !slices.Contains(fe.ret.types, publicObject(ret.getType())) {
-			return obj_global_null, fmt.Errorf("function %q invalid return type. want=%s got=%s", fe.name, fe.ret.typesString(), ret.getType())
+			return newObjectErr("function %q invalid return type. want=%s got=%s", fe.name, fe.ret.typesString(), ret.getType())
 		}
 	}
-	return ret, nil
+	return ret
 }
 
 func (fe *functionEntry) checkVariadic(args ...object) error {
@@ -274,7 +272,7 @@ type functionIO struct {
 	types       []publicObject
 }
 
-type Function func(args ...*Object) (*Object, error)
+type Function func(args ...*Object) *Object
 
 // public wrapper of object to be used for implementing custom functions
 type Object struct {
@@ -297,9 +295,28 @@ const (
 	ARRAY     publicObject = publicObject(t_array)
 	ARROWFUNC publicObject = publicObject(t_arrow)
 	TERMINATE publicObject = publicObject(t_terminate)
+	ERROR     publicObject = publicObject(t_error)
 	NULL      publicObject = publicObject(t_null)
 )
 
+func (o *Object) AsAny() (interface{}, error) {
+	switch o.Type() {
+	case string(INTEGER):
+		return o.AsInt()
+	case string(FLOAT):
+		return o.AsFloat()
+	case string(MAP):
+		return o.AsMap()
+	case string(ARRAY):
+		return o.AsArray()
+	case string(ARROWFUNC):
+		return o.AsArrowFunction()
+	case string(STRING):
+		return o.AsString()
+	default:
+		return nil, fmt.Errorf("unable to convert Object: not a convertible type. got=%s", o.Type())
+	}
+}
 func (o *Object) AsInt() (int64, error) {
 	i, ok := o.inner.(*objectInteger)
 	if !ok {
@@ -396,15 +413,15 @@ type ObjectArrowFN struct {
 
 func (af *ObjectArrowFN) Run(input interface{}) (interface{}, error) {
 	env := newEnvironment(af.inner.functions)
-	startingObj, err := convertAnyToObject(input, false)
-	if err != nil {
-		return nil, err
+	startingObj := convertAnyToObject(input, false)
+	if isObjectErr(startingObj) {
+		return nil, objectToError(startingObj)
 	}
 	env.set(af.inner.paramName, startingObj)
 	for _, stmt := range af.inner.statements {
-		obj, err := eval(stmt, env)
-		if err != nil {
-			return nil, err
+		obj := stmt.eval(env)
+		if isObjectErr(obj) {
+			return nil, objectToError(obj)
 		}
 		if obj.getType() == t_terminate {
 			term := obj.(*objectTerminate)
@@ -431,12 +448,18 @@ var ObjectNull = &Object{inner: obj_global_false}
 var ObjectTerminate = &Object{inner: obj_global_term}
 var ObjectTerminateDrop = &Object{inner: obj_global_term_drop}
 
+func ObjectError(msg string, args ...interface{}) *Object {
+	return &Object{
+		inner: &objectError{message: fmt.Sprintf(msg, args...)},
+	}
+}
+
 //
 // typecast helpers
 
 // casts a Go number to a morph Integer Object so it can be used when defining custom functions
 // input must be one of: int, int8, int16, int32, int64, float32, float64
-func CastInt(value interface{}) (*Object, error) {
+func CastInt(value interface{}) *Object {
 	ret := &Object{
 		inner: obj_global_null,
 	}
@@ -455,15 +478,21 @@ func CastInt(value interface{}) (*Object, error) {
 		ret.inner = &objectInteger{value: int64(v)}
 	case float64:
 		ret.inner = &objectInteger{value: int64(v)}
+	case string:
+		i, err := strconv.Atoi(v)
+		if err != nil {
+			return ObjectError("unable to cast string as INTEGER. invalid string: %s", v)
+		}
+		ret.inner = &objectInteger{value: int64(i)}
 	default:
-		return ret, fmt.Errorf("unable to cast type as Int. unsupported type: %T", v)
+		return ObjectError("unable to cast type as INTEGER. unsupported input type: %T", v)
 	}
-	return ret, nil
+	return ret
 }
 
 // casts a Go number to a morph Float Object so it can be used when defining custom functions
 // input must be one of: int, int8, int16, int32, int64, float32, float64
-func CastFloat(value interface{}) (*Object, error) {
+func CastFloat(value interface{}) *Object {
 	ret := &Object{
 		inner: obj_global_null,
 	}
@@ -483,14 +512,14 @@ func CastFloat(value interface{}) (*Object, error) {
 	case int64:
 		ret.inner = &objectFloat{value: float64(v)}
 	default:
-		return ret, fmt.Errorf("unable to cast type as Float. unsupported type: %T", v)
+		return ObjectError("unable to cast type as Float. unsupported type: %T", v)
 	}
-	return ret, nil
+	return ret
 }
 
 // casts a Go type to a morph String Object so it can be used when defining custom functions
 // input must be one of: int, int8, int16, int32, int64, float32, float64, string, bool
-func CastString(value interface{}) (*Object, error) {
+func CastString(value interface{}) *Object {
 	ret := &Object{
 		inner: obj_global_null,
 	}
@@ -514,14 +543,14 @@ func CastString(value interface{}) (*Object, error) {
 	case int64:
 		ret.inner = &objectString{value: fmt.Sprintf("%d", v)}
 	default:
-		return ret, fmt.Errorf("unable to cast type as Float. unsupported type: %T", v)
+		return ObjectError("unable to cast type as String. unsupported type: %T", v)
 	}
-	return ret, nil
+	return ret
 }
 
 // casts a Go type to a morph Boolean Object so it can be used when defining custom functions
 // input must be a bool
-func CastBool(value interface{}) (*Object, error) {
+func CastBool(value interface{}) *Object {
 	ret := &Object{
 		inner: obj_global_null,
 	}
@@ -529,45 +558,35 @@ func CastBool(value interface{}) (*Object, error) {
 	case bool:
 		ret.inner = &objectBoolean{value: v}
 	default:
-		return ret, fmt.Errorf("unable to cast type as Boolean. unsupported type: %T", v)
+		return ObjectError("unable to cast type as Boolean. unsupported type: %T", v)
 	}
-	return ret, nil
+	return ret
 }
 
 // casts a Go type to a morph Map Object so it can be used when defining custom functions
 // input must be a map[string]interface{}, which is the default format of raw data maps being passed via morph statements and expressions
-func CastMap(value interface{}) (*Object, error) {
-	ret := &Object{
-		inner: obj_global_null,
-	}
+func CastMap(value interface{}) *Object {
 	switch v := value.(type) {
 	case map[string]interface{}:
-		m, err := convertMapToObject(v, false)
-		if err != nil {
-			return ret, err
-		}
-		ret.inner = m
+		m := convertMapToObject(v, false)
+		return &Object{inner: m}
 	default:
-		return ret, fmt.Errorf("unable to cast type as Boolean. unsupported type: %T", v)
+		return ObjectError("unable to cast type as Map. unsupported type: %T", v)
 	}
-	return ret, nil
 }
 
 // casts a Go type to a morph Map Object so it can be used when defining custom functions
 // input must be a []interface{}, which is the default format of raw data arrays being passed via morph statements and expressions
-func CastArray(value interface{}) (*Object, error) {
+func CastArray(value interface{}) *Object {
 	ret := &Object{
 		inner: obj_global_null,
 	}
 	switch v := value.(type) {
 	case []interface{}:
-		a, err := convertArrayToObject(v, false)
-		if err != nil {
-			return ret, err
-		}
+		a := convertArrayToObject(v, false)
 		ret.inner = a
 	default:
-		return ret, fmt.Errorf("unable to cast type as Array. unsupported type: %T", v)
+		return ObjectError("unable to cast type as Array. unsupported type: %T", v)
 	}
-	return ret, nil
+	return ret
 }
