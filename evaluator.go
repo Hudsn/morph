@@ -51,6 +51,9 @@ func (s *setStatement) eval(env *environment) object {
 		switch currentPath.stepType {
 		case assign_step_env:
 			objHandle = evalSetStatementHandleENV(currentPath, valToSet, env)
+			if isObjectErr(objHandle) {
+				return objHandle
+			}
 		case assign_step_map_key:
 			objHandle = evalSetStatementHandleMAP(objHandle, currentPath, valToSet, s.target)
 			if isObjectErr(objHandle) {
@@ -141,9 +144,6 @@ func (c *callExpression) eval(env *environment) object {
 	args := []object{}
 	for _, argExpr := range c.arguments {
 		toAdd := argExpr.eval(env)
-		if isObjectErr(toAdd) {
-			return toAdd
-		}
 		args = append(args, toAdd)
 	}
 	ret := fnEntry.eval(args...)

@@ -30,8 +30,17 @@ func TestFunctionRegistry(t *testing.T) {
 	fnEntry2.SetExampleInput("3", "2")
 	fnEntry2.SetExampleOut("5")
 	fnEntry2.SetReturn("result", "total of a + b", INTEGER, STRING)
-
 	registry.RegisterToNamespace("custom", fnEntry2)
+
+	fnName3 := "my_any_func"
+	fnEntry3 := NewFunctionEntry(fnName3, testFunctionCustomAny)
+	desc3 := "a function with any args"
+	fnEntry3.SetDescription(desc3)
+	fnEntry3.SetArgument("a", "does something", ANY...)
+	fnEntry3.SetReturn("result", "anything you want", ANY...)
+	fnEntry3.SetExampleInput("abcd")
+	fnEntry3.SetExampleOut("abcd")
+	registry.Register(fnEntry3)
 
 	tests := []struct {
 		fnEntry   *functionEntry
@@ -62,6 +71,16 @@ func TestFunctionRegistry(t *testing.T) {
 			wantExOut: "5",
 			args:      []interface{}{7, 3},
 			wantRes:   10,
+		},
+		{
+			fnEntry:   fnEntry3,
+			wantName:  "my_any_func",
+			wantDesc:  "a function with any args",
+			wantStr:   "my_any_func(a:ANY) result:ANY",
+			wantExIn:  []string{"abcd"},
+			wantExOut: "abcd",
+			args:      []interface{}{7},
+			wantRes:   7,
 		},
 	}
 	for _, tt := range tests {
@@ -122,7 +141,14 @@ func TestFunctionRegistry(t *testing.T) {
 	}
 }
 
+func testFunctionCustomAny(args ...*Object) *Object {
+	return args[0]
+}
+
 func testFunctionCustomSum(args ...*Object) *Object {
+	if res, ok := IsArgCountAtLeast(2, args); !ok {
+		return res
+	}
 	argInt, err := args[0].AsInt()
 	if err != nil {
 		return ObjectError(err.Error())

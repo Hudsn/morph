@@ -13,6 +13,8 @@ func newBuiltinFuncStore() *functionStore {
 	store.Register(builtinDropEntry())
 	store.Register(builtinEmitEntry())
 	store.Register(builtinIntEntry())
+	store.Register(builtinCatchEntry())
+	store.Register(builtinCoalesceEntry())
 
 	return store
 }
@@ -120,11 +122,10 @@ func builtinMaxEntry() *functionEntry {
 	return fe
 }
 func builtinMax(args ...*Object) *Object {
-	if len(args) != 2 {
-		return ObjectError("function min() requires a single argument. got=%d", len(args))
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
 	}
 	bothInt := (args[0].Type() == args[1].Type()) && (args[0].Type() == string(INTEGER))
-
 	cmpList := []float64{}
 	for idx, arg := range args[:2] {
 		switch arg.Type() {
@@ -218,5 +219,55 @@ func builtinInt(args ...*Object) *Object {
 //
 // string
 
+// catch (handle errors)
+func builtinCatchEntry() *functionEntry {
+	fe := NewFunctionEntry("catch", builtinCatch)
+	fe.SetDescription("checks if the value is an error. if it is, the second value is returned")
+	fe.SetArgument("target", "the target object to check for errors", ANY...)
+	fe.SetArgument("fallback", "the value to return in case of an error", INTEGER, FLOAT, STRING)
+	fe.SetReturn("result", "either the original value or the fallback, depending on if an error occurred", ANY...)
+	fe.SetCategory(FUNC_CAT_GENERAL)
+	fe.SetExampleInput("nonexistent_variable + 1", "1000")
+	fe.SetExampleOut("5")
+	return fe
+}
+
+func builtinCatch(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
+	}
+	target := args[0]
+	fallback := args[1]
+	if target.Type() == string(ERROR) {
+		return fallback
+	}
+	return target
+}
+
+// coalesce (catch nulls)
+func builtinCoalesceEntry() *functionEntry {
+	fe := NewFunctionEntry("coalesce", builtinCoalesce)
+	fe.SetDescription("checks if the value is null; if it is, the second value is returned")
+	fe.SetArgument("target", "the target object to check for null", ANY...)
+	fe.SetArgument("fallback", "the value to return in case of a null", INTEGER, FLOAT, STRING)
+	fe.SetReturn("result", "either the original value or the fallback, depending on if a null occurred", ANY...)
+	fe.SetCategory(FUNC_CAT_GENERAL)
+	fe.SetExampleInput("nonexistent_variable + 1", "1000")
+	fe.SetExampleOut("5")
+	return fe
+}
+
+func builtinCoalesce(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
+	}
+	target := args[0]
+	fallback := args[1]
+	if target.Type() == string(NULL) {
+		return fallback
+	}
+	return target
+}
+
 //
-// catch
+// fallback (catch errors or nulls)

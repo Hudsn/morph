@@ -192,6 +192,16 @@ func (fio *functionIO) formatString() string {
 }
 
 func (fio *functionIO) typesString() string {
+	isAny := true
+	for _, t := range ANY {
+		if !slices.Contains(fio.types, t) {
+			isAny = false
+			break
+		}
+	}
+	if isAny {
+		return "ANY"
+	}
 	strs := []string{}
 	for _, t := range fio.types {
 		strs = append(strs, string(t))
@@ -294,10 +304,11 @@ const (
 	MAP       publicObject = publicObject(t_map)
 	ARRAY     publicObject = publicObject(t_array)
 	ARROWFUNC publicObject = publicObject(t_arrow)
-	TERMINATE publicObject = publicObject(t_terminate)
 	ERROR     publicObject = publicObject(t_error)
 	NULL      publicObject = publicObject(t_null)
 )
+
+var ANY = []publicObject{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, ARROWFUNC, ERROR, NULL}
 
 func (o *Object) AsAny() (interface{}, error) {
 	switch o.Type() {
@@ -589,4 +600,22 @@ func CastArray(value interface{}) *Object {
 		return ObjectError("unable to cast type as Array. unsupported type: %T", v)
 	}
 	return ret
+}
+
+// helpers
+
+// checks minimum function argument count. useful for variadic functions
+func IsArgCountAtLeast(count int, args []*Object) (*Object, bool) {
+	if len(args) < count {
+		return ObjectError("function requires at least %d args. got=%d", count, len(args)), false
+	}
+	return ObjectNull, true
+}
+
+// checks function argument count
+func IsArgCountEqual(count int, args []*Object) (*Object, bool) {
+	if len(args) != count {
+		return ObjectError("function requires %d args. got=%d", count, len(args)), false
+	}
+	return ObjectNull, true
 }

@@ -171,3 +171,27 @@ func TestBuiltinInt(t *testing.T) {
 	}
 	testConvertObjectInt(t, res, int64(want))
 }
+
+func TestBuiltinCatch(t *testing.T) {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	input := `
+	set myvar = 5
+	set res = catch(nonexistent, myvar)`
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	program, err := p.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	evalRes := program.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
+	}
+	want := 5
+	res, ok := env.get("res")
+	if !ok {
+		t.Fatalf("expected res field to exist in env")
+	}
+	testConvertObjectInt(t, res, int64(want))
+}
