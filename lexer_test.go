@@ -6,6 +6,40 @@ import (
 	"testing"
 )
 
+func TestLexNull(t *testing.T) {
+	input := "my NULL stuff"
+	tests := []testCase{
+		{
+			tokenType:  tok_ident,
+			start:      0,
+			end:        2,
+			value:      "my",
+			rangeValue: "my",
+			line:       1,
+			col:        1,
+		},
+		{
+			tokenType:  tok_null,
+			start:      3,
+			end:        7,
+			value:      "NULL",
+			rangeValue: "NULL",
+			line:       1,
+			col:        4,
+		},
+		{
+			tokenType:  tok_ident,
+			start:      8,
+			end:        13,
+			value:      "stuff",
+			rangeValue: "stuff",
+			line:       1,
+			col:        9,
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
 func TestLexArrow(t *testing.T) {
 	input := `asdf ~> 123`
 	tests := []testCase{

@@ -399,6 +399,22 @@ func (sl *stringLiteral) position() position {
 
 //
 
+type nullLiteral struct {
+	tok token
+}
+
+func (nl *nullLiteral) expressionNode() {}
+func (nl *nullLiteral) token() token    { return nl.tok }
+func (nl *nullLiteral) string() string  { return "NULL" }
+func (nl *nullLiteral) position() position {
+	return position{
+		start: nl.tok.start,
+		end:   nl.tok.end,
+	}
+}
+
+//
+
 type templateExpression struct {
 	tok   token
 	parts []expression

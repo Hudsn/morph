@@ -76,6 +76,7 @@ func (p *parser) registerFuncs() {
 	p.registerPrefixFunc(tok_true, p.parseBooleanLiteral)
 	p.registerPrefixFunc(tok_false, p.parseBooleanLiteral)
 	p.registerPrefixFunc(tok_string, p.parseStringLiteral)
+	p.registerPrefixFunc(tok_null, p.parseNullLiteral)
 	p.registerPrefixFunc(tok_template_string, p.parseTemplateExpression)
 	p.registerPrefixFunc(tok_lparen, p.parseGroupedExpression)
 	p.registerPrefixFunc(tok_lsquare, p.parseArrayLiteral)
@@ -404,6 +405,10 @@ func (p *parser) parseBooleanLiteral() expression {
 
 func (p *parser) parseStringLiteral() expression {
 	return &stringLiteral{tok: p.currentToken, value: p.currentToken.value}
+}
+
+func (p *parser) parseNullLiteral() expression {
+	return &nullLiteral{tok: p.currentToken}
 }
 
 //

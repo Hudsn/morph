@@ -4,6 +4,18 @@ import (
 	"testing"
 )
 
+func TestParseNullLiteral(t *testing.T) {
+	input := "null"
+	program := setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+	stmt := program.statements[0].(*expressionStatement)
+	_, ok := stmt.expression.(*nullLiteral)
+	if !ok {
+		t.Fatalf("stmt.expression is not of type *nullLiteral. got=%T", stmt.expression)
+	}
+}
+
 func TestParseArrowFunction(t *testing.T) {
 	input := `myvar ~> {
 		set innervar = 10

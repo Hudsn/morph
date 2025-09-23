@@ -444,6 +444,11 @@ func (b *booleanLiteral) eval(env *environment) object {
 	}
 }
 
+// null lit
+func (n *nullLiteral) eval(env *environment) object {
+	return obj_global_null
+}
+
 //
 // map lit
 

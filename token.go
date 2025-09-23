@@ -60,6 +60,7 @@ const (
 	tok_set   tokenType = "SET"
 	tok_true  tokenType = "TRUE"
 	tok_false tokenType = "FALSE"
+	tok_null  tokenType = "NULL"
 
 	tok_eof     tokenType = "EOF"
 	tok_illegal tokenType = "ILLEGAL"
@@ -72,6 +73,8 @@ var keywordMap = map[string]tokenType{
 	"SET":   tok_set,
 	"true":  tok_true,
 	"false": tok_false,
+	"NULL":  tok_null,
+	"null":  tok_null,
 }
 
 func lookupTokenKeyword(ident string) tokenType {

@@ -128,8 +128,12 @@ func convertObjectToNative(o object) (interface{}, error) {
 		return v.value, nil
 	case *objectBoolean:
 		return v.value, nil
+	case *objectError:
+		return objectToError(o), nil
+	case *objectNull:
+		return nil, nil
 	default:
-		return obj_global_null, fmt.Errorf("unsupported object type: %T", v)
+		return nil, fmt.Errorf("unsupported object type: %s", o.getType())
 	}
 }
 

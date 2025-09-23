@@ -4,6 +4,29 @@ import (
 	"testing"
 )
 
+func TestEvalNull(t *testing.T) {
+	input := `
+	set mynull = NULL
+	`
+	env := newEnvironment(nil)
+	parser := setupEvalTestParser(input)
+	program, err := parser.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := program.eval(env)
+	if isObjectErr(res) {
+		t.Fatal(objectToError(res))
+	}
+	got, ok := env.get("mynull")
+	if !ok {
+		t.Fatalf("expected an existing env entry for %q, but got no result", "mynull")
+	}
+	if got != obj_global_null {
+		t.Errorf("expected result to be a globally-shared null object. instead got %+v", got)
+	}
+}
+
 func TestEvalMaps(t *testing.T) {
 	input := `
 	set msgparts = {"h": "hello", "w": "world", "num": 2 + 2}
