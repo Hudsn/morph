@@ -479,6 +479,58 @@ func TestEvalPathExpression(t *testing.T) {
 	}
 }
 
+// func TestEvalIndexOutOfBoundsReturnsError(t *testing.T)
+
+// func TestEvalIndexOnNonArrayReturnsError(t *testing.T) {
+
+// }
+
+// func TestEvalPathOnNonMapReturnsError(t *testing.T)
+
+// any path or index expression as part of a path MUST return null if the lefthand side is a nonexistent/null expression.
+// that is, if any path prefix is null, and is followed by a [index] or additional .path notation, the result should be null
+// however, any existing/non-null items that are followed by either an [index] or .path notation, which are not of the appropriate type (array or map, respectively), should throw an error
+func TestEvalNonexistentPathReturnsNull(t *testing.T) {
+	env := newEnvironment(nil)
+	dataMap := convertBytesToObject([]byte(`{
+		"nested": {
+			"key": 5,
+			"arr": [
+				4,
+				{
+					"arrkey": 10
+				}
+			]
+		}
+	}`))
+	if isObjectErr(dataMap) {
+		t.Fatal(objectToError(dataMap))
+	}
+	env.set("myobj", dataMap)
+
+	testInputs := []string{
+		"mynonexistentobj",
+		"myobj.nonexistent_nested",
+		"myobj.nested.nonexistentkey",
+		"myobj.nested.nonexistentarr[999]",
+		"myobj.nested.arr[1].fdsa",
+	}
+	for idx, input := range testInputs {
+		parser := setupEvalTestParser(input)
+		program := parser.parseStatement()
+		if len(parser.errors) > 0 {
+			t.Fatalf("parser error: %s", parser.errors[0])
+		}
+		got := program.eval(env)
+		if isObjectErr(got) {
+			t.Fatal(objectToError(got))
+		}
+		if got != obj_global_null {
+			t.Fatalf("case %d: expected result type to be a shared global object of type %s. got=%s", idx+1, t_null, got.getType())
+		}
+	}
+}
+
 func setupEvalTestParser(input string) *parser {
 	l := newLexer([]rune(input))
 	return newParser(l)

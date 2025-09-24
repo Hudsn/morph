@@ -238,6 +238,7 @@ func builtinCatch(args ...*Object) *Object {
 	}
 	target := args[0]
 	fallback := args[1]
+	target.Type()
 	if target.Type() == string(ERROR) {
 		return fallback
 	}

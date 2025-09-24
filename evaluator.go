@@ -177,7 +177,8 @@ func (i *identifierExpression) eval(env *environment) object {
 	if res, ok := env.get(i.value); ok {
 		return res
 	}
-	return newObjectErr("%s: identifier not found: %s", i.token().lineCol, i.value)
+	return obj_global_null
+	// return newObjectErr("%s: identifier not found: %s", i.token().lineCol, i.value)
 }
 
 // path expression
@@ -194,16 +195,17 @@ func (p *pathExpression) eval(env *environment) object {
 
 func evalResolvePathEntryForKey(pathExpr *pathExpression, key string, env *environment) object {
 	leftObj := pathExpr.left.eval(env)
-	if isObjectErr(leftObj) {
+	if isObjectErr(leftObj) || leftObj == obj_global_null {
 		return leftObj
 	}
 	leftMap, ok := leftObj.(*objectMap)
 	if !ok {
-		return newObjectErr("%s: cannot access a path on a non-map object", pathExpr.left.token().lineCol)
+		return newObjectErr("%s: cannot access a path %q on a non-map object. %q is of type %s", pathExpr.left.token().lineCol, pathExpr.string(), pathExpr.left.string(), leftObj.getType())
 	}
 	res, ok := leftMap.kvPairs[key]
 	if !ok {
-		return newObjectErr("%s: key not found: %s", pathExpr.left.token().lineCol, key)
+		return obj_global_null
+		// return newObjectErr("%s: key not found: %s", pathExpr.left.token().lineCol, key)
 	}
 	return res
 }
@@ -374,12 +376,12 @@ func objHandleMathOperation(l float64, operator string, r float64, areBothIntege
 
 func (i *indexExpression) eval(env *environment) object {
 	identResult := i.left.eval(env)
-	if isObjectErr(identResult) {
+	if isObjectErr(identResult) || identResult == obj_global_null {
 		return identResult
 	}
 	arrObj, ok := identResult.(*objectArray)
 	if !ok {
-		return newObjectErr("%s: cannot call index expression on non-array object", i.left.token().lineCol)
+		return newObjectErr("%s: cannot call index expression on non-array object %q. object type is %s", i.left.token().lineCol, i.left.string(), identResult.getType())
 	}
 
 	indexObj := i.index.eval(env)
@@ -505,6 +507,14 @@ func newObjectErr(s string, fmtArgs ...interface{}) *objectError {
 
 func isObjectErr(o object) bool {
 	return o.getType() == t_error
+}
+
+func isObjectNull(o object) bool {
+	return o.getType() == t_null
+}
+
+func isObjectNullOrErr(o object) bool {
+	return o.getType() == t_null || o.getType() == t_error
 }
 
 func objectToError(o object) error {

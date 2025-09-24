@@ -1,6 +1,8 @@
 package morph
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestBuiltinLen(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
@@ -177,7 +179,7 @@ func TestBuiltinCatch(t *testing.T) {
 	env := newEnvironment(fnStore)
 	input := `
 	set myvar = 5
-	set res = catch(nonexistent, myvar)`
+	set res = catch(myvar.invalidpath, myvar)`
 	l := newLexer([]rune(input))
 	p := newParser(l)
 	program, err := p.parseProgram()
