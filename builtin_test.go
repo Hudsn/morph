@@ -221,3 +221,75 @@ func TestBuiltinCoalesce(t *testing.T) {
 	}
 	testConvertObjectInt(t, res, int64(want))
 }
+func TestBuiltinFallback(t *testing.T) {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	input := `
+	set myvar = 5
+	set res = fallback(empty.nullpathresult, myvar)`
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	program, err := p.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	evalRes := program.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
+	}
+	want := 5
+	res, ok := env.get("res")
+	if !ok {
+		t.Fatalf("expected res field to exist in env")
+	}
+	testConvertObjectInt(t, res, int64(want))
+}
+
+func TestBuiltinContains(t *testing.T) {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	input := `
+	set myarr = [1, 2, "three"]
+	set res1 = contains(myarr, 2)
+	set res2 = contains(myarr, "three")
+	set res3 = contains(myarr, 0)
+	set mystring = "abcd"
+	set res4 = contains(mystring, "bc")
+	set res5 = contains(mystring, "def")
+	`
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	program, err := p.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	evalRes := program.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
+	}
+	res, ok := env.get("res1")
+	if !ok {
+		t.Fatalf("expected res1 field to exist in env")
+	}
+	testConvertObject(t, res, true)
+	res, ok = env.get("res2")
+	if !ok {
+		t.Fatalf("expected res2 field to exist in env")
+	}
+	testConvertObject(t, res, true)
+	res, ok = env.get("res3")
+	if !ok {
+		t.Fatalf("expected res3 field to exist in env")
+	}
+	testConvertObject(t, res, false)
+	res, ok = env.get("res4")
+	if !ok {
+		t.Fatalf("expected res4 field to exist in env")
+	}
+	testConvertObject(t, res, true)
+	res, ok = env.get("res5")
+	if !ok {
+		t.Fatalf("expected res5 field to exist in env")
+	}
+	testConvertObject(t, res, false)
+}

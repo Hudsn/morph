@@ -2,6 +2,7 @@ package morph
 
 import (
 	"slices"
+	"strings"
 )
 
 func newBuiltinFuncStore() *functionStore {
@@ -15,6 +16,8 @@ func newBuiltinFuncStore() *functionStore {
 	store.Register(builtinIntEntry())
 	store.Register(builtinCatchEntry())
 	store.Register(builtinCoalesceEntry())
+	store.Register(builtinFallbackEntry())
+	store.Register(builtinContainsEntry())
 
 	return store
 }
@@ -62,6 +65,53 @@ func builtinLen(args ...*Object) *Object {
 		ret = len(m)
 	}
 	return CastInt(ret)
+}
+
+// contains
+func builtinContainsEntry() *functionEntry {
+	l := NewFunctionEntry("contains", builtinContains)
+	l.SetDescription("return the length of the target object. object must be a string, array, or map")
+	l.SetArgument("main", "larger object to check for the presence of sub", STRING, ARRAY)
+	l.SetArgument("sub", "sub object to check if it is inside the larger object", ANY...)
+	l.SetReturn("result", "whether the main object contains the sub object", BOOLEAN)
+	l.SetCategory(FUNC_CAT_GENERAL)
+	l.SetExampleInput("mystring", "string")
+	l.SetExampleOut("true")
+	return l
+}
+
+func builtinContains(args ...*Object) *Object {
+	IsArgCountEqual(2, args)
+	main := args[0]
+	sub := args[1]
+
+	ret := false
+	switch main.Type() {
+	case string(STRING):
+		if sub.Type() != string(STRING) {
+			return ObjectError("second argument of contains() cannot be a non-string, if the first argument is a string. got type=%s", sub.Type())
+		}
+		mainString, err := main.AsString()
+		if err != nil {
+			return ObjectError(err.Error())
+		}
+		subString, err := sub.AsString()
+		if err != nil {
+			return ObjectError(err.Error())
+		}
+		ret = strings.Contains(mainString, subString)
+	case string(ARRAY):
+		mainArr, err := main.AsArray()
+		if err != nil {
+			return ObjectError(err.Error())
+		}
+		subItem, err := sub.AsAny()
+		if err != nil {
+			return ObjectError(err.Error())
+		}
+		ret = slices.Contains(mainArr, subItem)
+	}
+	return CastBool(ret)
 }
 
 //min
@@ -224,7 +274,7 @@ func builtinCatchEntry() *functionEntry {
 	fe := NewFunctionEntry("catch", builtinCatch)
 	fe.SetDescription("checks if the value is an error. if it is, the second value is returned")
 	fe.SetArgument("target", "the target object to check for errors", ANY...)
-	fe.SetArgument("fallback", "the value to return in case of an error", INTEGER, FLOAT, STRING)
+	fe.SetArgument("fallback", "the value to return in case of an error", INTEGER, FLOAT, STRING, ARRAY, MAP)
 	fe.SetReturn("result", "either the original value or the fallback, depending on if an error occurred", ANY...)
 	fe.SetCategory(FUNC_CAT_GENERAL)
 	fe.SetExampleInput("nonexistent_variable + 1", "1000")
@@ -250,7 +300,7 @@ func builtinCoalesceEntry() *functionEntry {
 	fe := NewFunctionEntry("coalesce", builtinCoalesce)
 	fe.SetDescription("checks if the value is null; if it is, the second value is returned")
 	fe.SetArgument("target", "the target object to check for null", ANY...)
-	fe.SetArgument("fallback", "the value to return in case of a null", INTEGER, FLOAT, STRING)
+	fe.SetArgument("fallback", "the value to return in case of a null", INTEGER, FLOAT, STRING, ARRAY, MAP)
 	fe.SetReturn("result", "either the original value or the fallback, depending on if a null occurred", ANY...)
 	fe.SetCategory(FUNC_CAT_GENERAL)
 	fe.SetExampleInput("nonexistent_variable + 1", "1000")
@@ -270,5 +320,27 @@ func builtinCoalesce(args ...*Object) *Object {
 	return target
 }
 
-//
 // fallback (catch errors or nulls)
+func builtinFallbackEntry() *functionEntry {
+	fe := NewFunctionEntry("fallback", builtinFallback)
+	fe.SetDescription("checks if the value is null or an error; if it is, the second value is returned")
+	fe.SetArgument("target", "the target object to check for null or error", ANY...)
+	fe.SetArgument("fallback", "the value to return in case of a null or error", INTEGER, FLOAT, STRING, ARRAY, MAP)
+	fe.SetReturn("result", "either the original value or the fallback, depending on if a null occurred", ANY...)
+	fe.SetCategory(FUNC_CAT_GENERAL)
+	fe.SetExampleInput("nonexistent_variable + 1", "1000")
+	fe.SetExampleOut("5")
+	return fe
+}
+
+func builtinFallback(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
+	}
+	target := args[0]
+	fallback := args[1]
+	if target.Type() == string(NULL) || target.Type() == string(ERROR) {
+		return fallback
+	}
+	return target
+}

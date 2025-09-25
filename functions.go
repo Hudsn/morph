@@ -144,7 +144,7 @@ func (fe *functionEntry) SetDescription(desc string) *functionEntry {
 	fe.docInfo.description = desc
 	return fe
 }
-func (fe *functionEntry) SetArgument(name string, description string, types ...publicObject) *functionEntry {
+func (fe *functionEntry) SetArgument(name string, description string, types ...PublicObject) *functionEntry {
 	toAdd := functionIO{
 		name:        name,
 		description: description,
@@ -153,7 +153,7 @@ func (fe *functionEntry) SetArgument(name string, description string, types ...p
 	fe.args = append(fe.args, toAdd)
 	return fe
 }
-func (fe *functionEntry) SetReturn(name string, description string, types ...publicObject) *functionEntry {
+func (fe *functionEntry) SetReturn(name string, description string, types ...PublicObject) *functionEntry {
 	fe.ret = &functionIO{
 		name:        name,
 		description: description,
@@ -228,7 +228,7 @@ func (fe *functionEntry) eval(args ...object) object {
 			continue
 		}
 		arg := args[argIdx]
-		if !slices.Contains(wantArg.types, publicObject(arg.getType())) {
+		if !slices.Contains(wantArg.types, PublicObject(arg.getType())) {
 			return newObjectErr("function %q invalid argument type for %q. want=%s. got=%s", fe.name, wantArg.name, wantArg.typesString(), arg.getType())
 		}
 	}
@@ -240,7 +240,7 @@ func (fe *functionEntry) eval(args ...object) object {
 		return ret
 	}
 	if fe.ret != nil {
-		if !slices.Contains(fe.ret.types, publicObject(ret.getType())) {
+		if !slices.Contains(fe.ret.types, PublicObject(ret.getType())) {
 			return newObjectErr("function %q invalid return type. want=%s got=%s", fe.name, fe.ret.typesString(), ret.getType())
 		}
 	}
@@ -262,7 +262,7 @@ func (fe *functionEntry) checkVariadic(args ...object) error {
 	curIdx := len(fe.args) - 1
 	lastArgs := args[curIdx:]
 	for _, arg := range lastArgs {
-		if !slices.Contains(lastWantArg.types, publicObject(arg.getType())) {
+		if !slices.Contains(lastWantArg.types, PublicObject(arg.getType())) {
 			return fmt.Errorf("type error for function %q: argument at zero-indexed position %d does not match any type of variadic parameter %q (%s)", fe.name, curIdx, lastWantArg.name, lastWantArg.typesString())
 		}
 		curIdx++
@@ -279,7 +279,7 @@ const (
 type functionIO struct {
 	name        string
 	description string
-	types       []publicObject
+	types       []PublicObject
 }
 
 type Function func(args ...*Object) *Object
@@ -293,22 +293,22 @@ func (o *Object) Type() string {
 	return string(o.inner.getType())
 }
 
-type publicObject string
+type PublicObject string
 
 // wrappers for public types
 const (
-	INTEGER   publicObject = publicObject(t_integer)
-	FLOAT     publicObject = publicObject(t_float)
-	BOOLEAN   publicObject = publicObject(t_boolean)
-	STRING    publicObject = publicObject(t_string)
-	MAP       publicObject = publicObject(t_map)
-	ARRAY     publicObject = publicObject(t_array)
-	ARROWFUNC publicObject = publicObject(t_arrow)
-	ERROR     publicObject = publicObject(t_error)
-	NULL      publicObject = publicObject(t_null)
+	INTEGER   PublicObject = PublicObject(t_integer)
+	FLOAT     PublicObject = PublicObject(t_float)
+	BOOLEAN   PublicObject = PublicObject(t_boolean)
+	STRING    PublicObject = PublicObject(t_string)
+	MAP       PublicObject = PublicObject(t_map)
+	ARRAY     PublicObject = PublicObject(t_array)
+	ARROWFUNC PublicObject = PublicObject(t_arrow)
+	ERROR     PublicObject = PublicObject(t_error)
+	NULL      PublicObject = PublicObject(t_null)
 )
 
-var ANY = []publicObject{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, ARROWFUNC, ERROR, NULL}
+var ANY = []PublicObject{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, ARROWFUNC, ERROR, NULL}
 
 func (o *Object) AsAny() (interface{}, error) {
 	switch o.Type() {
