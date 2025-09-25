@@ -275,7 +275,7 @@ func (p *parser) parseExpressionList(endTok tokenType) []expression {
 func (p *parser) parseIndexExpression(left expression) expression {
 	leftExpr, ok := left.(assignable)
 	if !ok {
-		p.err("invalid index expression. cannot call index on a non-identifier", left.position().start)
+		p.err("invalid index expression. cannot call index on a non-identifier", p.currentToken.start)
 		return nil
 	}
 	ret := &indexExpression{tok: p.currentToken, left: leftExpr}

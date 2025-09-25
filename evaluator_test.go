@@ -1,6 +1,7 @@
 package morph
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -409,7 +410,38 @@ func TestEvalWhenStatement(t *testing.T) {
 	}
 }
 
-func TestEvalSetExpression(t *testing.T) {
+// trying to write to a path where one of the path items is a non-map object should result in an error
+func TestEvalSetStatementInvalidPaths(t *testing.T) {
+	testInputs := []string{`
+		set myvar.next = 5
+		set myvar.next.sub = 10
+		`,
+
+		`set myvar = 5
+		set myvar.next.sub = 10
+		`,
+	}
+	for _, input := range testInputs {
+
+		parser := setupEvalTestParser(input)
+		program, err := parser.parseProgram()
+		if err != nil {
+			t.Fatalf("parser error: %s", parser.errors[0])
+		}
+		env := newEnvironment(nil)
+		res := program.eval(env)
+		if !isObjectErr(res) {
+			t.Fatalf("expected resulting object to be an error describing an invalid SET statement on a non-map object. instead got %+v", res)
+		}
+
+		errObj := res.(*objectError)
+		if !strings.Contains(errObj.message, "invalid path part for SET statement: cannot use a path expression on a non-map object.") {
+			t.Errorf("expected an error output describing invalid SET statment due to path operations on a non-map object. instead got=%q", errObj.message)
+		}
+	}
+}
+
+func TestEvalSetStatement(t *testing.T) {
 	parser := setupEvalTestParser("SET my.path.var = 5")
 	program := parser.parseStatement()
 	if len(parser.errors) > 0 {
@@ -479,13 +511,126 @@ func TestEvalPathExpression(t *testing.T) {
 	}
 }
 
-// func TestEvalIndexOutOfBoundsReturnsError(t *testing.T)
+func TestEvalIndexOutOfBoundsReturnsError(t *testing.T) {
+	env := newEnvironment(nil)
+	dataMap := convertBytesToObject([]byte(`{
+		"nested": {
+			"key": 5,
+			"arr": [
+				4,
+				{
+					"arrkey": 10
+				}
+			]
+		}
+	}`))
+	if isObjectErr(dataMap) {
+		t.Fatal(objectToError(dataMap))
+	}
+	env.set("myobj", dataMap)
 
-// func TestEvalIndexOnNonArrayReturnsError(t *testing.T) {
+	testInputs := []string{
+		"myobj.nested.arr[-1]",
+		"myobj.nested.arr[2]",
+		"myobj.nested.arr[4].arrkey[5]",
+	}
+	for idx, input := range testInputs {
+		parser := setupEvalTestParser(input)
+		program := parser.parseStatement()
+		if len(parser.errors) > 0 {
+			t.Fatalf("parser error: %s", parser.errors[0])
+		}
+		got := program.eval(env)
+		if !isObjectErr(got) {
+			t.Fatalf("case %d: expected input %q to return an error regarding path expressions not being applicable on non-map objects.", idx+1, input)
+		}
+		errObj := got.(*objectError)
+		if !strings.Contains(errObj.message, "index is out of range for target array") {
+			t.Errorf("case %d: expected input %q to return an error regarding index expressions not being applicable on non-array objects. intead got %s", idx+1, input, errObj.message)
+		}
+	}
+}
 
-// }
+func TestEvalIndexOnNonArrayReturnsError(t *testing.T) {
+	env := newEnvironment(nil)
+	dataMap := convertBytesToObject([]byte(`{
+		"nested": {
+			"key": 5,
+			"arr": [
+				4,
+				{
+					"arrkey": 10
+				}
+			]
+		}
+	}`))
+	if isObjectErr(dataMap) {
+		t.Fatal(objectToError(dataMap))
+	}
+	env.set("myobj", dataMap)
 
-// func TestEvalPathOnNonMapReturnsError(t *testing.T)
+	testInputs := []string{
+		"myobj[4]",
+		"myobj.nested[0]",
+		"myobj.nested.key[999]",
+		"myobj.nested.arr[1].arrkey[5]",
+	}
+	for idx, input := range testInputs {
+		parser := setupEvalTestParser(input)
+		program := parser.parseStatement()
+		if len(parser.errors) > 0 {
+			t.Fatalf("parser error: %s", parser.errors[0])
+		}
+		got := program.eval(env)
+		if !isObjectErr(got) {
+			t.Fatalf("case %d: expected input %q to return an error regarding path expressions not being applicable on non-map objects.", idx+1, input)
+		}
+		errObj := got.(*objectError)
+		if !strings.Contains(errObj.message, "cannot call index expression on non-array object") {
+			t.Errorf("case %d: expected input %q to return an error regarding index expressions not being applicable on non-array objects. intead got %s", idx+1, input, errObj.message)
+		}
+	}
+}
+
+func TestEvalPathOnNonMapReturnsError(t *testing.T) {
+	env := newEnvironment(nil)
+	dataMap := convertBytesToObject([]byte(`{
+		"nested": {
+			"key": 5,
+			"arr": [
+				4,
+				{
+					"arrkey": 10
+				}
+			]
+		}
+	}`))
+	if isObjectErr(dataMap) {
+		t.Fatal(objectToError(dataMap))
+	}
+	env.set("myobj", dataMap)
+
+	testInputs := []string{
+		"myobj.nested.key.nonexistent",
+		"myobj.nested.key.arr.nope",
+		"myobj.nested.key.arr[0].notthiseither",
+	}
+	for idx, input := range testInputs {
+		parser := setupEvalTestParser(input)
+		program := parser.parseStatement()
+		if len(parser.errors) > 0 {
+			t.Fatalf("parser error: %s", parser.errors[0])
+		}
+		got := program.eval(env)
+		if !isObjectErr(got) {
+			t.Fatalf("case %d: expected input %q to return an error regarding path expressions not being applicable on non-map objects.", idx+1, input)
+		}
+		errObj := got.(*objectError)
+		if !strings.Contains(errObj.message, "cannot access a path") && !strings.Contains(errObj.message, "on a non-map object") {
+			t.Errorf("case %d: expected input %q to return an error regarding path expressions not being applicable on non-map objects. intead got %s", idx+1, input, errObj.message)
+		}
+	}
+}
 
 // any path or index expression as part of a path MUST return null if the lefthand side is a nonexistent/null expression.
 // that is, if any path prefix is null, and is followed by a [index] or additional .path notation, the result should be null
@@ -509,6 +654,7 @@ func TestEvalNonexistentPathReturnsNull(t *testing.T) {
 	env.set("myobj", dataMap)
 
 	testInputs := []string{
+		"mynonexistentarr[0]",
 		"mynonexistentobj",
 		"myobj.nonexistent_nested",
 		"myobj.nested.nonexistentkey",

@@ -52,12 +52,14 @@ func (s *setStatement) eval(env *environment) object {
 		case assign_step_env:
 			objHandle = evalSetStatementHandleENV(currentPath, valToSet, env)
 			if isObjectErr(objHandle) {
-				return objHandle
+				objErr := objHandle.(*objectError)
+				return newObjectErr("%s: %s", s.target.token().lineCol, objErr.message)
 			}
 		case assign_step_map_key:
 			objHandle = evalSetStatementHandleMAP(objHandle, currentPath, valToSet, s.target)
 			if isObjectErr(objHandle) {
-				return objHandle
+				objErr := objHandle.(*objectError)
+				return newObjectErr("%s: %s", s.target.token().lineCol, objErr.message)
 			}
 		default:
 			return newObjectErr("%s: invalid path part for SET statement", s.target.token().lineCol)
@@ -76,15 +78,18 @@ func evalSetStatementHandleENV(current *assignPath, valToSet object, env *enviro
 	if !ok {
 		newMap := &objectMap{kvPairs: make(map[string]object)}
 		return env.set(current.partName, newMap)
-	} else {
-		return existing
 	}
+	if existing.getType() != t_map {
+		return newObjectErr("invalid path part for SET statement: cannot use a path expression on a non-map object. Object is of type %s", existing.getType())
+	}
+
+	return existing
 }
 
 func evalSetStatementHandleMAP(objHandle object, current *assignPath, valToSet object, setTarget assignable) object {
 	mapObj, ok := objHandle.(*objectMap)
 	if !ok {
-		return newObjectErr("%s: invalid path part for SET statement: cannot use a path expression on a non-map object", setTarget.token().lineCol)
+		return newObjectErr("%s: invalid path part for SET statement: cannot use a path expression on a non-map object. Object is of type %s", setTarget.token().lineCol, objHandle.getType())
 	}
 	if current.next == nil {
 		mapObj.kvPairs[current.partName] = valToSet
@@ -95,6 +100,9 @@ func evalSetStatementHandleMAP(objHandle object, current *assignPath, valToSet o
 		newMap := &objectMap{kvPairs: make(map[string]object)}
 		mapObj.kvPairs[current.partName] = newMap
 		return newMap
+	}
+	if existing.getType() != t_map {
+		return newObjectErr("invalid path part for SET statement: cannot use a path expression on a non-map object. Object is of type %s", existing.getType())
 	}
 	return existing
 }
