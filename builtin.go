@@ -14,6 +14,8 @@ func newBuiltinFuncStore() *functionStore {
 	store.Register(builtinDropEntry())
 	store.Register(builtinEmitEntry())
 	store.Register(builtinIntEntry())
+	store.Register(builtinFloatEntry())
+	store.Register(builtinStringEntry())
 	store.Register(builtinCatchEntry())
 	store.Register(builtinCoalesceEntry())
 	store.Register(builtinFallbackEntry())
@@ -81,7 +83,9 @@ func builtinContainsEntry() *functionEntry {
 }
 
 func builtinContains(args ...*Object) *Object {
-	IsArgCountEqual(2, args)
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
+	}
 	main := args[0]
 	sub := args[1]
 
@@ -230,15 +234,6 @@ func builtinEmit(args ...*Object) *Object {
 	return ObjectTerminate
 }
 
-//
-// map
-
-//
-// filter
-
-//
-// reduce
-
 // int
 func builtinIntEntry() *functionEntry {
 	fe := NewFunctionEntry("int", builtinInt)
@@ -252,8 +247,8 @@ func builtinIntEntry() *functionEntry {
 }
 
 func builtinInt(args ...*Object) *Object {
-	if len(args) != 1 {
-		return ObjectError("function int() should have 1 argument. got=%d", len(args))
+	if res, ok := IsArgCountEqual(1, args); !ok {
+		return res
 	}
 	a := args[0]
 	val, err := a.AsAny()
@@ -263,11 +258,53 @@ func builtinInt(args ...*Object) *Object {
 	return CastInt(val)
 }
 
-//
 // float
+func builtinFloatEntry() *functionEntry {
+	fe := NewFunctionEntry("float", builtinFloat)
+	fe.SetDescription("attempts to cast the input as a float")
+	fe.SetArgument("target", "the target object to convert to a float", INTEGER, FLOAT, STRING)
+	fe.SetReturn("result", "the resulting float", FLOAT)
+	fe.SetCategory(FUNC_CAT_GENERAL)
+	fe.SetExampleInput("1")
+	fe.SetExampleOut("1.0")
+	return fe
+}
 
-//
+func builtinFloat(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(1, args); !ok {
+		return res
+	}
+	a := args[0]
+	val, err := a.AsAny()
+	if err != nil {
+		return ObjectError("unable to convert item to FLOAT. invalid input type: %s", a.Type())
+	}
+	return CastFloat(val)
+}
+
 // string
+func builtinStringEntry() *functionEntry {
+	fe := NewFunctionEntry("string", builtinString)
+	fe.SetDescription("attempts to cast the input as a string")
+	fe.SetArgument("target", "the target object to convert to a string", INTEGER, FLOAT, STRING, BOOLEAN)
+	fe.SetReturn("result", "the resulting string", STRING)
+	fe.SetCategory(FUNC_CAT_GENERAL)
+	fe.SetExampleInput("1.0")
+	fe.SetExampleOut(`"1.0"`)
+	return fe
+}
+
+func builtinString(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(1, args); !ok {
+		return res
+	}
+	a := args[0]
+	val, err := a.AsAny()
+	if err != nil {
+		return ObjectError("unable to convert item to STRING. invalid input type: %s", a.Type())
+	}
+	return CastString(val)
+}
 
 // catch (handle errors)
 func builtinCatchEntry() *functionEntry {
@@ -344,3 +381,12 @@ func builtinFallback(args ...*Object) *Object {
 	}
 	return target
 }
+
+//
+// map
+
+//
+// filter
+
+//
+// reduce

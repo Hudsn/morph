@@ -522,6 +522,12 @@ func CastFloat(value interface{}) *Object {
 		ret.inner = &objectFloat{value: float64(v)}
 	case int64:
 		ret.inner = &objectFloat{value: float64(v)}
+	case string:
+		i, err := strconv.Atoi(v)
+		if err != nil {
+			return ObjectError("unable to cast string as FLOAT. invalid string: %s", v)
+		}
+		ret.inner = &objectFloat{value: float64(i)}
 	default:
 		return ObjectError("unable to cast type as Float. unsupported type: %T", v)
 	}
@@ -540,9 +546,9 @@ func CastString(value interface{}) *Object {
 	case bool:
 		ret.inner = &objectString{value: fmt.Sprintf("%t", v)}
 	case float32:
-		ret.inner = &objectString{value: fmt.Sprintf("%f", v)}
+		ret.inner = &objectString{value: strconv.FormatFloat(float64(v), 'f', -1, 32)}
 	case float64:
-		ret.inner = &objectString{value: fmt.Sprintf("%f", v)}
+		ret.inner = &objectString{value: strconv.FormatFloat(float64(v), 'f', -1, 64)}
 	case int:
 		ret.inner = &objectString{value: fmt.Sprintf("%d", v)}
 	case int8:

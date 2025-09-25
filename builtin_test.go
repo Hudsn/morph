@@ -173,6 +173,54 @@ func TestBuiltinInt(t *testing.T) {
 	}
 	testConvertObjectInt(t, res, int64(want))
 }
+func TestBuiltinFloat(t *testing.T) {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	input := `
+	set myvar = "5"
+	set res = float(myvar)`
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	program, err := p.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	evalRes := program.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
+	}
+	want := 5
+	res, ok := env.get("res")
+	if !ok {
+		t.Fatalf("expected res field to exist in env")
+	}
+	testConvertObjectFloat(t, res, float64(want))
+}
+func TestBuiltinString(t *testing.T) {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	input := `
+	set myvar = 5.5
+	set res = string(myvar)`
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	program, err := p.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	evalRes := program.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
+	}
+	want := "5.5"
+	res, ok := env.get("res")
+	if !ok {
+		t.Fatalf("expected res field to exist in env")
+	}
+	testConvertObjectString(t, res, want)
+}
 
 func TestBuiltinCatch(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
