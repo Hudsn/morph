@@ -21,6 +21,8 @@ func newBuiltinFuncStore() *functionStore {
 	store.Register(builtinFallbackEntry())
 	store.Register(builtinContainsEntry())
 
+	store.Register(builtinMapEntry())
+
 	return store
 }
 
@@ -382,8 +384,106 @@ func builtinFallback(args ...*Object) *Object {
 	return target
 }
 
-//
 // map
+func builtinMapEntry() *functionEntry {
+	fe := NewFunctionEntry("map", builtinMap)
+	fe.SetDescription("apply a series of morph statements to each element of an array or map, and return an array/map of entries resulting from the statements applied")
+	fe.SetArgument("input_data", "the array or map on which to apply the statements", ARRAY, MAP)
+	fe.SetArgument("function", `An arrow function containing the statements to transform each entry of the input data. 
+The item before the arrow will be the variable name you use to access the input_data within the arrow function body.
+Assign the desired entry to replace the current array/map value to the "return" variable.
+When a MAP is the first argument, the "key" and "value" can both be available as subfields of the passed input variable. For example: myfield ~> {set return.key = myfield.key}
+When an ARRAY is the first argument, the entry will be directly available by accessing the passed input variable.
+	`, ARROWFUNC)
+	fe.SetReturn("result", "the final array or map from the series of mapping operations", ARRAY, MAP)
+	fe.SetCategory(FUNC_CAT_AGGREGATE)
+	fe.SetExampleInput(`{"a": 1, "b": 2}`, `in ~> {
+	SET return.key = "prefix_" + in.key
+	SET return.value = in.value * 2
+}`)
+	fe.SetExampleOut(`{"prefix_a": 2, "prefix_b": 4}`)
+	return fe
+}
+
+func builtinMap(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
+	}
+	arrowFn, err := args[1].AsArrowFunction()
+	if err != nil {
+		return ObjectError("invalid argument for map(): second argument must be a valid ARROWFUNC. got type of %s", args[1].Type())
+	}
+
+	switch args[0].Type() {
+	case string(MAP):
+		in, err := args[0].AsMap()
+		if err != nil {
+			return ObjectError("error calling map(): data issue with first argument of type %s", args[0].Type())
+		}
+		ret := make(map[string]interface{})
+		for key, value := range in {
+			input := make(map[string]interface{})
+			input["key"] = key
+			input["value"] = value
+			subEnv, err := arrowFn.Run(input)
+			if err != nil {
+				return ObjectError("error calling map() arrow function: %s", err.Error())
+			}
+			m, ok := subEnv.(map[string]interface{})
+			if !ok {
+				return ObjectError("error calling map() arrow function: unable to extract return value from arrow function")
+			}
+			out, ok := m["return"]
+			if !ok {
+				ret[key] = value // if return is nil, simply use the existing entry
+				continue
+			}
+			retMap, ok := out.(map[string]interface{}) // if return is not a map (ie can't access the following: return.key, return.value), simply use the return as the map value, and use the existing key
+			if !ok {
+				ret[key] = out
+				continue
+			}
+			if newKey, ok := retMap["key"]; ok { // if return.key exists and is a string, we use that as the new key
+				if newKeyStr, ok := newKey.(string); ok {
+					key = newKeyStr
+				}
+			}
+			// either assign the new value if it exists, or keep the existing one if it doesn't.
+			newVal, ok := retMap["value"]
+			if !ok {
+				ret[key] = value
+				continue
+			}
+			ret[key] = newVal
+		}
+		return CastMap(ret)
+	case string(ARRAY):
+		in, err := args[0].AsArray()
+		if err != nil {
+			return ObjectError("error calling map(): data issue with first argument of type %s", args[0].Type())
+		}
+		ret := []interface{}{}
+		for _, entry := range in {
+			subEnv, err := arrowFn.Run(entry)
+			if err != nil {
+				return ObjectError("error calling map() arrow function: %s", err.Error())
+			}
+			m, ok := subEnv.(map[string]interface{})
+			if !ok {
+				return ObjectError("error calling map() arrow function: unable to extract return value from arrow function")
+			}
+			toAdd, ok := m["return"]
+			if !ok {
+				ret = append(ret, entry)
+				continue
+			}
+			ret = append(ret, toAdd)
+		}
+		return CastArray(ret)
+	default:
+		return ObjectError("invalid argument for map(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())
+	}
+}
 
 //
 // filter

@@ -4,6 +4,136 @@ import (
 	"testing"
 )
 
+func TestBuiltinMap(t *testing.T) {
+	tests := []struct {
+		nameDesc string
+		data     string
+		input    string
+		want     interface{}
+	}{
+		{
+			nameDesc: "map() with key and val reassignment",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 3
+			}`,
+			input: `
+			SET res = map(mydata, entry ~> {
+				set return.key = "prefix_" + entry.key 
+				SET return.value = entry.value * 2
+			})
+			`,
+			want: map[string]interface{}{
+				"prefix_a": 2,
+				"prefix_b": 4,
+				"prefix_c": 6,
+			},
+		},
+		{
+			nameDesc: "map() with key reassignment; without val assignment",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 3
+			}`,
+			input: `
+			SET res = map(mydata, entry ~> {
+				SET return.key = "prefix_" + entry.key
+			})
+			`,
+			want: map[string]interface{}{
+				"prefix_a": 1,
+				"prefix_b": 2,
+				"prefix_c": 3,
+			},
+		},
+		{
+			nameDesc: "map() with val reassignment; without key assignment",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 3
+			}`,
+			input: `
+			SET res = map(mydata, entry ~> {
+				SET return.value = entry.value * 2
+			})
+			`,
+			want: map[string]interface{}{
+				"a": 2,
+				"b": 4,
+				"c": 6,
+			},
+		},
+		{
+			nameDesc: "map() with no valid assignments",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 3
+			}`,
+			input: `
+			SET res = map(mydata, entry ~> {
+				set fdsa.value = entry.key
+				SET asdf.value = entry.value * 2
+			})
+			`,
+			want: map[string]interface{}{
+				"a": 1,
+				"b": 2,
+				"c": 3,
+			},
+		},
+		{
+			nameDesc: "map() with array",
+			data: `
+				[1, 2.5, 3]
+			`,
+			input: `
+			SET res = map(mydata, entry ~> {
+				set return = entry - 1
+			})
+			`,
+			want: []interface{}{0, 1.5, 2},
+		},
+		{
+			nameDesc: "map() with array; without assignment",
+			data: `
+				[1, 2.5, 3]
+			`,
+			input: `
+			SET res = map(mydata, entry ~> {
+				set not_return = entry - 1
+			})
+			`,
+			want: []interface{}{1, 2.5, 3},
+		},
+	}
+	for _, tt := range tests {
+		inputObj := convertBytesToObject([]byte(tt.data))
+		env := newEnvironment(newBuiltinFuncStore())
+		env.set("mydata", inputObj)
+		lexer := newLexer([]rune(tt.input))
+		parser := newParser(lexer)
+		program, err := parser.parseProgram()
+		if err != nil {
+			t.Fatalf("%s: %s", tt.nameDesc, err.Error())
+		}
+		res := program.eval(env)
+		if isObjectErr(res) {
+			t.Fatalf("%s: %s", tt.nameDesc, objectToError(res).Error())
+		}
+		gotObj, ok := env.get("res")
+		if !ok {
+			t.Fatalf("%s: expected env var res to exist. got null", tt.nameDesc)
+		}
+		if !testConvertObject(t, gotObj, tt.want) {
+			t.Errorf("%s: incorrect result value", tt.nameDesc)
+		}
+	}
+}
+
 func TestBuiltinLen(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
 	env := newEnvironment(fnStore)
