@@ -133,6 +133,167 @@ func TestBuiltinMap(t *testing.T) {
 		}
 	}
 }
+func TestBuiltinReduce(t *testing.T) {
+	tests := []struct {
+		nameDesc string
+		data     string
+		input    string
+		want     interface{}
+	}{
+		{
+			nameDesc: "reduce() on map with proper acc int assignment",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 3
+			}`,
+			input: `
+			SET res = reduce(mydata, 0, entry ~> {
+				SET return = entry.current + entry.value
+			})
+			`,
+			want: 6,
+		},
+		{
+			nameDesc: "reduce() on map with proper acc arr assignment",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 2.5
+			}`,
+			input: `
+			SET res = reduce(mydata, null, entry ~> {
+				WHEN entry.current == null :: SET entry.current = []
+				SET return = append(entry.current, int(entry.value * 2))
+			})
+			`,
+			want: []interface{}{2, 4, 5},
+		},
+		{
+			nameDesc: "reduce() on map with null acc without assignment",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 2.5
+			}`,
+			input: `
+			SET res = reduce(mydata, null, entry ~> {
+				SET whocares = entry.current + entry.value
+			})
+			`,
+			want: nil,
+		},
+		{
+			nameDesc: "reduce() on map with existing acc without assignment",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 2.5
+			}`,
+			input: `
+			SET res = reduce(mydata, string(999), entry ~> {
+				SET whocares = entry.current + entry.value
+			})
+			`,
+			want: "999",
+		},
+		{
+			nameDesc: "reduce() on array with existing acc with assignment",
+			data:     `[1, 2, "3"]`,
+			input: `
+			SET res = reduce(mydata, 6, entry ~> {
+				SET return = entry.current + int(entry.value)
+			})
+			`,
+			want: 12,
+		},
+		{
+			nameDesc: "reduce() on array with out acc without assignment",
+			data:     `[1, 2, "3"]`,
+			input: `
+			SET res = reduce(mydata, null, entry ~> {
+				SET whocares = entry.current + int(entry.value)
+			})
+			`,
+			want: nil,
+		},
+		{
+			nameDesc: "reduce() on array with out acc with assignment",
+			data:     `[1, 2, "3"]`,
+			input: `
+			SET res = reduce(mydata, null, entry ~> {
+				WHEN entry.current == NULL :: SET entry.current = 0
+				SET return = entry.current + int(entry.value)
+			})
+			`,
+			want: 6,
+		},
+		{
+			nameDesc: "reduce() on array with out acc with null assignment",
+			data:     `[1, 2, "3"]`,
+			input: `
+			SET res = reduce(mydata, 0, entry ~> {
+				SET whocares = entry.current + int(entry.value)
+				SET return = entry.current + int(entry.value) 
+				WHEN entry.current >= 3 :: SET return = NULL
+			})
+			`,
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		inputObj := convertBytesToObject([]byte(tt.data))
+		env := newEnvironment(newBuiltinFuncStore())
+		env.set("mydata", inputObj)
+		lexer := newLexer([]rune(tt.input))
+		parser := newParser(lexer)
+		program, err := parser.parseProgram()
+		if err != nil {
+			t.Fatalf("%s: %s", tt.nameDesc, err.Error())
+		}
+		res := program.eval(env)
+		if isObjectErr(res) {
+			t.Fatalf("%s: %s", tt.nameDesc, objectToError(res).Error())
+		}
+		gotObj, ok := env.get("res")
+		if !ok {
+			t.Fatalf("%s: expected env var res to exist. got null", tt.nameDesc)
+		}
+		if !testConvertObject(t, gotObj, tt.want) {
+			t.Errorf("%s: incorrect result value", tt.nameDesc)
+		}
+	}
+}
+
+func TestBuiltinAppend(t *testing.T) {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	arr := convertArrayToObject([]interface{}{"a", "b", "c"}, false)
+	if isObjectErr(arr) {
+		t.Fatal(objectToError(arr))
+	}
+	env.set("myarr", arr)
+	input := `
+	set res = append(myarr, "d")
+	`
+	want := []interface{}{"a", "b", "c", "d"}
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	program, err := p.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	evalRes := program.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
+	}
+	res, ok := env.get("res")
+	if !ok {
+		t.Fatalf("expected sum field to be populated in env")
+	}
+
+	testConvertObject(t, res, want)
+}
 
 func TestBuiltinLen(t *testing.T) {
 	fnStore := newBuiltinFuncStore()

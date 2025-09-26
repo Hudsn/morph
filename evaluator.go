@@ -291,7 +291,7 @@ func (i *infixExpression) eval(env *environment) object {
 		}
 		return ret
 	case leftObj.getType() != rightObj.getType():
-		return newObjectErr("%s: type mismatch: %s %s %s", leftObj.getType(), i.tok.lineCol, i.operator, rightObj.getType())
+		return obj_global_false
 	case leftObj.getType() == t_string && rightObj.getType() == t_string:
 		ret := evalStringInfixExpression(leftObj, i.operator, rightObj)
 		if isObjectErr(ret) {

@@ -312,6 +312,8 @@ var ANY = []PublicObject{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, ARROWFUNC,
 
 func (o *Object) AsAny() (interface{}, error) {
 	switch o.Type() {
+	case string(NULL):
+		return nil, nil
 	case string(INTEGER):
 		return o.AsInt()
 	case string(FLOAT):
@@ -455,7 +457,7 @@ func (o *Object) AsArrowFunction() (*ObjectArrowFN, error) {
 	}, nil
 }
 
-var ObjectNull = &Object{inner: obj_global_false}
+var ObjectNull = &Object{inner: obj_global_null}
 var ObjectTerminate = &Object{inner: obj_global_term}
 var ObjectTerminateDrop = &Object{inner: obj_global_term_drop}
 
@@ -606,6 +608,29 @@ func CastArray(value interface{}) *Object {
 		return ObjectError("unable to cast type as Array. unsupported type: %T", v)
 	}
 	return ret
+}
+
+func CastAuto(value interface{}) *Object {
+	if value == nil {
+		return ObjectNull
+	}
+	switch v := value.(type) {
+
+	case int, int8, int16, int32, int64:
+		return CastInt(v)
+	case float32, float64:
+		return CastFloat(v)
+	case bool:
+		return CastBool(v)
+	case string:
+		return CastString(v)
+	case map[string]interface{}:
+		return CastMap(v)
+	case []interface{}:
+		return CastArray(v)
+	default:
+		return ObjectError("unable to automatically cast type for value")
+	}
 }
 
 // helpers

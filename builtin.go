@@ -20,8 +20,10 @@ func newBuiltinFuncStore() *functionStore {
 	store.Register(builtinCoalesceEntry())
 	store.Register(builtinFallbackEntry())
 	store.Register(builtinContainsEntry())
+	store.Register(builtinAppendEntry())
 
 	store.Register(builtinMapEntry())
+	store.Register(builtinReduceEntry())
 
 	return store
 }
@@ -488,5 +490,126 @@ func builtinMap(args ...*Object) *Object {
 //
 // filter
 
-//
 // reduce
+func builtinReduceEntry() *functionEntry {
+	fe := NewFunctionEntry("reduce", builtinReduce)
+	fe.SetDescription("apply a series of morph statements to each element of an array or map, and return an array/map of entries resulting from the statements applied")
+	fe.SetArgument("input_data", "the array or map on which to apply the reducer statements", ARRAY, MAP)
+	fe.SetArgument("accumulator", "the initial value of the accumulator to use", STRING, INTEGER, FLOAT, BOOLEAN, ARRAY, MAP, NULL)
+	fe.SetArgument("function", `An arrow function containing the statements to modify the accumulator, given the input_data. 
+The item before the arrow will be the variable name you use to access the input_data within the arrow function body.
+Assign the desired accumulator output to the "return" variable.
+The current accumulator state can be accessed by referencing the "current" subfield of the passed input variable.
+When a MAP is the first argument, the "key" and "value" can both be available as subfields of the passed input variable.
+When an ARRAY is the first argument, the entry will be davailable by accessing the "value" subfield of the input variable; no "key" subfield will be present.
+	`, ARROWFUNC)
+	fe.SetReturn("result", "the final accumulator value from the series of mapping operations", STRING, INTEGER, FLOAT, BOOLEAN, ARRAY, MAP, NULL)
+	fe.SetCategory(FUNC_CAT_AGGREGATE)
+	fe.SetExampleInput(`{"a": 1, "b": 2}`, "0", `in ~> {
+	SET return = in.current + in.value
+}`)
+	fe.SetExampleOut(`3`)
+	return fe
+}
+
+func builtinReduce(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(3, args); !ok {
+		return res
+	}
+	arrowFn, err := args[2].AsArrowFunction()
+	if err != nil {
+		return ObjectError("reduce() second argument must be a valid ARROWFUNC. got type of %s", args[1].Type())
+	}
+
+	acc, err := args[1].AsAny()
+	if err != nil {
+		return ObjectError("reduce() data issue with accumulator argument: %s", err.Error())
+	}
+
+	switch args[0].Type() {
+	case string(MAP):
+		in, err := args[0].AsMap()
+		if err != nil {
+			return ObjectError("reduce() input data argument issue. type is not compatible with map operation: %s", args[0].Type())
+		}
+		ret := acc
+		keyList := []string{}
+		for k := range in {
+			keyList = append(keyList, k)
+		}
+		slices.Sort(keyList)
+		for _, key := range keyList {
+			value := in[key]
+			input := make(map[string]interface{})
+			input["key"] = key
+			input["value"] = value
+			input["current"] = ret
+			subEnv, err := arrowFn.Run(input)
+			if err != nil {
+				return ObjectError("reduce() arrow function error: %s", err.Error())
+			}
+			m, ok := subEnv.(map[string]interface{})
+			if !ok {
+				return ObjectError("reduce() unable to extract return value from arrow function")
+			}
+			if out, ok := m["return"]; ok {
+				ret = out
+			}
+		}
+		return CastAuto(ret)
+	case string(ARRAY):
+		in, err := args[0].AsArray()
+		if err != nil {
+			return ObjectError("reduce() input data argument issue. type is not compatible with array operation: %s", args[0].Type())
+		}
+		ret := acc
+		for _, entry := range in {
+			input := make(map[string]interface{})
+			input["value"] = entry
+			input["current"] = ret
+			subEnv, err := arrowFn.Run(input)
+			if err != nil {
+				return ObjectError("error calling reduce() arrow function: %s", err.Error())
+			}
+			m, ok := subEnv.(map[string]interface{})
+			if !ok {
+				return ObjectError("reduce() unable to extract return value from arrow function")
+			}
+			if out, ok := m["return"]; ok {
+				ret = out
+			}
+		}
+		return CastAuto(ret)
+	default:
+		return ObjectError("invalid argument for map(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())
+	}
+}
+
+// append
+func builtinAppendEntry() *functionEntry {
+	fe := NewFunctionEntry("append", builtinAppend)
+	fe.SetDescription("appends a value to an array")
+	fe.SetArgument("arr", "the target object to check for null or error", ARRAY)
+	fe.SetArgument("to_add", "the value to add to the array", INTEGER, FLOAT, STRING, ARRAY, MAP, NULL)
+	fe.SetReturn("result", "the new array with the item added", ARRAY)
+	fe.SetCategory(FUNC_CAT_GENERAL)
+	fe.SetExampleInput("[1, 2]", "3")
+	fe.SetExampleOut("[1, 2, 3]")
+	return fe
+}
+
+func builtinAppend(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
+	}
+	arr, err := args[0].AsArray()
+	if err != nil {
+		return ObjectError("append() invalid array argument of type %s", args[0].Type())
+	}
+	toAdd, err := args[1].AsAny()
+	if err != nil {
+		return ObjectError("append() invalid second argument of type %s", args[1].Type())
+	}
+	arr = append(arr, toAdd)
+	return CastArray(arr)
+}

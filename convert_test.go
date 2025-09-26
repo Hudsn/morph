@@ -24,6 +24,8 @@ func TestConvertObjectFromBytes(t *testing.T) {
 
 func testConvertObject(t *testing.T, data object, want interface{}) bool {
 	switch v := want.(type) {
+	case nil:
+		return testConvertObjectNull(t, data)
 	case int:
 		return testConvertObjectInt(t, data, int64(v))
 	case float64:
@@ -50,6 +52,19 @@ func testConvertObjectString(t *testing.T, data object, want string) bool {
 	}
 	if strObj.value != want {
 		t.Errorf("integer value is incorrect. want=%q got=%q", want, strObj.value)
+		return false
+	}
+	return true
+}
+
+func testConvertObjectNull(t *testing.T, data object) bool {
+	nullObj, ok := data.(*objectNull)
+	if !ok {
+		t.Errorf("data is not of type *objectNull. got=%T", data)
+		return false
+	}
+	if nullObj != obj_global_null {
+		t.Errorf("nil value is incorrect. expected to be shared global null object.")
 		return false
 	}
 	return true
