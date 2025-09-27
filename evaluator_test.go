@@ -5,6 +5,27 @@ import (
 	"testing"
 )
 
+func TestEvalPipe(t *testing.T) {
+	input := `
+	set result = [1, 2, "3", 4] | append(5)
+	`
+	env := newEnvironment(newBuiltinFuncStore())
+	parser := setupEvalTestParser(input)
+	program, err := parser.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := program.eval(env)
+	if isObjectErr(res) {
+		t.Fatal(objectToError(res))
+	}
+	got, ok := env.get("result")
+	if !ok {
+		t.Fatalf("expected an existing env entry for %q, but got no result", "result")
+	}
+	testConvertObject(t, got, []interface{}{1, 2, "3", 4, 5})
+}
+
 func TestEvalNull(t *testing.T) {
 	input := `
 	set mynull = NULL

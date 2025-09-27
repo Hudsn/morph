@@ -446,6 +446,18 @@ func (a *arrowFunctionExpression) eval(env *environment) object {
 	}
 }
 
+// pipe expr
+func (p *pipeExpression) eval(env *environment) object {
+	fn := p.rightFunc
+	newArgs := append([]expression{p.leftArg}, fn.arguments...)
+	p.rightFunc.arguments = newArgs
+	ret := p.rightFunc.eval(env)
+	if isObjectErr(ret) {
+		return unWrapErr(p.rightFunc.token().lineCol, ret)
+	}
+	return ret
+}
+
 //
 // string lit
 

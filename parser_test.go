@@ -4,6 +4,39 @@ import (
 	"testing"
 )
 
+func TestParsePipeExpression(t *testing.T) {
+	input := "asdf | myfunc(2)"
+	program := setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
+	stmt := program.statements[0].(*expressionStatement)
+	pe, ok := stmt.expression.(*pipeExpression)
+	if !ok {
+		t.Fatalf("stmt.expression is not of type *pipeExpression. got=%T", stmt.expression)
+	}
+
+	arg1, ok := pe.leftArg.(*identifierExpression)
+	if !ok {
+		t.Fatalf("pe.leftArg is not of type *identifierExpression. got=%T", pe.leftArg)
+	}
+	if arg1.value != "asdf" {
+		t.Errorf("wrong value for left argument. want=%s got=%s", "asdf", arg1.value)
+	}
+	if pe.rightFunc == nil {
+		t.Fatal("expected rightFunc to exist. got nil")
+	}
+	if len(pe.rightFunc.arguments) != 1 {
+		t.Errorf("expected rightFunc argument count to be 1. got=%d", len(pe.rightFunc.arguments))
+	}
+	argInt, ok := pe.rightFunc.arguments[0].(*integerLiteral)
+	if !ok {
+		t.Fatalf("expected argument of func to be of type *integerLiteral. got=%T", pe.rightFunc.arguments[0])
+	}
+	if argInt.value != int64(2) {
+		t.Errorf("expected arg of function to be 2. got=%d", argInt.value)
+	}
+}
+
 func TestParseNullLiteral(t *testing.T) {
 	input := "null"
 	program := setupParserTest(t, input)
@@ -33,10 +66,6 @@ func TestParseArrowFunction(t *testing.T) {
 	if len(arrowFnExp.block) != 3 {
 		t.Errorf("expected length of arrowFunc statements to be 2. got=%d", len(arrowFnExp.block))
 	}
-	// name, ok := arrowFnExp.paramName.(*identifierExpression)
-	// if !ok {
-	// 	t.Fatalf("arrowFnExp.ParamName is not of type *identifierExpression. got=%T", arrowFnExp.paramName)
-	// }
 	if arrowFnExp.paramName.value != "myvar" {
 		t.Errorf("expected arrowFnExp value to be %s. got=%s", "myvar", arrowFnExp.paramName.value)
 	}

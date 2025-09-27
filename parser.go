@@ -8,11 +8,12 @@ import (
 const (
 	_ int = iota
 	lowest
-	assign
+	// assign
 	arrow_func // ~>
 	binary_or  // ||
 	binary_and // &&
 	equality   // includes inequality like !=, <= >, etc...
+	pipe
 	sum
 	product
 	prefix  // !true or -1.234
@@ -20,7 +21,7 @@ const (
 )
 
 var precedenceMap = map[tokenType]int{
-	tok_assign:     assign,
+	// tok_assign:     assign,
 	tok_arrow:      arrow_func,
 	tok_equal:      equality,
 	tok_not_equal:  equality,
@@ -35,6 +36,7 @@ var precedenceMap = map[tokenType]int{
 	tok_asterisk:   product,
 	tok_slash:      product,
 	tok_mod:        product,
+	tok_pipe:       pipe,
 	tok_lsquare:    highest,
 	tok_dot:        highest,
 	tok_lparen:     highest,
@@ -99,6 +101,7 @@ func (p *parser) registerFuncs() {
 	p.registerInfixFunc(tok_lsquare, p.parseIndexExpression)
 	p.registerInfixFunc(tok_lparen, p.parseCallExpression)
 	p.registerInfixFunc(tok_arrow, p.parseArrowFunctionExpression)
+	p.registerInfixFunc(tok_pipe, p.parsePipeExpression)
 }
 
 func (p *parser) next() {
@@ -175,6 +178,23 @@ func (p *parser) parsePrefixExpression() expression {
 }
 
 // specific expression parsers
+
+// pipe expr
+
+func (p *parser) parsePipeExpression(left expression) expression {
+	ret := &pipeExpression{leftArg: left, tok: p.currentToken}
+	precedence := lookupPrecedence(p.currentToken.tokenType)
+	p.next()
+	tempPos := p.currentToken.start
+	right := p.parseExpression(precedence)
+	rightFunc, ok := right.(*callExpression)
+	if !ok {
+		p.err("invalid pipe call. right side of pipe must be a function call", tempPos)
+		return nil
+	}
+	ret.rightFunc = rightFunc
+	return ret
+}
 
 // arrow fn
 func (p *parser) parseArrowFunctionExpression(left expression) expression {

@@ -495,3 +495,21 @@ func (af *arrowFunctionExpression) position() position {
 		end:   af.endPos,
 	}
 }
+
+type pipeExpression struct {
+	tok       token
+	leftArg   expression
+	rightFunc *callExpression
+}
+
+func (pe *pipeExpression) expressionNode() {}
+func (pe *pipeExpression) token() token    { return pe.tok }
+func (pe *pipeExpression) string() string {
+	return fmt.Sprintf("%s | %s", pe.leftArg.string(), pe.rightFunc.string())
+}
+func (pe *pipeExpression) position() position {
+	return position{
+		start: pe.leftArg.position().end,
+		end:   pe.rightFunc.position().end,
+	}
+}
