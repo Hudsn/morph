@@ -22,7 +22,7 @@ func (p *program) eval(env *environment) object {
 	for _, stmt := range p.statements {
 		obj := stmt.eval(env)
 		if isObjectErr(obj) {
-			return obj
+			return unWrapErr(stmt.token().lineCol, obj)
 		}
 		if obj.getType() == t_terminate {
 			term := obj.(*objectTerminate)
@@ -41,7 +41,7 @@ func (p *program) eval(env *environment) object {
 func (s *setStatement) eval(env *environment) object {
 	valToSet := s.value.eval(env)
 	if isObjectErr(valToSet) {
-		return valToSet
+		return unWrapErr(s.value.token().lineCol, valToSet)
 	}
 	valToSet = valToSet.clone()
 
@@ -52,17 +52,15 @@ func (s *setStatement) eval(env *environment) object {
 		case assign_step_env:
 			objHandle = evalSetStatementHandleENV(currentPath, valToSet, env)
 			if isObjectErr(objHandle) {
-				objErr := objHandle.(*objectError)
-				return newObjectErr("%s: %s", s.target.token().lineCol, objErr.message)
+				return unWrapErr(s.target.token().lineCol, objHandle)
 			}
 		case assign_step_map_key:
-			objHandle = evalSetStatementHandleMAP(objHandle, currentPath, valToSet, s.target)
+			objHandle = evalSetStatementHandleMAP(objHandle, currentPath, valToSet)
 			if isObjectErr(objHandle) {
-				objErr := objHandle.(*objectError)
-				return newObjectErr("%s: %s", s.target.token().lineCol, objErr.message)
+				return unWrapErr(s.target.token().lineCol, objHandle)
 			}
 		default:
-			return newObjectErr("%s: invalid path part for SET statement", s.target.token().lineCol)
+			return newObjectErr(s.target.token().lineCol, "invalid path part for SET statement")
 		}
 		currentPath = currentPath.next
 	}
@@ -80,16 +78,15 @@ func evalSetStatementHandleENV(current *assignPath, valToSet object, env *enviro
 		return env.set(current.partName, newMap)
 	}
 	if existing.getType() != t_map {
-		return newObjectErr("invalid path part for SET statement: cannot use a path expression on a non-map object. Object is of type %s", existing.getType())
+		return newObjectErrWithoutLC("invalid path part for SET statement: cannot use a path expression on a non-map object. Object is of type %s", existing.getType())
 	}
-
 	return existing
 }
 
-func evalSetStatementHandleMAP(objHandle object, current *assignPath, valToSet object, setTarget assignable) object {
+func evalSetStatementHandleMAP(objHandle object, current *assignPath, valToSet object) object {
 	mapObj, ok := objHandle.(*objectMap)
 	if !ok {
-		return newObjectErr("%s: invalid path part for SET statement: cannot use a path expression on a non-map object. Object is of type %s", setTarget.token().lineCol, objHandle.getType())
+		return newObjectErrWithoutLC("invalid path part for SET statement: cannot use a path expression on a non-map object. Object is of type %s", objHandle.getType())
 	}
 	if current.next == nil {
 		mapObj.kvPairs[current.partName] = valToSet
@@ -102,7 +99,7 @@ func evalSetStatementHandleMAP(objHandle object, current *assignPath, valToSet o
 		return newMap
 	}
 	if existing.getType() != t_map {
-		return newObjectErr("invalid path part for SET statement: cannot use a path expression on a non-map object. Object is of type %s", existing.getType())
+		return newObjectErrWithoutLC("invalid path part for SET statement: cannot use a path expression on a non-map object. Object is of type %s", existing.getType())
 	}
 	return existing
 }
@@ -113,12 +110,12 @@ func evalSetStatementHandleMAP(objHandle object, current *assignPath, valToSet o
 func (w *whenStatement) eval(env *environment) object {
 	conditionObj := w.condition.eval(env)
 	if isObjectErr(conditionObj) {
-		return conditionObj
+		return unWrapErr(w.condition.token().lineCol, conditionObj)
 	}
 	if conditionObj.isTruthy() {
 		res := w.consequence.eval(env)
 		if isObjectErr(res) {
-			return res
+			return unWrapErr(w.consequence.token().lineCol, res)
 		}
 	}
 	return obj_global_null
@@ -128,7 +125,11 @@ func (w *whenStatement) eval(env *environment) object {
 //expression statement
 
 func (e *expressionStatement) eval(env *environment) object {
-	return e.expression.eval(env)
+	res := e.expression.eval(env)
+	if isObjectErr(res) {
+		return unWrapErr(e.expression.token().lineCol, res)
+	}
+	return res
 }
 
 //
@@ -141,12 +142,12 @@ func (c *callExpression) eval(env *environment) object {
 	case *identifierExpression:
 		fnEntry, err = env.functions.get(v.value)
 		if err != nil {
-			return newObjectErr(err.Error())
+			return newObjectErr(v.token().lineCol, err.Error())
 		}
 	case *pathExpression:
 		fnEntry, err = evalFunctionNamePath(v, env)
 		if err != nil {
-			return newObjectErr(err.Error())
+			return newObjectErr(v.token().lineCol, err.Error())
 		}
 	}
 	args := []object{}
@@ -156,7 +157,7 @@ func (c *callExpression) eval(env *environment) object {
 	}
 	ret := fnEntry.eval(args...)
 	if isObjectErr(ret) {
-		return newObjectErr("%s: %s", c.name.token().lineCol, objectToError(ret).Error())
+		return unWrapErr(c.name.token().lineCol, ret)
 	}
 	return ret
 }
@@ -166,7 +167,7 @@ func evalFunctionNamePath(pathExpr *pathExpression, env *environment) (*function
 	case *identifierExpression:
 		return evalResolvePathForFunction(pathExpr, v.value, env)
 	}
-	return nil, fmt.Errorf("%s: function path must be composed of valid identifiers", pathExpr.token().lineCol)
+	return nil, fmt.Errorf("function path must be composed of valid identifiers")
 }
 
 func evalResolvePathForFunction(pathExpr *pathExpression, key string, env *environment) (*functionEntry, error) {
@@ -175,7 +176,7 @@ func evalResolvePathForFunction(pathExpr *pathExpression, key string, env *envir
 		namespace := v.value
 		return env.functions.getNamespace(namespace, key)
 	}
-	return nil, fmt.Errorf("%s: function path must be composed of valid identifiers", pathExpr.token().lineCol)
+	return nil, fmt.Errorf("function path must be composed of valid identifiers")
 }
 
 //
@@ -186,34 +187,43 @@ func (i *identifierExpression) eval(env *environment) object {
 		return res
 	}
 	return obj_global_null
-	// return newObjectErr("%s: identifier not found: %s", i.token().lineCol, i.value)
 }
 
 // path expression
 func (p *pathExpression) eval(env *environment) object {
 	switch v := p.attribute.(type) {
 	case *stringLiteral:
-		return evalResolvePathEntryForKey(p, v.value, env)
+		ret := evalResolvePathEntryForKey(p, v.value, env)
+		if isObjectErr(ret) {
+			return unWrapErr(v.tok.lineCol, ret)
+		}
+		return ret
 	case *identifierExpression:
-		return evalResolvePathEntryForKey(p, v.value, env)
+		ret := evalResolvePathEntryForKey(p, v.value, env)
+		if isObjectErr(ret) {
+			return unWrapErr(v.tok.lineCol, ret)
+		}
+		return ret
 	default:
-		return newObjectErr("%s: invalid path part: %s", v.token().lineCol, v.string())
+		return newObjectErr(v.token().lineCol, "invalid path part: %s", v.string())
 	}
 }
 
 func evalResolvePathEntryForKey(pathExpr *pathExpression, key string, env *environment) object {
 	leftObj := pathExpr.left.eval(env)
-	if isObjectErr(leftObj) || leftObj == obj_global_null {
+	if isObjectErr(leftObj) {
+		return unWrapErr(pathExpr.left.token().lineCol, leftObj)
+	}
+	if leftObj == obj_global_null {
 		return leftObj
 	}
 	leftMap, ok := leftObj.(*objectMap)
 	if !ok {
-		return newObjectErr("%s: cannot access a path %q on a non-map object. %q is of type %s", pathExpr.left.token().lineCol, pathExpr.string(), pathExpr.left.string(), leftObj.getType())
+		return newObjectErr(pathExpr.left.token().lineCol, "cannot access a path %q on a non-map object. %q is of type %s", pathExpr.string(), pathExpr.left.string(), leftObj.getType())
 	}
-	res, ok := leftMap.kvPairs[key]
+	res, ok := leftMap.kvPairs[key] // if it is a map, but the item doesn't exist, we return null
 	if !ok {
 		return obj_global_null
-		// return newObjectErr("%s: key not found: %s", pathExpr.left.token().lineCol, key)
 	}
 	return res
 }
@@ -224,7 +234,7 @@ func (t *templateExpression) eval(env *environment) object {
 	for _, entry := range t.parts {
 		res := entry.eval(env)
 		if isObjectErr(res) {
-			return res
+			return unWrapErr(entry.token().lineCol, res)
 		}
 		stringParts = append(stringParts, res.inspect())
 	}
@@ -237,16 +247,23 @@ func (t *templateExpression) eval(env *environment) object {
 func (p *prefixExpression) eval(env *environment) object {
 	rightObj := p.right.eval(env)
 	if isObjectErr(rightObj) {
-		return rightObj
+		return unWrapErr(p.right.token().lineCol, rightObj)
 	}
-
 	switch p.operator {
 	case "!":
-		return evalHandlePrefixExclamation(p, rightObj)
+		ret := evalHandlePrefixExclamation(p, rightObj)
+		if isObjectErr(ret) {
+			return unWrapErr(p.tok.lineCol, ret)
+		}
+		return ret
 	case "-":
-		return evalHandlePrefixMinus(p, rightObj)
+		ret := evalHandlePrefixMinus(p, rightObj)
+		if isObjectErr(ret) {
+			return unWrapErr(p.tok.lineCol, ret)
+		}
+		return ret
 	default:
-		return newObjectErr("%s: unknown operator: %s", p.tok.lineCol, p.operator)
+		return newObjectErr(p.tok.lineCol, "unknown operator: %s", p.operator)
 	}
 }
 func evalHandlePrefixExclamation(rightExpr *prefixExpression, rightObj object) object {
@@ -256,7 +273,7 @@ func evalHandlePrefixExclamation(rightExpr *prefixExpression, rightObj object) o
 	case obj_global_true:
 		return obj_global_false
 	default:
-		return newObjectErr("%s: incompatible non-boolean right-side exprssion for operator: !%s", rightExpr.tok.lineCol, rightExpr.string())
+		return newObjectErr(rightExpr.tok.lineCol, "incompatible non-boolean right-side exprssion for operator: !%s", rightExpr.string())
 	}
 }
 func evalHandlePrefixMinus(rightExpr *prefixExpression, rightObj object) object {
@@ -266,7 +283,7 @@ func evalHandlePrefixMinus(rightExpr *prefixExpression, rightObj object) object 
 	case *objectFloat:
 		return &objectFloat{value: -v.value}
 	default:
-		return newObjectErr("%s: incompatible non-numeric right-side expression for operator: -%s", rightExpr.tok.lineCol, rightExpr.string())
+		return newObjectErr(rightExpr.tok.lineCol, "incompatible non-numeric right-side expression for operator: -%s", rightExpr.string())
 	}
 }
 
@@ -276,18 +293,17 @@ func evalHandlePrefixMinus(rightExpr *prefixExpression, rightObj object) object 
 func (i *infixExpression) eval(env *environment) object {
 	leftObj := i.left.eval(env)
 	if isObjectErr(leftObj) {
-		return leftObj
+		return unWrapErr(i.left.token().lineCol, leftObj)
 	}
 	rightObj := i.right.eval(env)
 	if isObjectErr(rightObj) {
-		return rightObj
+		return unWrapErr(i.right.token().lineCol, rightObj)
 	}
 	switch {
 	case slices.Contains([]objectType{t_integer, t_float}, leftObj.getType()) && slices.Contains([]objectType{t_integer, t_float}, rightObj.getType()):
 		ret := evalNumberInfixExpression(leftObj, i.operator, rightObj)
 		if isObjectErr(ret) {
-			errObj := ret.(*objectError)
-			return newObjectErr("%s: %s", i.tok.lineCol, errObj.message)
+			return unWrapErr(i.token().lineCol, ret)
 		}
 		return ret
 	case leftObj.getType() != rightObj.getType():
@@ -295,8 +311,7 @@ func (i *infixExpression) eval(env *environment) object {
 	case leftObj.getType() == t_string && rightObj.getType() == t_string:
 		ret := evalStringInfixExpression(leftObj, i.operator, rightObj)
 		if isObjectErr(ret) {
-			errObj := ret.(*objectError)
-			return newObjectErr("%s: %s", i.tok.lineCol, errObj.message)
+			return unWrapErr(i.token().lineCol, ret)
 		}
 		return ret
 	case i.operator == "==":
@@ -304,28 +319,33 @@ func (i *infixExpression) eval(env *environment) object {
 	case i.operator == "!=":
 		return objectFromBoolean(leftObj != rightObj)
 	default:
-		return newObjectErr("%s invalid operator for types: %s %s %s", leftObj.getType(), i.tok.lineCol, i.operator, rightObj.getType())
+		return newObjectErr(i.tok.lineCol, "invalid operator for types: %s %s %s", leftObj.getType(), i.operator, rightObj.getType())
 	}
 }
 
 func evalStringInfixExpression(leftObj object, operator string, rightObj object) object {
 	l := leftObj.(*objectString).value
 	r := rightObj.(*objectString).value
-	if operator != "+" {
-		return newObjectErr("invalid operator for types: %s %s %s", leftObj.getType(), operator, rightObj.getType())
+	switch operator {
+	case "+":
+		return &objectString{value: l + r}
+	case "==":
+		return objectFromBoolean(l == r)
+	case "!=":
+		return objectFromBoolean(l != r)
+	default:
+		return newObjectErrWithoutLC("invalid operator for types: %s %s %s", leftObj.getType(), operator, rightObj.getType())
 	}
-
-	return &objectString{value: l + r}
 }
 
 func evalNumberInfixExpression(leftObj object, operator string, rightObj object) object {
 	leftNum, err := objectNumberToFloat64(leftObj)
 	if err != nil {
-		return newObjectErr("invalid number on left side of expression")
+		return newObjectErrWithoutLC("invalid number on left side of expression")
 	}
 	rightNum, err := objectNumberToFloat64(rightObj)
 	if err != nil {
-		return newObjectErr("invalid number on right side of expression")
+		return newObjectErrWithoutLC("invalid number on right side of expression")
 	}
 
 	areBothInteger := leftObj.getType() == t_integer && rightObj.getType() == t_integer
@@ -336,7 +356,7 @@ func evalNumberInfixExpression(leftObj object, operator string, rightObj object)
 	switch operator {
 	case "%":
 		if !areBothInteger {
-			return newObjectErr("invalid operator for input types: %s %s %s", leftObj.getType(), operator, rightObj.getType())
+			return newObjectErrWithoutLC("invalid operator for input types: %s %s %s", leftObj.getType(), operator, rightObj.getType())
 		}
 		res := int64(leftNum) % int64(rightNum)
 		return &objectInteger{value: res}
@@ -353,7 +373,7 @@ func evalNumberInfixExpression(leftObj object, operator string, rightObj object)
 	case "!=":
 		return objectFromBoolean(!isFloatEqual(leftNum, rightNum))
 	default:
-		return newObjectErr("unsupported operator: %s", operator)
+		return newObjectErrWithoutLC("unsupported operator: %s", operator)
 	}
 }
 
@@ -384,29 +404,33 @@ func objHandleMathOperation(l float64, operator string, r float64, areBothIntege
 
 func (i *indexExpression) eval(env *environment) object {
 	identResult := i.left.eval(env)
-	if isObjectErr(identResult) || identResult == obj_global_null {
+	if isObjectErr(identResult) {
+		return unWrapErr(i.left.token().lineCol, identResult)
+	}
+
+	if identResult == obj_global_null {
 		return identResult
 	}
 	arrObj, ok := identResult.(*objectArray)
 	if !ok {
-		return newObjectErr("%s: cannot call index expression on non-array object %q. object type is %s", i.left.token().lineCol, i.left.string(), identResult.getType())
+		return newObjectErr(i.left.token().lineCol, "cannot call index expression on non-array object %q. object type is %s", i.left.string(), identResult.getType())
 	}
 
 	indexObj := i.index.eval(env)
 	if isObjectErr(indexObj) {
-		return indexObj
+		return unWrapErr(i.index.token().lineCol, indexObj)
 	}
 	if indexObj.getType() != t_integer {
-		return newObjectErr("%s: index is not of type %s. got=%s", i.index.token().lineCol, t_integer, indexObj.getType())
+		return newObjectErr(i.index.token().lineCol, "index is not of type %s. got=%s", t_integer, indexObj.getType())
 	}
 	idxInt, ok := indexObj.(*objectInteger)
 	if !ok {
-		return newObjectErr("%s: index is not of type %s. got=%s", i.index.token().lineCol, t_integer, indexObj.getType())
+		return newObjectErr(i.index.token().lineCol, "index is not of type %s. got=%s", t_integer, indexObj.getType())
 	}
 
 	targetIdx := int(idxInt.value)
 	if int(targetIdx) >= len(arrObj.entries) || targetIdx < 0 {
-		return newObjectErr("%s: index is out of range for target array", i.index.token().lineCol)
+		return newObjectErr(i.index.token().lineCol, "index is out of range for target array")
 	}
 	return arrObj.entries[targetIdx]
 }
@@ -467,7 +491,7 @@ func (m *mapLiteral) eval(env *environment) object {
 	for key, expr := range m.pairs {
 		objectToAdd := expr.eval(env)
 		if isObjectErr(objectToAdd) {
-			return objectToAdd
+			return unWrapErr(expr.token().lineCol, objectToAdd)
 		}
 		objPairs[key] = objectToAdd
 	}
@@ -479,7 +503,7 @@ func (a *arrayLiteral) eval(env *environment) object {
 	for _, entryExpr := range a.entries {
 		toAdd := entryExpr.eval(env)
 		if isObjectErr(toAdd) {
-			return toAdd
+			return unWrapErr(entryExpr.token().lineCol, toAdd)
 		}
 		objEntries = append(objEntries, toAdd)
 	}
@@ -507,14 +531,34 @@ func objectNumberToFloat64(obj object) (float64, error) {
 	}
 }
 
-func newObjectErr(s string, fmtArgs ...interface{}) *objectError {
+func newObjectErrWithoutLC(s string, fmtArgs ...interface{}) *objectError {
 	return &objectError{
+		lineCol: "",
+		message: fmt.Sprintf(s, fmtArgs...),
+	}
+}
+func newObjectErr(lc string, s string, fmtArgs ...interface{}) *objectError {
+	return &objectError{
+		lineCol: lc,
 		message: fmt.Sprintf(s, fmtArgs...),
 	}
 }
 
 func isObjectErr(o object) bool {
 	return o.getType() == t_error
+}
+
+// takes a nested error and attaches a linecol if one does not already exist
+// used to "bubble up" error messages from things like internal functions or helpers to the calling AST node
+func unWrapErr(outerLC string, innerObj object) object {
+	objErr, ok := innerObj.(*objectError)
+	if !ok {
+		return innerObj
+	}
+	if len(objErr.lineCol) == 0 {
+		return newObjectErr(outerLC, objErr.message)
+	}
+	return objErr
 }
 
 func isObjectNull(o object) bool {

@@ -132,6 +132,12 @@ func testConvertObjectMap(t *testing.T, data object, want map[string]interface{}
 		t.Errorf("data is not of type *objectMap. got=%T", data)
 		return false
 	}
+	if len(want) == 0 {
+		if len(mapObject.kvPairs) != 0 {
+			t.Errorf("objectMap should be empty. got length of %d", len(mapObject.kvPairs))
+			return false
+		}
+	}
 	for wantKey, wantVal := range want {
 		gotVal, ok := mapObject.kvPairs[wantKey]
 		if !ok {

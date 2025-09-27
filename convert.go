@@ -50,7 +50,7 @@ func convertAnyToObject(rawData interface{}, isJSON bool) object {
 	case []interface{}:
 		return convertArrayToObject(v, isJSON)
 	default:
-		return newObjectErr("unable to read data into object: %+v", v)
+		return newObjectErrWithoutLC("unable to read data into object: %+v", v)
 	}
 }
 
@@ -100,7 +100,7 @@ func convertNumberToObject(num interface{}, isJSON bool) object {
 		}
 		return &objectFloat{value: float64(v)}
 	default:
-		return newObjectErr("unsupported number type: %T", v) // should only occur in custom functions
+		return newObjectErrWithoutLC("unsupported number type: %T", v) // should only occur in custom functions
 	}
 }
 

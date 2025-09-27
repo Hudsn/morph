@@ -24,6 +24,7 @@ func newBuiltinFuncStore() *functionStore {
 
 	store.Register(builtinMapEntry())
 	store.Register(builtinReduceEntry())
+	store.Register(builtinFilterEntry())
 
 	return store
 }
@@ -429,7 +430,7 @@ func builtinMap(args ...*Object) *Object {
 			input["value"] = value
 			subEnv, err := arrowFn.Run(input)
 			if err != nil {
-				return ObjectError("error calling map() arrow function: %s", err.Error())
+				return ObjectError(err.Error())
 			}
 			m, ok := subEnv.(map[string]interface{})
 			if !ok {
@@ -468,7 +469,7 @@ func builtinMap(args ...*Object) *Object {
 		for _, entry := range in {
 			subEnv, err := arrowFn.Run(entry)
 			if err != nil {
-				return ObjectError("error calling map() arrow function: %s", err.Error())
+				return ObjectError(err.Error())
 			}
 			m, ok := subEnv.(map[string]interface{})
 			if !ok {
@@ -487,8 +488,103 @@ func builtinMap(args ...*Object) *Object {
 	}
 }
 
-//
 // filter
+func builtinFilterEntry() *functionEntry {
+	fe := NewFunctionEntry("filter", builtinFilter)
+	fe.SetDescription("apply a series of morph statements to each element of an array or map, and conditionally includes that element in the resulting object depending on the return value of the arrow function")
+	fe.SetArgument("input_data", "the array or map on which to apply the filter statements", ARRAY, MAP)
+	fe.SetArgument("function", `An arrow function containing the statements to modify the boolean return value, given the input_data. 
+The item before the arrow will be the variable name you use to access the input_data within the arrow function body.
+Assign the desired boolean output (whether or not to include the element in the final result set) to the "return" variable.
+When a MAP is the first argument, the "key" and "value" can both be available as subfields of the passed input variable.
+When an ARRAY is the first argument, the entry will be davailable by accessing the "value" subfield of the input variable; no "key" subfield will be present.
+	`, ARROWFUNC)
+	fe.SetReturn("result", "the final resultant subset from the series of mapping operations", ARRAY, MAP)
+	fe.SetCategory(FUNC_CAT_AGGREGATE)
+	fe.SetExampleInput(`{"a": 1, "b": 2}`, `in ~> {
+	SET return = in.value > 1
+}`)
+	fe.SetExampleOut(`{"b": 2}`)
+	return fe
+}
+
+func builtinFilter(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
+	}
+	arrowFn, err := args[1].AsArrowFunction()
+	if err != nil {
+		return ObjectError("filter() second argument must be a valid ARROWFUNC. got type of %s", args[1].Type())
+	}
+
+	switch args[0].Type() {
+	case string(MAP):
+		in, err := args[0].AsMap()
+		if err != nil {
+			return ObjectError("filter() input data argument issue. type is not compatible with map operation: %s", args[0].Type())
+		}
+		keyList := []string{}
+		for k := range in {
+			keyList = append(keyList, k)
+		}
+		slices.Sort(keyList)
+		ret := make(map[string]interface{})
+		for _, key := range keyList {
+			value := in[key]
+			input := make(map[string]interface{})
+			input["key"] = key
+			input["value"] = value
+			subEnv, err := arrowFn.Run(input)
+			if err != nil {
+				return ObjectError(err.Error())
+			}
+			m, ok := subEnv.(map[string]interface{})
+			if !ok {
+				return ObjectError("filter() unable to extract return value from arrow function")
+			}
+			out, ok := m["return"]
+			if !ok {
+				continue
+			}
+			if resBool, ok := out.(bool); ok {
+				if resBool {
+					ret[key] = value
+				}
+			}
+		}
+		return CastMap(ret)
+	case string(ARRAY):
+		in, err := args[0].AsArray()
+		if err != nil {
+			return ObjectError("filter() input data argument issue. type is not compatible with array operation: %s", args[0].Type())
+		}
+		ret := []interface{}{}
+		for _, entry := range in {
+			input := make(map[string]interface{})
+			input["value"] = entry
+			subEnv, err := arrowFn.Run(input)
+			if err != nil {
+				return ObjectError(err.Error())
+			}
+			m, ok := subEnv.(map[string]interface{})
+			if !ok {
+				return ObjectError("filter() unable to extract return value from arrow function")
+			}
+			out, ok := m["return"]
+			if !ok {
+				continue
+			}
+			if resBool, ok := out.(bool); ok {
+				if resBool {
+					ret = append(ret, entry)
+				}
+			}
+		}
+		return CastAuto(ret)
+	default:
+		return ObjectError("invalid argument for filter(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())
+	}
+}
 
 // reduce
 func builtinReduceEntry() *functionEntry {
@@ -523,7 +619,7 @@ func builtinReduce(args ...*Object) *Object {
 
 	acc, err := args[1].AsAny()
 	if err != nil {
-		return ObjectError("reduce() data issue with accumulator argument: %s", err.Error())
+		return ObjectError(err.Error())
 	}
 
 	switch args[0].Type() {
@@ -546,7 +642,7 @@ func builtinReduce(args ...*Object) *Object {
 			input["current"] = ret
 			subEnv, err := arrowFn.Run(input)
 			if err != nil {
-				return ObjectError("reduce() arrow function error: %s", err.Error())
+				return ObjectError(err.Error())
 			}
 			m, ok := subEnv.(map[string]interface{})
 			if !ok {
@@ -569,7 +665,7 @@ func builtinReduce(args ...*Object) *Object {
 			input["current"] = ret
 			subEnv, err := arrowFn.Run(input)
 			if err != nil {
-				return ObjectError("error calling reduce() arrow function: %s", err.Error())
+				return ObjectError(err.Error())
 			}
 			m, ok := subEnv.(map[string]interface{})
 			if !ok {
@@ -581,7 +677,7 @@ func builtinReduce(args ...*Object) *Object {
 		}
 		return CastAuto(ret)
 	default:
-		return ObjectError("invalid argument for map(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())
+		return ObjectError("invalid argument for reduce(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())
 	}
 }
 

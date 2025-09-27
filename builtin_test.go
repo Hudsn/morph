@@ -133,6 +133,90 @@ func TestBuiltinMap(t *testing.T) {
 		}
 	}
 }
+func TestBuiltinFilter(t *testing.T) {
+	tests := []struct {
+		nameDesc string
+		data     string
+		input    string
+		want     interface{}
+	}{
+		{
+			nameDesc: "filter() on map with key and val filtering",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 3
+			}`,
+			input: `
+			SET res = filter(mydata, entry ~> {
+				WHEN entry.key == "a" :: SET return = true
+				WHEN entry.value == 3 :: SET return = true
+			})
+			`,
+			want: map[string]interface{}{
+				"a": 1,
+				"c": 3,
+			},
+		},
+		{
+			nameDesc: "filter() on map with key and val reassignments to null",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 3
+			}`,
+			input: `
+			SET res = filter(mydata, entry ~> {
+				WHEN entry.key == "a" :: SET return = doesntexist
+				WHEN entry.value == 3 :: SET return = thiseither
+			})
+			`,
+			want: map[string]interface{}{},
+		},
+		{
+			nameDesc: "filter() on array with correct filtering",
+			data:     `[1, 2, "3", 4]`,
+			input: `
+			SET res = filter(mydata, entry ~> {
+				WHEN entry.value == string(3) :: SET return = true
+			})
+			`,
+			want: []interface{}{"3"},
+		},
+		{
+			nameDesc: "filter() on array with reassignments to null",
+			data:     `[1, 2, "3", 4]`,
+			input: `
+			SET res = filter(mydata, entry ~> {
+				WHEN entry.value == 3 :: SET return = thiseither
+			})
+			`,
+			want: []interface{}{},
+		},
+	}
+	for _, tt := range tests {
+		inputObj := convertBytesToObject([]byte(tt.data))
+		env := newEnvironment(newBuiltinFuncStore())
+		env.set("mydata", inputObj)
+		lexer := newLexer([]rune(tt.input))
+		parser := newParser(lexer)
+		program, err := parser.parseProgram()
+		if err != nil {
+			t.Fatalf("%s: %s", tt.nameDesc, err.Error())
+		}
+		res := program.eval(env)
+		if isObjectErr(res) {
+			t.Fatalf("%s: %s", tt.nameDesc, objectToError(res).Error())
+		}
+		gotObj, ok := env.get("res")
+		if !ok {
+			t.Fatalf("%s: expected env var res to exist. got null", tt.nameDesc)
+		}
+		if !testConvertObject(t, gotObj, tt.want) {
+			t.Errorf("%s: incorrect result value", tt.nameDesc)
+		}
+	}
+}
 func TestBuiltinReduce(t *testing.T) {
 	tests := []struct {
 		nameDesc string

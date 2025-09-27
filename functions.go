@@ -229,11 +229,11 @@ func (fe *functionEntry) eval(args ...object) object {
 		}
 		arg := args[argIdx]
 		if !slices.Contains(wantArg.types, PublicObject(arg.getType())) {
-			return newObjectErr("function %q invalid argument type for %q. want=%s. got=%s", fe.name, wantArg.name, wantArg.typesString(), arg.getType())
+			return newObjectErrWithoutLC("function %q invalid argument type for %q. want=%s. got=%s", fe.name, wantArg.name, wantArg.typesString(), arg.getType())
 		}
 	}
 	if err := fe.checkVariadic(args...); err != nil {
-		return newObjectErr(err.Error())
+		return newObjectErrWithoutLC(err.Error())
 	}
 	ret := evalFunction(fe.function, args...)
 	if isObjectErr(ret) {
@@ -463,7 +463,7 @@ var ObjectTerminateDrop = &Object{inner: obj_global_term_drop}
 
 func ObjectError(msg string, args ...interface{}) *Object {
 	return &Object{
-		inner: &objectError{message: fmt.Sprintf(msg, args...)},
+		inner: newObjectErrWithoutLC(msg, args...),
 	}
 }
 

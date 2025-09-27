@@ -192,11 +192,17 @@ func (t *objectTerminate) isTruthy() bool { return false }
 //
 
 type objectError struct {
+	lineCol string
 	message string
 }
 
 func (e *objectError) getType() objectType { return t_error }
-func (e *objectError) inspect() string     { return e.message }
+func (e *objectError) inspect() string {
+	if len(e.lineCol) == 0 {
+		return e.message
+	}
+	return fmt.Sprintf("%s: %s", e.lineCol, e.message)
+}
 func (e *objectError) clone() object {
 	return &objectError{message: e.message}
 }
