@@ -129,7 +129,7 @@ func convertObjectToNative(o object) (interface{}, error) {
 	case *objectBoolean:
 		return v.value, nil
 	case *objectError:
-		return objectToError(o), nil
+		return nil, objectToError(o)
 	case *objectNull:
 		return nil, nil
 	default:

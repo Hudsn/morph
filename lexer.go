@@ -72,7 +72,7 @@ func (l *lexer) tokenize() token {
 	case '.':
 		tok = l.handleDot()
 		if tok.tokenType == tok_float {
-			// readnumber (FLOAT processor) progresses tokens already, so we want to return early here to avoid hitting the next() call at the end of the func
+			// readnumber (the FLOAT processor) will have progressed tokens already, so we want to return early here to avoid hitting an erroneous extra next() call at the end of the func
 			return tok
 		}
 	case ':':
@@ -549,7 +549,6 @@ type lexContext struct {
 	incrTriggerToken tokenType
 	decrTriggerToken tokenType
 	depthCounter     int
-	// stackLength      int
 }
 
 var defaultLexContext *lexContext = &lexContext{
@@ -564,7 +563,6 @@ func (l *lexer) newEnclosedContext(t lexContextType, incr tokenType, decr tokenT
 		incrTriggerToken: incr,
 		decrTriggerToken: decr,
 		depthCounter:     initCounter,
-		// stackLength:      l.context.stackLength + 1,
 	}
 	l.context = new
 }

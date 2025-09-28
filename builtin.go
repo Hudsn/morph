@@ -32,12 +32,8 @@ func newBuiltinFuncStore() *functionStore {
 // len
 func builtinLenEntry() *functionEntry {
 	l := NewFunctionEntry("len", builtinLen)
-	l.SetDescription("return the length of the target object. object must be a string, array, or map")
-	l.SetArgument("target", "target object for length operation", STRING, ARRAY, MAP)
-	l.SetReturn("length", "length of the object", INTEGER)
-	l.SetCategory(FUNC_CAT_GENERAL)
-	l.SetExampleInput("mystring")
-	l.SetExampleOut("8")
+	l.SetArgument("target", STRING, ARRAY, MAP)
+	l.SetReturn("length", INTEGER)
 	return l
 }
 
@@ -77,13 +73,9 @@ func builtinLen(args ...*Object) *Object {
 // contains
 func builtinContainsEntry() *functionEntry {
 	l := NewFunctionEntry("contains", builtinContains)
-	l.SetDescription("return the length of the target object. object must be a string, array, or map")
-	l.SetArgument("main", "larger object to check for the presence of sub", STRING, ARRAY)
-	l.SetArgument("sub", "sub object to check if it is inside the larger object", ANY...)
-	l.SetReturn("result", "whether the main object contains the sub object", BOOLEAN)
-	l.SetCategory(FUNC_CAT_GENERAL)
-	l.SetExampleInput("mystring", "string")
-	l.SetExampleOut("true")
+	l.SetArgument("item", STRING, ARRAY)
+	l.SetArgument("target", ANY...)
+	l.SetReturn("result", BOOLEAN)
 	return l
 }
 
@@ -127,13 +119,10 @@ func builtinContains(args ...*Object) *Object {
 
 func builtinMinEntry() *functionEntry {
 	fe := NewFunctionEntry("min", builtinMin)
-	fe.SetDescription("returns the minimum value of two numbers")
-	fe.SetArgument("num1", "first number to compare", INTEGER, FLOAT)
-	fe.SetArgument("num2", "second number to compare", INTEGER, FLOAT)
-	fe.SetReturn("minimum", "smallest number of num1 and num2", INTEGER, FLOAT)
-	fe.SetCategory(FUNC_CAT_GENERAL)
-	fe.SetExampleInput("1", "1.234")
-	fe.SetExampleOut("1")
+	fe.SetArgument("num1", INTEGER, FLOAT)
+	fe.SetArgument("num2", INTEGER, FLOAT)
+	fe.SetReturn("minimum", INTEGER, FLOAT)
+
 	return fe
 }
 
@@ -171,13 +160,9 @@ func builtinMin(args ...*Object) *Object {
 
 func builtinMaxEntry() *functionEntry {
 	fe := NewFunctionEntry("max", builtinMax)
-	fe.SetDescription("returns the maximum value of two numbers")
-	fe.SetArgument("num1", "first number to compare", INTEGER, FLOAT)
-	fe.SetArgument("num2", "second number to compare", INTEGER, FLOAT)
-	fe.SetReturn("minimum", "largest number of num1 and num2", INTEGER, FLOAT)
-	fe.SetCategory(FUNC_CAT_GENERAL)
-	fe.SetExampleInput("1", "1.234")
-	fe.SetExampleOut("1.234")
+	fe.SetArgument("num1", INTEGER, FLOAT)
+	fe.SetArgument("num2", INTEGER, FLOAT)
+	fe.SetReturn("minimum", INTEGER, FLOAT)
 	return fe
 }
 func builtinMax(args ...*Object) *Object {
@@ -212,14 +197,12 @@ func builtinMax(args ...*Object) *Object {
 // drop
 func builtinDropEntry() *functionEntry {
 	fe := NewFunctionEntry("drop", builtinDrop)
-	fe.SetDescription("return early, effectively clearing all current data being processed and returning nothing")
-	fe.SetCategory(FUNC_CAT_CONTROL)
 	return fe
 }
 
 func builtinDrop(args ...*Object) *Object {
-	if len(args) != 0 {
-		return ObjectError("function drop() should have 0 arguments. got=%d", len(args))
+	if ret, ok := IsArgCountEqual(0, args); !ok {
+		return ret
 	}
 	return ObjectTerminateDrop
 }
@@ -227,14 +210,12 @@ func builtinDrop(args ...*Object) *Object {
 // emit
 func builtinEmitEntry() *functionEntry {
 	fe := NewFunctionEntry("emit", builtinEmit)
-	fe.SetDescription("return early, returning data as-is")
-	fe.SetCategory(FUNC_CAT_CONTROL)
 	return fe
 }
 
 func builtinEmit(args ...*Object) *Object {
-	if len(args) != 0 {
-		ObjectError("function drop() should have 0 arguments. got=%d", len(args))
+	if ret, ok := IsArgCountEqual(0, args); !ok {
+		return ret
 	}
 	return ObjectTerminate
 }
@@ -242,12 +223,8 @@ func builtinEmit(args ...*Object) *Object {
 // int
 func builtinIntEntry() *functionEntry {
 	fe := NewFunctionEntry("int", builtinInt)
-	fe.SetDescription("attempts to cast the input as an integer")
-	fe.SetArgument("target", "the target object to convert to an integer", INTEGER, FLOAT, STRING)
-	fe.SetReturn("result", "the resulting integer", INTEGER)
-	fe.SetCategory(FUNC_CAT_GENERAL)
-	fe.SetExampleInput("1.234")
-	fe.SetExampleOut("1")
+	fe.SetArgument("target", INTEGER, FLOAT, STRING)
+	fe.SetReturn("result", INTEGER)
 	return fe
 }
 
@@ -266,12 +243,8 @@ func builtinInt(args ...*Object) *Object {
 // float
 func builtinFloatEntry() *functionEntry {
 	fe := NewFunctionEntry("float", builtinFloat)
-	fe.SetDescription("attempts to cast the input as a float")
-	fe.SetArgument("target", "the target object to convert to a float", INTEGER, FLOAT, STRING)
-	fe.SetReturn("result", "the resulting float", FLOAT)
-	fe.SetCategory(FUNC_CAT_GENERAL)
-	fe.SetExampleInput("1")
-	fe.SetExampleOut("1.0")
+	fe.SetArgument("target", INTEGER, FLOAT, STRING)
+	fe.SetReturn("result", FLOAT)
 	return fe
 }
 
@@ -290,12 +263,8 @@ func builtinFloat(args ...*Object) *Object {
 // string
 func builtinStringEntry() *functionEntry {
 	fe := NewFunctionEntry("string", builtinString)
-	fe.SetDescription("attempts to cast the input as a string")
-	fe.SetArgument("target", "the target object to convert to a string", INTEGER, FLOAT, STRING, BOOLEAN)
-	fe.SetReturn("result", "the resulting string", STRING)
-	fe.SetCategory(FUNC_CAT_GENERAL)
-	fe.SetExampleInput("1.0")
-	fe.SetExampleOut(`"1.0"`)
+	fe.SetArgument("target", INTEGER, FLOAT, STRING, BOOLEAN)
+	fe.SetReturn("result", STRING)
 	return fe
 }
 
@@ -314,13 +283,9 @@ func builtinString(args ...*Object) *Object {
 // catch (handle errors)
 func builtinCatchEntry() *functionEntry {
 	fe := NewFunctionEntry("catch", builtinCatch)
-	fe.SetDescription("checks if the value is an error. if it is, the second value is returned")
-	fe.SetArgument("target", "the target object to check for errors", ANY...)
-	fe.SetArgument("fallback", "the value to return in case of an error", INTEGER, FLOAT, STRING, ARRAY, MAP)
-	fe.SetReturn("result", "either the original value or the fallback, depending on if an error occurred", ANY...)
-	fe.SetCategory(FUNC_CAT_GENERAL)
-	fe.SetExampleInput("nonexistent_variable + 1", "1000")
-	fe.SetExampleOut("5")
+	fe.SetArgument("target", ANY...)
+	fe.SetArgument("fallback", INTEGER, FLOAT, STRING, ARRAY, MAP)
+	fe.SetReturn("result", ANY...)
 	return fe
 }
 
@@ -340,13 +305,9 @@ func builtinCatch(args ...*Object) *Object {
 // coalesce (catch nulls)
 func builtinCoalesceEntry() *functionEntry {
 	fe := NewFunctionEntry("coalesce", builtinCoalesce)
-	fe.SetDescription("checks if the value is null; if it is, the second value is returned")
-	fe.SetArgument("target", "the target object to check for null", ANY...)
-	fe.SetArgument("fallback", "the value to return in case of a null", INTEGER, FLOAT, STRING, ARRAY, MAP)
-	fe.SetReturn("result", "either the original value or the fallback, depending on if a null occurred", ANY...)
-	fe.SetCategory(FUNC_CAT_GENERAL)
-	fe.SetExampleInput("nonexistent_variable + 1", "1000")
-	fe.SetExampleOut("5")
+	fe.SetArgument("target", ANY...)
+	fe.SetArgument("fallback", INTEGER, FLOAT, STRING, ARRAY, MAP)
+	fe.SetReturn("result", ANY...)
 	return fe
 }
 
@@ -365,13 +326,9 @@ func builtinCoalesce(args ...*Object) *Object {
 // fallback (catch errors or nulls)
 func builtinFallbackEntry() *functionEntry {
 	fe := NewFunctionEntry("fallback", builtinFallback)
-	fe.SetDescription("checks if the value is null or an error; if it is, the second value is returned")
-	fe.SetArgument("target", "the target object to check for null or error", ANY...)
-	fe.SetArgument("fallback", "the value to return in case of a null or error", INTEGER, FLOAT, STRING, ARRAY, MAP)
-	fe.SetReturn("result", "either the original value or the fallback, depending on if a null occurred", ANY...)
-	fe.SetCategory(FUNC_CAT_GENERAL)
-	fe.SetExampleInput("nonexistent_variable + 1", "1000")
-	fe.SetExampleOut("5")
+	fe.SetArgument("target", ANY...)
+	fe.SetArgument("fallback", INTEGER, FLOAT, STRING, ARRAY, MAP)
+	fe.SetReturn("result", ANY...)
 	return fe
 }
 
@@ -390,21 +347,9 @@ func builtinFallback(args ...*Object) *Object {
 // map
 func builtinMapEntry() *functionEntry {
 	fe := NewFunctionEntry("map", builtinMap)
-	fe.SetDescription("apply a series of morph statements to each element of an array or map, and return an array/map of entries resulting from the statements applied")
 	fe.SetArgument("input_data", "the array or map on which to apply the statements", ARRAY, MAP)
-	fe.SetArgument("function", `An arrow function containing the statements to transform each entry of the input data. 
-The item before the arrow will be the variable name you use to access the input_data within the arrow function body.
-Assign the desired entry to replace the current array/map value to the "return" variable.
-When a MAP is the first argument, the "key" and "value" can both be available as subfields of the passed input variable. For example: myfield ~> {set return.key = myfield.key}
-When an ARRAY is the first argument, the entry will be directly available by accessing the passed input variable.
-	`, ARROWFUNC)
-	fe.SetReturn("result", "the final array or map from the series of mapping operations", ARRAY, MAP)
-	fe.SetCategory(FUNC_CAT_AGGREGATE)
-	fe.SetExampleInput(`{"a": 1, "b": 2}`, `in ~> {
-	SET return.key = "prefix_" + in.key
-	SET return.value = in.value * 2
-}`)
-	fe.SetExampleOut(`{"prefix_a": 2, "prefix_b": 4}`)
+	fe.SetArgument("function", ARROWFUNC)
+	fe.SetReturn("result", ARRAY, MAP)
 	return fe
 }
 
@@ -466,8 +411,11 @@ func builtinMap(args ...*Object) *Object {
 			return ObjectError("error calling map(): data issue with first argument of type %s", args[0].Type())
 		}
 		ret := []interface{}{}
-		for _, entry := range in {
-			subEnv, err := arrowFn.Run(entry)
+		for idx, entry := range in {
+			input := make(map[string]interface{})
+			input["index"] = int64(idx)
+			input["value"] = entry
+			subEnv, err := arrowFn.Run(input)
 			if err != nil {
 				return ObjectError(err.Error())
 			}
@@ -491,20 +439,9 @@ func builtinMap(args ...*Object) *Object {
 // filter
 func builtinFilterEntry() *functionEntry {
 	fe := NewFunctionEntry("filter", builtinFilter)
-	fe.SetDescription("apply a series of morph statements to each element of an array or map, and conditionally includes that element in the resulting object depending on the return value of the arrow function")
 	fe.SetArgument("input_data", "the array or map on which to apply the filter statements", ARRAY, MAP)
-	fe.SetArgument("function", `An arrow function containing the statements to modify the boolean return value, given the input_data. 
-The item before the arrow will be the variable name you use to access the input_data within the arrow function body.
-Assign the desired boolean output (whether or not to include the element in the final result set) to the "return" variable.
-When a MAP is the first argument, the "key" and "value" can both be available as subfields of the passed input variable.
-When an ARRAY is the first argument, the entry will be davailable by accessing the "value" subfield of the input variable; no "key" subfield will be present.
-	`, ARROWFUNC)
-	fe.SetReturn("result", "the final resultant subset from the series of mapping operations", ARRAY, MAP)
-	fe.SetCategory(FUNC_CAT_AGGREGATE)
-	fe.SetExampleInput(`{"a": 1, "b": 2}`, `in ~> {
-	SET return = in.value > 1
-}`)
-	fe.SetExampleOut(`{"b": 2}`)
+	fe.SetArgument("function", ARROWFUNC)
+	fe.SetReturn("result", ARRAY, MAP)
 	return fe
 }
 
@@ -559,8 +496,9 @@ func builtinFilter(args ...*Object) *Object {
 			return ObjectError("filter() input data argument issue. type is not compatible with array operation: %s", args[0].Type())
 		}
 		ret := []interface{}{}
-		for _, entry := range in {
+		for idx, entry := range in {
 			input := make(map[string]interface{})
+			input["index"] = int64(idx)
 			input["value"] = entry
 			subEnv, err := arrowFn.Run(input)
 			if err != nil {
@@ -589,22 +527,10 @@ func builtinFilter(args ...*Object) *Object {
 // reduce
 func builtinReduceEntry() *functionEntry {
 	fe := NewFunctionEntry("reduce", builtinReduce)
-	fe.SetDescription("apply a series of morph statements to each element of an array or map, and return an array/map of entries resulting from the statements applied")
-	fe.SetArgument("input_data", "the array or map on which to apply the reducer statements", ARRAY, MAP)
-	fe.SetArgument("accumulator", "the initial value of the accumulator to use", STRING, INTEGER, FLOAT, BOOLEAN, ARRAY, MAP, NULL)
-	fe.SetArgument("function", `An arrow function containing the statements to modify the accumulator, given the input_data. 
-The item before the arrow will be the variable name you use to access the input_data within the arrow function body.
-Assign the desired accumulator output to the "return" variable.
-The current accumulator state can be accessed by referencing the "current" subfield of the passed input variable.
-When a MAP is the first argument, the "key" and "value" can both be available as subfields of the passed input variable.
-When an ARRAY is the first argument, the entry will be davailable by accessing the "value" subfield of the input variable; no "key" subfield will be present.
-	`, ARROWFUNC)
-	fe.SetReturn("result", "the final accumulator value from the series of mapping operations", STRING, INTEGER, FLOAT, BOOLEAN, ARRAY, MAP, NULL)
-	fe.SetCategory(FUNC_CAT_AGGREGATE)
-	fe.SetExampleInput(`{"a": 1, "b": 2}`, "0", `in ~> {
-	SET return = in.current + in.value
-}`)
-	fe.SetExampleOut(`3`)
+	fe.SetArgument("input_data", ARRAY, MAP)
+	fe.SetArgument("accumulator", STRING, INTEGER, FLOAT, BOOLEAN, ARRAY, MAP, NULL)
+	fe.SetArgument("function", ARROWFUNC)
+	fe.SetReturn("result", STRING, INTEGER, FLOAT, BOOLEAN, ARRAY, MAP, NULL)
 	return fe
 }
 
@@ -659,9 +585,10 @@ func builtinReduce(args ...*Object) *Object {
 			return ObjectError("reduce() input data argument issue. type is not compatible with array operation: %s", args[0].Type())
 		}
 		ret := acc
-		for _, entry := range in {
+		for idx, entry := range in {
 			input := make(map[string]interface{})
 			input["value"] = entry
+			input["index"] = int64(idx)
 			input["current"] = ret
 			subEnv, err := arrowFn.Run(input)
 			if err != nil {
@@ -684,13 +611,9 @@ func builtinReduce(args ...*Object) *Object {
 // append
 func builtinAppendEntry() *functionEntry {
 	fe := NewFunctionEntry("append", builtinAppend)
-	fe.SetDescription("appends a value to an array")
-	fe.SetArgument("arr", "the target object to check for null or error", ARRAY)
-	fe.SetArgument("to_add", "the value to add to the array", INTEGER, FLOAT, STRING, ARRAY, MAP, NULL)
-	fe.SetReturn("result", "the new array with the item added", ARRAY)
-	fe.SetCategory(FUNC_CAT_GENERAL)
-	fe.SetExampleInput("[1, 2]", "3")
-	fe.SetExampleOut("[1, 2, 3]")
+	fe.SetArgument("arr", ARRAY)
+	fe.SetArgument("to_add", INTEGER, FLOAT, STRING, ARRAY, MAP, NULL)
+	fe.SetReturn("result", ARRAY)
 	return fe
 }
 

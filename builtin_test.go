@@ -92,10 +92,22 @@ func TestBuiltinMap(t *testing.T) {
 			`,
 			input: `
 			SET res = map(mydata, entry ~> {
-				set return = entry - 1
+				set return = entry.value - 1
 			})
 			`,
 			want: []interface{}{0, 1.5, 2},
+		},
+		{
+			nameDesc: "map() with array; with assignment, using indexes",
+			data: `
+				[1, 2.5, 3]
+			`,
+			input: `
+			SET res = map(mydata, entry ~> {
+				when entry.index == 2 :: set return = entry.value * 2
+			})
+			`,
+			want: []interface{}{1, 2.5, 6},
 		},
 		{
 			nameDesc: "map() with array; without assignment",
@@ -182,6 +194,16 @@ func TestBuiltinFilter(t *testing.T) {
 			})
 			`,
 			want: []interface{}{"3"},
+		},
+		{
+			nameDesc: "filter() on array with index filtering",
+			data:     `[1, 2, "3", 4]`,
+			input: `
+			SET res = filter(mydata, entry ~> {
+				WHEN entry.index >= 2 :: SET return = true
+			})
+			`,
+			want: []interface{}{"3", 4},
 		},
 		{
 			nameDesc: "filter() on array with reassignments to null",
@@ -302,7 +324,7 @@ func TestBuiltinReduce(t *testing.T) {
 			want: nil,
 		},
 		{
-			nameDesc: "reduce() on array with out acc with assignment",
+			nameDesc: "reduce() on array without acc with assignment",
 			data:     `[1, 2, "3"]`,
 			input: `
 			SET res = reduce(mydata, null, entry ~> {
@@ -311,6 +333,16 @@ func TestBuiltinReduce(t *testing.T) {
 			})
 			`,
 			want: 6,
+		},
+		{
+			nameDesc: "reduce() on array with acc with assignment using index",
+			data:     `[1, 2, "3"]`,
+			input: `
+			SET res = reduce(mydata, 0, entry ~> {
+				WHEN entry.index <=1 :: SET return = entry.current + int(entry.value)
+			})
+			`,
+			want: 3,
 		},
 		{
 			nameDesc: "reduce() on array with out acc with null assignment",

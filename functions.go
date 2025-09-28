@@ -27,7 +27,6 @@ type functionStore struct {
 }
 
 func (s *functionStore) Register(fn *functionEntry) {
-	fn.docInfo.namespace = "std"
 	s.std.register(fn)
 }
 func (s *functionStore) RegisterToNamespace(namespace string, fn *functionEntry) {
@@ -41,7 +40,6 @@ func (s *functionStore) RegisterToNamespace(namespace string, fn *functionEntry)
 		s.namespaces[namespace] = newFunctionNamespace(namespace)
 	}
 	ns := s.namespaces[namespace]
-	fn.docInfo.namespace = namespace
 	ns.register(fn)
 }
 func (s *functionStore) get(name string) (*functionEntry, error) {
@@ -60,22 +58,14 @@ func (s *functionStore) getNamespace(namespace string, name string) (*functionEn
 }
 
 type functionNamespace struct {
-	name       string
-	categories []string
-	store      map[string]*functionEntry
+	name  string
+	store map[string]*functionEntry
 }
-
-const (
-	FUNC_CAT_GENERAL   string = "General"
-	FUNC_CAT_CONTROL   string = "Control Flow"
-	FUNC_CAT_AGGREGATE string = "Aggregations"
-)
 
 func newFunctionNamespace(name string) *functionNamespace {
 	return &functionNamespace{
-		name:       name,
-		store:      make(map[string]*functionEntry),
-		categories: []string{FUNC_CAT_GENERAL},
+		name:  name,
+		store: make(map[string]*functionEntry),
 	}
 }
 
@@ -90,7 +80,6 @@ func (n *functionNamespace) get(name string) (*functionEntry, error) {
 	return nil, fmt.Errorf("%s", msg)
 }
 func (n *functionNamespace) register(fe *functionEntry) {
-	fe.docInfo.signature = fe.string()
 	n.store[fe.name] = fe
 }
 
@@ -110,17 +99,6 @@ type functionEntry struct {
 	args       []functionIO
 	attributes []functionAttribute
 	function   Function
-	docInfo    *functionDocInfo
-}
-
-type functionDocInfo struct {
-	namespace   string
-	category    string
-	name        string
-	description string
-	signature   string
-	exampleOut  string
-	exampleIn   []string
 }
 
 func NewFunctionEntry(name string, function Function) *functionEntry {
@@ -129,35 +107,21 @@ func NewFunctionEntry(name string, function Function) *functionEntry {
 		function:   function,
 		args:       []functionIO{},
 		attributes: []functionAttribute{},
-		docInfo: &functionDocInfo{
-			name: name,
-		},
 	}
 }
 
-func (fe *functionEntry) SetCategory(cat string) *functionEntry {
-	fe.docInfo.category = cat
-	return fe
-}
-
-func (fe *functionEntry) SetDescription(desc string) *functionEntry {
-	fe.docInfo.description = desc
-	return fe
-}
-func (fe *functionEntry) SetArgument(name string, description string, types ...PublicObject) *functionEntry {
+func (fe *functionEntry) SetArgument(name string, types ...PublicObject) *functionEntry {
 	toAdd := functionIO{
-		name:        name,
-		description: description,
-		types:       types,
+		name:  name,
+		types: types,
 	}
 	fe.args = append(fe.args, toAdd)
 	return fe
 }
-func (fe *functionEntry) SetReturn(name string, description string, types ...PublicObject) *functionEntry {
+func (fe *functionEntry) SetReturn(name string, types ...PublicObject) *functionEntry {
 	fe.ret = &functionIO{
-		name:        name,
-		description: description,
-		types:       types,
+		name:  name,
+		types: types,
 	}
 	return fe
 }
@@ -165,14 +129,7 @@ func (fe *functionEntry) SetAttributes(attrs ...functionAttribute) *functionEntr
 	fe.attributes = attrs
 	return fe
 }
-func (fe *functionEntry) SetExampleInput(exStrings ...string) *functionEntry {
-	fe.docInfo.exampleIn = exStrings
-	return fe
-}
-func (fe *functionEntry) SetExampleOut(exString string) *functionEntry {
-	fe.docInfo.exampleOut = exString
-	return fe
-}
+
 func (fe *functionEntry) string() string {
 	argStrList := []string{}
 	for _, a := range fe.args {
@@ -220,7 +177,7 @@ func evalFunction(fn Function, args ...object) object {
 
 func (fe *functionEntry) eval(args ...object) object {
 	if len(args) < len(fe.args) {
-		return newObjectErr("invalid number of args for function %q: too few arguments supplied. want=%d got=%d", fe.name, len(fe.args), len(args))
+		return newObjectErrWithoutLC("function %q too few arguments supplied. want=%d got=%d\n\tfunction signature: %s", fe.name, len(fe.args), len(args), fe.string())
 	}
 
 	for argIdx, wantArg := range fe.args {
@@ -229,7 +186,7 @@ func (fe *functionEntry) eval(args ...object) object {
 		}
 		arg := args[argIdx]
 		if !slices.Contains(wantArg.types, PublicObject(arg.getType())) {
-			return newObjectErrWithoutLC("function %q invalid argument type for %q. want=%s. got=%s", fe.name, wantArg.name, wantArg.typesString(), arg.getType())
+			return newObjectErrWithoutLC("function %q invalid argument type for %q. want=%s. got=%s\n\tfunction signature: %s", fe.name, wantArg.name, wantArg.typesString(), arg.getType(), fe.string())
 		}
 	}
 	if err := fe.checkVariadic(args...); err != nil {
@@ -241,7 +198,7 @@ func (fe *functionEntry) eval(args ...object) object {
 	}
 	if fe.ret != nil {
 		if !slices.Contains(fe.ret.types, PublicObject(ret.getType())) {
-			return newObjectErr("function %q invalid return type. want=%s got=%s", fe.name, fe.ret.typesString(), ret.getType())
+			return newObjectErr("function %q invalid return type. want=%s got=%s\n\tfunction signature: %s", fe.name, fe.ret.typesString(), ret.getType(), fe.string())
 		}
 	}
 	return ret
@@ -277,9 +234,8 @@ const (
 )
 
 type functionIO struct {
-	name        string
-	description string
-	types       []PublicObject
+	name  string
+	types []PublicObject
 }
 
 type Function func(args ...*Object) *Object
@@ -304,8 +260,8 @@ const (
 	MAP       PublicObject = PublicObject(t_map)
 	ARRAY     PublicObject = PublicObject(t_array)
 	ARROWFUNC PublicObject = PublicObject(t_arrow)
-	ERROR     PublicObject = PublicObject(t_error)
 	NULL      PublicObject = PublicObject(t_null)
+	ERROR     PublicObject = PublicObject(t_error)
 )
 
 var ANY = []PublicObject{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, ARROWFUNC, ERROR, NULL}

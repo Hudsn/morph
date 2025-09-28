@@ -7,7 +7,7 @@ import (
 
 func TestEvalPipe(t *testing.T) {
 	input := `
-	set result = [1, 2, "3", 4] | append(5)
+	set result = append([1, 2, "3"], 4) | append(5)
 	`
 	env := newEnvironment(newBuiltinFuncStore())
 	parser := setupEvalTestParser(input)
