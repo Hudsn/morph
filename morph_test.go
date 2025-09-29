@@ -175,9 +175,24 @@ func TestMorphPipes(t *testing.T) {
 }
 
 func TestMorphTheCoolerDaniel(t *testing.T) {
-	// 	SET is_cool = cool_factor >= 500
-	// SET dest.name = src.name
-	// WHEN src.name == "Daniel" || is_cool :: SET dest.name = 'The cooler ${src.name}'
+	test := testMorphCase{
+		description: "check edge case for map() key re-assignment to pre-existing key",
+		srcJSON: `
+			{
+				"name": "Daniel",
+				"cool_factor": 999
+			}
+			`,
+		in: `
+			SET is_cool = cool_factor >= 500
+			SET dest.name = src.name
+			WHEN src.name == "Daniel" || is_cool :: SET dest.name = 'The cooler ${src.name}'
+			`,
+		wantJSON: `{
+			"name": "The cooler Daniel"
+		}`,
+	}
+	checkTestMorphCase(t, test, NewDefaultFunctionStore())
 
 }
 
