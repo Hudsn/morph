@@ -558,10 +558,8 @@ SET dest.result = reduce(src, null, entry ~> {
 }
 ```
 
-## More builtins coming soon!
+### More builtins coming soon!
 More builtin functions are planned.
-
-In the meantime... If you've read this far but don't see a function that you think should be a builtin, feel free to comment in an issue!
 
 ### Pipes
 
@@ -574,7 +572,7 @@ Keep in mind that operator precedence matters here:
 
 Pipes are **LOWER** precedence than typical arithmetic operators like  `+`, `-`, `*`, `/`, and `%`. So piping the result of those operators works. 
 
-However, the pipe operator is higher precedence than (in)equality operators and boolean operators, so something like this `true == "pizza" | contains("iz")`, would evaluate to true, rather than false (for mismatched comparison types) since the `"pizza | ...` expression is evaluated first  
+However, the pipe operator is higher precedence than (in)equality operators and boolean operators, so something like this `true == "pizza" | contains("iz")`, would evaluate to true, rather than false (for mismatched comparison types) since the `"pizza" | ...` expression is evaluated first  
 
 ### Operator Precedence
 
