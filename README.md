@@ -33,7 +33,7 @@ One use case could be to use this language as one part of a larger configuration
 
 For example: Your users could define transformations using Morph in a `.yaml` file, which would then be read and executed by your Go application.
 
-### Why make this?
+### Motivation
 
 I wanted a way to allow users to define custom transformations in configuration files. While there were existing libraries, and even entire frameworks for data transformation, I was unable to find one fit all of my requirements:
  
@@ -52,7 +52,7 @@ Also, learning and edification.
 
 - **Extendable**: In cases where the baseline features that aim to satisfy the "simple" and "intuitive" requirements are insufficient, a library API should allow the language to be extended to achieve the desired functionality.
 
-## Getting Started
+## Quick Start
 
 Install:
 
@@ -84,9 +84,17 @@ outputs:
 }
 ```
 
-### Going Further
+## Further Usage
 
 If you want to learn more about the language, including how to register and use your own custom functions, a more detailed [language guide](language.md) is available. 
 
 
+## Contributing
 
+Pull requests and issues are welcome.
+
+If submitting a pull request, please ensure that you have created relevant tests in the appropriate `_test.go` file with a similar naming convention to other tests in that file. For example in `lexer_test.go`, all tests start with `TestLex...`. This lets us run all tests of a given type. Using the lexer example, all lexer tests can be run with `go test -run "TestLex"`
+
+You can run the entire test suite like any standard Go project `go test ./...`.
+
+If adding a builtin function, please make a best effort to add the function to the appropriate section in the `language.md` file and register it to the default namespace.
