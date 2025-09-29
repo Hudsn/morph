@@ -273,7 +273,8 @@ func evalHandlePrefixExclamation(rightExpr *prefixExpression, rightObj object) o
 	case obj_global_true:
 		return obj_global_false
 	default:
-		return newObjectErr(rightExpr.tok.lineCol, "incompatible non-boolean right-side exprssion for operator: !%s", rightExpr.string())
+		fmt.Printf("%#v\n", rightObj)
+		return newObjectErr(rightExpr.tok.lineCol, "incompatible non-boolean right-side exprssion for ! operator: %s", rightExpr.string())
 	}
 }
 func evalHandlePrefixMinus(rightExpr *prefixExpression, rightObj object) object {
@@ -283,7 +284,7 @@ func evalHandlePrefixMinus(rightExpr *prefixExpression, rightObj object) object 
 	case *objectFloat:
 		return &objectFloat{value: -v.value}
 	default:
-		return newObjectErr(rightExpr.tok.lineCol, "incompatible non-numeric right-side expression for operator: -%s", rightExpr.string())
+		return newObjectErr(rightExpr.tok.lineCol, "incompatible non-numeric right-side expression for operator: %s", rightExpr.string())
 	}
 }
 
@@ -318,6 +319,11 @@ func (i *infixExpression) eval(env *environment) object {
 		return objectFromBoolean(leftObj == rightObj)
 	case i.operator == "!=":
 		return objectFromBoolean(leftObj != rightObj)
+	case i.operator == "&&":
+		return objectFromBoolean(leftObj.isTruthy() && rightObj.isTruthy())
+	case i.operator == "||":
+		return objectFromBoolean(leftObj.isTruthy() || rightObj.isTruthy())
+
 	default:
 		return newObjectErr(i.tok.lineCol, "invalid operator for types: %s %s %s", leftObj.getType(), i.operator, rightObj.getType())
 	}
@@ -448,10 +454,15 @@ func (a *arrowFunctionExpression) eval(env *environment) object {
 
 // pipe expr
 func (p *pipeExpression) eval(env *environment) object {
-	fn := p.rightFunc
-	newArgs := append([]expression{p.leftArg}, fn.arguments...)
-	p.rightFunc.arguments = newArgs
-	ret := p.rightFunc.eval(env)
+
+	//copy call expression to keep it from getting args appended in recurisve arrow funcs
+	callEx := &callExpression{
+		tok:       p.rightFunc.tok,
+		endPos:    p.rightFunc.endPos,
+		name:      p.rightFunc.name,
+		arguments: append([]expression{p.leftArg}, slices.Clone(p.rightFunc.arguments)...),
+	}
+	ret := callEx.eval(env)
 	if isObjectErr(ret) {
 		return unWrapErr(p.rightFunc.token().lineCol, ret)
 	}
@@ -573,15 +584,7 @@ func unWrapErr(outerLC string, innerObj object) object {
 	return objErr
 }
 
-func isObjectNull(o object) bool {
-	return o.getType() == t_null
-}
-
-func isObjectNullOrErr(o object) bool {
-	return o.getType() == t_null || o.getType() == t_error
-}
-
-func objectToError(o object) error {
+func objectToError(o object) (err error) {
 	if e, ok := o.(*objectError); ok {
 		return fmt.Errorf(e.message)
 	}

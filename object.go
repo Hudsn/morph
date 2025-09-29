@@ -58,13 +58,6 @@ func (a *objectArray) isTruthy() bool {
 	return len(a.entries) > 0
 }
 
-//
-
-// type objectMapPair struct {
-// 	key   string
-// 	value object
-// }
-
 type objectMap struct {
 	kvPairs map[string]object
 }
@@ -135,7 +128,7 @@ type objectBoolean struct {
 func (b *objectBoolean) getType() objectType { return t_boolean }
 func (b *objectBoolean) inspect() string     { return fmt.Sprintf("%t", b.value) }
 func (b *objectBoolean) clone() object {
-	return &objectBoolean{value: b.value}
+	return objectFromBoolean(b.value)
 }
 func (b *objectBoolean) isTruthy() bool { return b.value }
 

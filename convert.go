@@ -37,7 +37,6 @@ func convertAnyToObject(rawData interface{}, isJSON bool) object {
 	if rawData == nil {
 		return obj_global_null
 	}
-
 	switch v := rawData.(type) {
 	case int, int16, int32, int64, float32, float64:
 		return convertNumberToObject(v, isJSON)

@@ -377,20 +377,31 @@ func (o *Object) AsArray() ([]interface{}, error) {
 }
 
 type ObjectArrowFN struct {
-	inner *objectArrowFunction
+	inner  *objectArrowFunction
+	errObj *Object
 }
 
-func (af *ObjectArrowFN) Run(input interface{}) (interface{}, error) {
+func (af *ObjectArrowFN) HasError() bool {
+	return af.errObj != nil
+}
+
+func (af *ObjectArrowFN) GetError() *Object {
+	return af.errObj
+}
+
+func (af *ObjectArrowFN) Run(input interface{}) interface{} {
 	env := newEnvironment(af.inner.functions)
 	startingObj := convertAnyToObject(input, false)
 	if isObjectErr(startingObj) {
-		return nil, objectToError(startingObj)
+		af.errObj = &Object{inner: startingObj}
+		return nil
 	}
 	env.set(af.inner.paramName, startingObj)
 	for _, stmt := range af.inner.statements {
 		obj := stmt.eval(env)
 		if isObjectErr(obj) {
-			return nil, objectToError(obj)
+			af.errObj = &Object{inner: startingObj}
+			return nil
 		}
 		if obj.getType() == t_terminate {
 			term := obj.(*objectTerminate)
@@ -400,7 +411,12 @@ func (af *ObjectArrowFN) Run(input interface{}) (interface{}, error) {
 			break
 		}
 	}
-	return convertMapStringObjectToNative(env.store)
+	ret, err := convertMapStringObjectToNative(env.store)
+	if err != nil {
+		af.errObj = ObjectError(err.Error())
+		return nil
+	}
+	return ret
 }
 
 func (o *Object) AsArrowFunction() (*ObjectArrowFN, error) {
@@ -417,6 +433,11 @@ var ObjectNull = &Object{inner: obj_global_null}
 var ObjectTerminate = &Object{inner: obj_global_term}
 var ObjectTerminateDrop = &Object{inner: obj_global_term_drop}
 
+func lcObjectError(lineCol string, msg string, args ...interface{}) *Object {
+	return &Object{
+		inner: newObjectErr(lineCol, msg, args...),
+	}
+}
 func ObjectError(msg string, args ...interface{}) *Object {
 	return &Object{
 		inner: newObjectErrWithoutLC(msg, args...),
@@ -454,7 +475,7 @@ func CastInt(value interface{}) *Object {
 		}
 		ret.inner = &objectInteger{value: int64(i)}
 	default:
-		return ObjectError("unable to cast type as INTEGER. unsupported input type: %T", v)
+		return ObjectError("unable to cast underlying type as INTEGER. unsupported input type: %T", v)
 	}
 	return ret
 }
@@ -531,7 +552,8 @@ func CastBool(value interface{}) *Object {
 	}
 	switch v := value.(type) {
 	case bool:
-		ret.inner = &objectBoolean{value: v}
+		ret.inner = objectFromBoolean(v)
+
 	default:
 		return ObjectError("unable to cast type as Boolean. unsupported type: %T", v)
 	}

@@ -8,7 +8,6 @@ import (
 const (
 	_ int = iota
 	lowest
-	// assign
 	arrow_func // ~>
 	binary_or  // ||
 	binary_and // &&
@@ -108,7 +107,11 @@ func (p *parser) next() {
 	p.currentToken = p.peekToken
 	p.peekToken = p.lexer.tokenize()
 	if p.isCurrentToken(tok_illegal) {
-		p.err("illegal token", p.currentToken.start)
+		if p.currentToken.value == "" {
+			p.err("illegal token", p.currentToken.start)
+		} else {
+			p.err(p.currentToken.value, p.currentToken.start)
+		}
 	}
 }
 
@@ -513,9 +516,9 @@ func (p *parser) rawStringFromStartEnd(start, end int) string {
 	return string(p.lexer.input[start:end])
 }
 
-func (p *parser) lineColString(targetIdx int) string {
-	return lineColString(lineAndCol(p.lexer.input, targetIdx))
-}
+// func (p *parser) lineColString(targetIdx int) string {
+// 	return lineColString(lineAndCol(p.lexer.input, targetIdx))
+// }
 
 func (p *parser) registerPrefixFunc(t tokenType, fn prefixFunc) {
 	p.prefixFuncMap[t] = fn

@@ -134,7 +134,7 @@ func TestBuiltinMap(t *testing.T) {
 		}
 		res := program.eval(env)
 		if isObjectErr(res) {
-			t.Fatalf("%s: %s", tt.nameDesc, objectToError(res).Error())
+			t.Fatalf("%s: %s", tt.nameDesc, res.inspect())
 		}
 		gotObj, ok := env.get("res")
 		if !ok {
@@ -228,7 +228,7 @@ func TestBuiltinFilter(t *testing.T) {
 		}
 		res := program.eval(env)
 		if isObjectErr(res) {
-			t.Fatalf("%s: %s", tt.nameDesc, objectToError(res).Error())
+			t.Fatalf("%s: %s", tt.nameDesc, res.inspect())
 		}
 		gotObj, ok := env.get("res")
 		if !ok {
@@ -369,7 +369,7 @@ func TestBuiltinReduce(t *testing.T) {
 		}
 		res := program.eval(env)
 		if isObjectErr(res) {
-			t.Fatalf("%s: %s", tt.nameDesc, objectToError(res).Error())
+			t.Fatalf("%s: %s", tt.nameDesc, res.inspect())
 		}
 		gotObj, ok := env.get("res")
 		if !ok {

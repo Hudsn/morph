@@ -8,17 +8,21 @@ import (
 func newBuiltinFuncStore() *functionStore {
 	store := newFunctionStore()
 
-	store.Register(builtinLenEntry())
-	store.Register(builtinMinEntry())
-	store.Register(builtinMaxEntry())
-	store.Register(builtinDropEntry())
-	store.Register(builtinEmitEntry())
-	store.Register(builtinIntEntry())
-	store.Register(builtinFloatEntry())
-	store.Register(builtinStringEntry())
 	store.Register(builtinCatchEntry())
 	store.Register(builtinCoalesceEntry())
 	store.Register(builtinFallbackEntry())
+
+	store.Register(builtinDropEntry())
+	store.Register(builtinEmitEntry())
+
+	store.Register(builtinIntEntry())
+	store.Register(builtinFloatEntry())
+	store.Register(builtinStringEntry())
+
+	store.Register(builtinLenEntry())
+	store.Register(builtinMinEntry())
+	store.Register(builtinMaxEntry())
+
 	store.Register(builtinContainsEntry())
 	store.Register(builtinAppendEntry())
 
@@ -284,7 +288,7 @@ func builtinString(args ...*Object) *Object {
 func builtinCatchEntry() *functionEntry {
 	fe := NewFunctionEntry("catch", builtinCatch)
 	fe.SetArgument("target", ANY...)
-	fe.SetArgument("fallback", INTEGER, FLOAT, STRING, ARRAY, MAP)
+	fe.SetArgument("fallback", BOOLEAN, INTEGER, FLOAT, STRING, ARRAY, MAP)
 	fe.SetReturn("result", ANY...)
 	return fe
 }
@@ -306,7 +310,7 @@ func builtinCatch(args ...*Object) *Object {
 func builtinCoalesceEntry() *functionEntry {
 	fe := NewFunctionEntry("coalesce", builtinCoalesce)
 	fe.SetArgument("target", ANY...)
-	fe.SetArgument("fallback", INTEGER, FLOAT, STRING, ARRAY, MAP)
+	fe.SetArgument("fallback", BOOLEAN, INTEGER, FLOAT, STRING, ARRAY, MAP)
 	fe.SetReturn("result", ANY...)
 	return fe
 }
@@ -327,7 +331,7 @@ func builtinCoalesce(args ...*Object) *Object {
 func builtinFallbackEntry() *functionEntry {
 	fe := NewFunctionEntry("fallback", builtinFallback)
 	fe.SetArgument("target", ANY...)
-	fe.SetArgument("fallback", INTEGER, FLOAT, STRING, ARRAY, MAP)
+	fe.SetArgument("fallback", BOOLEAN, INTEGER, FLOAT, STRING, ARRAY, MAP)
 	fe.SetReturn("result", ANY...)
 	return fe
 }
@@ -369,13 +373,19 @@ func builtinMap(args ...*Object) *Object {
 			return ObjectError("error calling map(): data issue with first argument of type %s", args[0].Type())
 		}
 		ret := make(map[string]interface{})
-		for key, value := range in {
+		keyList := []string{}
+		for k := range in {
+			keyList = append(keyList, k)
+		}
+		slices.Sort(keyList)
+		for _, key := range keyList {
+			value := in[key]
 			input := make(map[string]interface{})
 			input["key"] = key
 			input["value"] = value
-			subEnv, err := arrowFn.Run(input)
-			if err != nil {
-				return ObjectError(err.Error())
+			subEnv := arrowFn.Run(input)
+			if arrowFn.HasError() {
+				return arrowFn.errObj
 			}
 			m, ok := subEnv.(map[string]interface{})
 			if !ok {
@@ -392,7 +402,7 @@ func builtinMap(args ...*Object) *Object {
 				continue
 			}
 			if newKey, ok := retMap["key"]; ok { // if return.key exists and is a string, we use that as the new key
-				if newKeyStr, ok := newKey.(string); ok {
+				if newKeyStr, ok := newKey.(string); ok && !slices.Contains(keyList, newKeyStr) {
 					key = newKeyStr
 				}
 			}
@@ -415,9 +425,9 @@ func builtinMap(args ...*Object) *Object {
 			input := make(map[string]interface{})
 			input["index"] = int64(idx)
 			input["value"] = entry
-			subEnv, err := arrowFn.Run(input)
-			if err != nil {
-				return ObjectError(err.Error())
+			subEnv := arrowFn.Run(input)
+			if arrowFn.HasError() {
+				return arrowFn.GetError()
 			}
 			m, ok := subEnv.(map[string]interface{})
 			if !ok {
@@ -471,9 +481,9 @@ func builtinFilter(args ...*Object) *Object {
 			input := make(map[string]interface{})
 			input["key"] = key
 			input["value"] = value
-			subEnv, err := arrowFn.Run(input)
-			if err != nil {
-				return ObjectError(err.Error())
+			subEnv := arrowFn.Run(input)
+			if arrowFn.HasError() {
+				return arrowFn.errObj
 			}
 			m, ok := subEnv.(map[string]interface{})
 			if !ok {
@@ -500,9 +510,9 @@ func builtinFilter(args ...*Object) *Object {
 			input := make(map[string]interface{})
 			input["index"] = int64(idx)
 			input["value"] = entry
-			subEnv, err := arrowFn.Run(input)
-			if err != nil {
-				return ObjectError(err.Error())
+			subEnv := arrowFn.Run(input)
+			if arrowFn.HasError() {
+				return arrowFn.GetError()
 			}
 			m, ok := subEnv.(map[string]interface{})
 			if !ok {
@@ -566,9 +576,9 @@ func builtinReduce(args ...*Object) *Object {
 			input["key"] = key
 			input["value"] = value
 			input["current"] = ret
-			subEnv, err := arrowFn.Run(input)
-			if err != nil {
-				return ObjectError(err.Error())
+			subEnv := arrowFn.Run(input)
+			if arrowFn.HasError() {
+				return arrowFn.GetError()
 			}
 			m, ok := subEnv.(map[string]interface{})
 			if !ok {
@@ -590,9 +600,9 @@ func builtinReduce(args ...*Object) *Object {
 			input["value"] = entry
 			input["index"] = int64(idx)
 			input["current"] = ret
-			subEnv, err := arrowFn.Run(input)
-			if err != nil {
-				return ObjectError(err.Error())
+			subEnv := arrowFn.Run(input)
+			if arrowFn.HasError() {
+				return arrowFn.GetError()
 			}
 			m, ok := subEnv.(map[string]interface{})
 			if !ok {

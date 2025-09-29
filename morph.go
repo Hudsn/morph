@@ -2,7 +2,7 @@ package morph
 
 import (
 	"encoding/json"
-	"io"
+	"errors"
 )
 
 type morph struct {
@@ -44,7 +44,7 @@ func (m *morph) ToAny(inputData []byte) (interface{}, error) {
 	env.set("src", convertBytesToObject(inputData))
 	res := m.program.eval(env)
 	if isObjectErr(res) {
-		return nil, objectToError(res)
+		return nil, errors.New(res.inspect())
 	}
 	res, ok := env.get("dest")
 	if !ok {
@@ -60,31 +60,4 @@ func (m *morph) ToJSON(inputData []byte) ([]byte, error) {
 		return nil, err
 	}
 	return json.Marshal(out)
-}
-
-func (m *morph) ToJSONRW(r io.Reader, w io.Writer) error {
-	dec := json.NewDecoder(r)
-	var input interface{}
-	err := dec.Decode(&input)
-	if err != nil {
-		return err
-	}
-
-	env := newEnvironment(m.functionStore)
-	env.set("src", convertAnyToObjectJSON(input))
-	res := m.program.eval(env)
-	if isObjectErr(res) {
-		objectToError(res)
-	}
-	res, ok := env.get("dest")
-	if !ok {
-		return nil
-	}
-
-	out, err := convertObjectToNative(res)
-	if err != nil {
-		return err
-	}
-	enc := json.NewEncoder(w)
-	return enc.Encode(out)
 }
