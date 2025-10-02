@@ -6,6 +6,60 @@ import (
 	"testing"
 )
 
+func TestLexComment(t *testing.T) {
+	input := `
+	set x = 5 //SET x = 5
+	y`
+	tests := []testCase{
+		{
+			tokenType:  tok_set,
+			start:      2,
+			end:        5,
+			value:      "set",
+			rangeValue: "set",
+			line:       2,
+			col:        2,
+		},
+		{
+			tokenType:  tok_ident,
+			start:      6,
+			end:        7,
+			value:      "x",
+			rangeValue: "x",
+			line:       2,
+			col:        6,
+		},
+		{
+			tokenType:  tok_assign,
+			start:      8,
+			end:        9,
+			value:      "=",
+			rangeValue: "=",
+			line:       2,
+			col:        8,
+		},
+		{
+			tokenType:  tok_int,
+			start:      10,
+			end:        11,
+			value:      "5",
+			rangeValue: "5",
+			line:       2,
+			col:        10,
+		},
+		{
+			tokenType:  tok_ident,
+			start:      25,
+			end:        26,
+			value:      "y",
+			rangeValue: "y",
+			line:       3,
+			col:        2,
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
+
 func TestLexNull(t *testing.T) {
 	input := "my NULL stuff"
 	tests := []testCase{

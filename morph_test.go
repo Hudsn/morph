@@ -56,6 +56,21 @@ func TestMorphCustomFunction(t *testing.T) {
 	checkTestMorphCase(t, test, fs)
 }
 
+func TestMorphComments(t *testing.T) {
+	test := testMorphCase{
+		description: "check that comments don't impact the program",
+		srcJSON: `
+		{}
+		`,
+		in: `
+		SET x = 5 // some comment
+		SET dest = x*2 // a second comment
+		// SET dest = 0
+		// another comment`,
+		wantJSON: `10`,
+	}
+	checkTestMorphCase(t, test, NewDefaultFunctionStore())
+}
 func TestMorphReturnNull(t *testing.T) {
 	test := testMorphCase{
 		description: "check unset dest returns null",

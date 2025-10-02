@@ -84,7 +84,16 @@ func (l *lexer) tokenize() token {
 	case '*':
 		tok = token{tokenType: tok_asterisk, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar), lineCol: l.lineColString(l.currentIdx)}
 	case '/':
-		tok = token{tokenType: tok_slash, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar), lineCol: l.lineColString(l.currentIdx)}
+		if l.peek() != '/' {
+			tok = token{tokenType: tok_slash, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar), lineCol: l.lineColString(l.currentIdx)}
+		} else { // handle comment
+			l.next()
+			for l.peek() != '\n' && l.peek() != nullchar {
+				l.next()
+			}
+			l.next()
+			return l.tokenize()
+		}
 	case '%':
 		tok = token{tokenType: tok_mod, start: l.currentIdx, end: l.nextIdx, value: string(l.currentChar), lineCol: l.lineColString(l.currentIdx)}
 	case '!':

@@ -69,8 +69,9 @@ Here is what that would look like:
     "text": "happy"
 }
 
-//morph
-SET dest.text = src.text
+//morph program:
+SET dest.text = src.text // You can also add single line comments like this!
+// or like this!
 SET dest.emoji = "😶"
 WHEN src.text == "happy" :: SET dest.emoji = "🙂"
 WHEN src.text == "sad" :: SET dest.emoji = "☹️"
