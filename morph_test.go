@@ -2,6 +2,7 @@ package morph
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -71,6 +72,21 @@ func TestMorphComments(t *testing.T) {
 	}
 	checkTestMorphCase(t, test, NewDefaultFunctionStore())
 }
+
+func TestMorphWhenErr(t *testing.T) {
+	tests := []testMorphError{
+		{
+			description:     "check that ",
+			in:              `when true :: when false :: set dest = 0`,
+			srcJSON:         `{}`,
+			wantErrContains: []string{"parsing error at 1:14:", "when statement must be followed by"},
+		},
+	}
+	for _, tt := range tests {
+		checkTestMorphParseError(t, tt, NewEmptyFunctionStore())
+	}
+}
+
 func TestMorphReturnNull(t *testing.T) {
 	test := testMorphCase{
 		description: "check unset dest returns null",
@@ -333,7 +349,7 @@ func TestMultiLineDQuoteStringError(t *testing.T) {
 		SET dest = "holy
 		smokes"
 		`,
-		wantErrContains: "string literal not terminated",
+		wantErrContains: []string{"string literal not terminated"},
 	}
 	checkTestMorphParseError(t, test, NewDefaultFunctionStore())
 }
@@ -457,13 +473,15 @@ func checkTestMorphParseError(t *testing.T, tt testMorphError, fnStore *function
 	if err == nil {
 		t.Fatalf("expected error to contain %q. instead got no error", tt.wantErrContains)
 	}
-	// _, err = m.ToJSON([]byte(tt.srcJSON))
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
 
-	if !strings.Contains(err.Error(), tt.wantErrContains) {
-		t.Errorf("expected error to contain %q. got=%s", tt.wantErrContains, err.Error())
+	if !testMorphCheckContainsAll(err.Error(), tt.wantErrContains...) {
+		strList := []string{}
+		for _, s := range tt.wantErrContains {
+			strList = append(strList, fmt.Sprintf("%q", s))
+		}
+		wantString := strings.Join(strList, ", ")
+		wantString = fmt.Sprintf("[%s]", wantString)
+		t.Errorf("expected error to contain one of %s. got=%s", wantString, err.Error())
 		return false
 	}
 	return true
@@ -496,11 +514,21 @@ func checkTestMorphCase(t *testing.T, tt testMorphCase, fnStore *functionStore) 
 	return true
 }
 
+func testMorphCheckContainsAll(mainString string, checkStrings ...string) bool {
+	count := 0
+	for _, want := range checkStrings {
+		if strings.Contains(mainString, want) {
+			count++
+		}
+	}
+	return count == len(checkStrings)
+}
+
 type testMorphError struct {
 	description     string
 	in              string
 	srcJSON         string
-	wantErrContains string
+	wantErrContains []string
 }
 type testMorphCase struct {
 	description string

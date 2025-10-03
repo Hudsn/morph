@@ -470,7 +470,14 @@ func (p *parser) parseWhenStatement() *whenStatement {
 		return nil
 	}
 	p.next()
-	ret.consequence = p.parseStatement()
+	markerStart := p.currentToken.start
+	stmt := p.parseStatement()
+	cons, ok := stmt.(*setStatement)
+	if !ok {
+		p.err("when statement must be followed by a SET statement", markerStart)
+		return nil
+	}
+	ret.consequence = cons
 	return ret
 }
 
