@@ -40,19 +40,35 @@ A `SET` statement follows the syntax:
 
 Note that when setting a variable to another variable like `SET x = y`, the right side variable is cloned, meaning that future changes to `x` should ***not*** change `y`. 
 
-Note that `SET` can be in all uppercase or all lowercase. Mixed cases of this keyword will result in an error.
+Note that `SET` is case insensitive, but it is encouraged to use all-caps for readability.
 
 
-## WHEN Statements
-`WHEN` statements are the only way to conditionally execute other statements, namely `SET` statements.
+## IF Statements
+`IF` statements are the only way to conditionally execute other statements, namely `SET` statements.
 
-A `WHEN` statment follows the syntax: 
+`IF` statements can be single line statements or spam multiple lines
 
-`WHEN condition :: consequence`
+A single-lined `IF` statement follows the syntax: 
+
+`IF condition :: consequence`
+
+Single line `IF` statements **MUST** have a consequence of a SET statement.
+
+A mult-iline `IF` statement follows the syntax:
+
+```
+IF condition :: {
+    consequence statement 1
+    consequence statement 2
+    ...
+}
+```
+
+Multi-line `IF` statements **MUST** have its consequence statement(s) enclosed in curly brackets as shown above
 
 If the condition evalutes to be `true`, the consequence will execute.
 
-Note that `WHEN` can be in all uppercase or all lowercase. Mixed cases of this keyword will result in an error.
+Note that `IF` is case insensitive, but it is encouraged to use all-caps for readability.
 
 
 ## Example
@@ -73,8 +89,8 @@ Here is what that would look like:
 SET dest.text = src.text // You can also add single line comments like this!
 // or like this!
 SET dest.emoji = "😶"
-WHEN src.text == "happy" :: SET dest.emoji = "🙂"
-WHEN src.text == "sad" :: SET dest.emoji = "☹️"
+IF src.text == "happy" :: SET dest.emoji = "🙂"
+IF src.text == "sad" :: SET dest.emoji = "☹️"
 
 //out
 {
@@ -174,9 +190,9 @@ We've learned a bit more, so let's have another example using some of the operat
 }
 
 // morph
-SET is_cool = cool_factor >= 500
+SET is_cool = src.cool_factor >= 500
 SET dest.name = src.name
-WHEN src.name == "Daniel" || is_cool :: SET dest.name = 'The cooler ${src.name}'
+IF src.name == "Daniel" || is_cool :: SET dest.name = 'The Cooler ${src.name}'
 
 
 //dest:
@@ -194,14 +210,14 @@ However, you **CAN** make use of various built-in functions, or even define your
 
 You can call functions with the following notation: `function_name(argument1, argument2)` or if there are no arguments: `my_function()`
 
-Functions always return a single value, which can be any of the main types, so you might use them like so: `SET my_variable = my_function()`
+Functions always return a single value, which can be any of the main types. Usage might look like this: `SET my_variable = my_function()`
 
-If the function is called incorrectly, it will return an error instead of the intended. Don't worry, Morph exposes builtin functions to handle this case. Read the next section to see how...
+If the function is called incorrectly, it will return an error instead of the intended type. Don't worry, Morph exposes builtin functions to handle this case. Read the next sections to see how...
 
 ### Namespaces
 
-Functions can be called based on the namespace they're registered to via `.` path notation.
-For example `mycoolnamespace.mycoolfunction()`. Note that this path notation is **NOT** chainable, and is limited to a single `.` path operator.
+Functions can be called based on the namespace they're registered to via `.` path notation. For example `mycoolnamespace.mycoolfunction()`.
+Note that this path notation is **NOT** chainable, and is limited to a single `.` path operator.
 
 By default, all builtin functions are registered in the `std` namespace, which is a special namespace whose functions can be called without referencing the namespace. For example `std.myfunc()` can simply be called via `myfunc()`
 
@@ -212,7 +228,7 @@ You can register custom functions to any custom namespace, or to the `std` names
 Morph exposes multiple builtin functions (with more to be added) to handle common transformation tasks:
 
 ### catch(item, fallback): result
-Checks if `item` is an error, and if so, returns the `fallback` instead. Otherwise, returns `item`
+Checks if `item` is an error, and if so, returns the `fallback` value instead. Otherwise, returns `item`
 
 Example: 
 ```
@@ -220,7 +236,7 @@ SET my_variable =  catch(non_existent_func(), "my fallback!")
 // my_variable results in "my fallback" because 
 ```
 ### coalesce(item, fallback): result
-Checks if `item` is `NULL`, and if so, returns the `fallback` instead. Otherwise, returns `item`
+Checks if `item` is `NULL`, and if so, returns the `fallback` value instead. Otherwise, returns `item`
 
 Example: 
 ```
@@ -229,15 +245,15 @@ SET my_variable =  coalesce(NULL, "coalesce ftw!")
 ```
 
 ### fallback(item, fallback): result
-A combination of `catch` and `coalesce`. Checks if `item` is `NULL` or an error, and if so, returns `fallback` instead. Otherwise, returns `item`.
+A combination of `catch` and `coalesce`. Checks if `item` is `NULL` or an error, and if so, returns the `fallback` value instead. Otherwise, returns `item`.
 
 ### drop()
 Stops the current run of the Morph program, and returns dest as NULL.
-Useful in WHEN statements for short-circuiting
+Useful in IF statements for short-circuiting
 
 ### emit()
 Stops the current run of the Morph program, and returns dest at its current state.
-Useful in WHEN statements for short-circuiting
+Useful in IF statements for short-circuiting
 
 Example:
 ```
@@ -319,7 +335,7 @@ Example:
 
 //morph
 SET dest.new_arr = map(src.my_arr, entry ~> {
-    WHEN entry.index == 2 :: SET return = entry.value * 2
+    IF entry.index == 2 :: SET return = entry.value * 2
 }) 
 
 //output
@@ -385,7 +401,7 @@ Example:
 
 // morph:
 SET dest = filter(src.my_arr, entry ~> {
-			WHEN entry.index >= 2 && (catch(entry.value % 2 == 0, false) || catch(int(entry.value) >= 4, false)) :: SET return = true
+			IF entry.index >= 2 && (catch(entry.value % 2 == 0, false) || catch(int(entry.value) >= 4, false)) :: SET return = true
     })
 
 //output: 
@@ -406,8 +422,8 @@ Example:
 
 //morph:
 SET res = filter(src, entry ~> {
-        WHEN entry.key == "a" :: SET return = true
-        WHEN entry.value == 3 :: SET return = true
+        IF entry.key == "a" :: SET return = true
+        IF entry.value == 3 :: SET return = true
     })
 
 //output:
@@ -440,7 +456,7 @@ Example:
 
 //morph:
 SET dest.result = reduce(src.my_arr, null, entry ~> {
-        WHEN entry.current == NULL :: SET entry.current = 0
+        IF entry.current == NULL :: SET entry.current = 0
         SET return = entry.current + int(entry.value)
     })
 
@@ -464,8 +480,8 @@ Example:
 
 //morph:
 SET dest.result = reduce(src, null, entry ~> {
-    WHEN entry.current == NULL :: SET entry.current = 0
-    WHEN entry.key != "a" :: SET return = entry.current + int(entry.value)
+    IF entry.current == NULL :: SET entry.current = 0
+    IF entry.key != "a" :: SET return = entry.current + int(entry.value)
 })
 
 

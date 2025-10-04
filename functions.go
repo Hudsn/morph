@@ -400,7 +400,7 @@ func (af *ObjectArrowFN) Run(input interface{}) interface{} {
 	for _, stmt := range af.inner.statements {
 		obj := stmt.eval(env)
 		if isObjectErr(obj) {
-			af.errObj = &Object{inner: startingObj}
+			af.errObj = &Object{inner: obj}
 			return nil
 		}
 		if obj.getType() == t_terminate {
@@ -572,7 +572,7 @@ func CastMap(value interface{}) *Object {
 	}
 }
 
-// casts a Go type to a morph Map Object so it can be used when defining custom functions
+// casts a Go type to a morph Array Object so it can be used when defining custom functions
 // input must be a []interface{}, which is the default format of raw data arrays being passed via morph statements and expressions
 func CastArray(value interface{}) *Object {
 	ret := &Object{

@@ -1,5 +1,7 @@
 package morph
 
+import "strings"
+
 type token struct {
 	tokenType tokenType
 	value     string
@@ -56,6 +58,7 @@ const (
 	tok_gteq      tokenType = ">="
 
 	//keywords
+	tok_if    tokenType = "IF"
 	tok_when  tokenType = "WHEN"
 	tok_set   tokenType = "SET"
 	tok_true  tokenType = "TRUE"
@@ -67,17 +70,15 @@ const (
 )
 
 var keywordMap = map[string]tokenType{
-	"when":  tok_when,
-	"WHEN":  tok_when,
+	"if":    tok_if,
 	"set":   tok_set,
-	"SET":   tok_set,
 	"true":  tok_true,
 	"false": tok_false,
-	"NULL":  tok_null,
 	"null":  tok_null,
 }
 
 func lookupTokenKeyword(ident string) tokenType {
+	ident = strings.ToLower(ident)
 	if ret, ok := keywordMap[ident]; ok {
 		return ret
 	}

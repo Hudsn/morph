@@ -99,21 +99,36 @@ func (s *setStatement) position() position {
 
 //
 
-type whenStatement struct {
+type ifStatement struct {
 	tok         token
 	condition   expression
-	consequence statement
+	consequence []statement
+	isBracketed bool
+	endPos      int
 }
 
-func (ws *whenStatement) statementNode() {}
-func (ws *whenStatement) token() token   { return ws.tok }
-func (ws *whenStatement) string() string {
-	return fmt.Sprintf("%s %s :: %s", ws.tok.value, ws.condition.string(), ws.consequence.string())
+func (is *ifStatement) statementNode() {}
+func (is *ifStatement) token() token   { return is.tok }
+func (is *ifStatement) string() string {
+	if !is.isBracketed {
+		cstring := ""
+		if len(is.consequence) > 0 {
+			cstring = is.consequence[0].string()
+		}
+		return fmt.Sprintf("%s %s :: %s", is.tok.value, is.condition.string(), cstring)
+	}
+
+	strList := []string{}
+	for _, c := range is.consequence {
+		strList = append(strList, c.string())
+	}
+	innerString := strings.Join(strList, "\n\t")
+	return fmt.Sprintf("%s %s :: {\n\t%s\n}", is.tok.value, is.condition.string(), innerString)
 }
-func (ws *whenStatement) position() position {
+func (is *ifStatement) position() position {
 	return position{
-		start: ws.tok.start,
-		end:   ws.consequence.position().end,
+		start: is.tok.start,
+		end:   is.endPos,
 	}
 }
 
@@ -421,6 +436,7 @@ type templateExpression struct {
 }
 
 func (te *templateExpression) expressionNode() {}
+func (te *templateExpression) pathPartNode()   {}
 func (te *templateExpression) token() token    { return te.tok }
 func (te *templateExpression) position() position {
 	if len(te.parts) == 0 {
@@ -448,17 +464,29 @@ type callExpression struct {
 	tok       token
 	name      assignable // path or ident
 	arguments []expression
+	isPipe    bool
+	pipeTok   token
 	endPos    int
 }
 
 func (c *callExpression) expressionNode() {}
 func (c *callExpression) token() token    { return c.tok }
 func (c *callExpression) string() string {
+	outer := c.name.string()
+	args := c.arguments
+	if c.isPipe && len(c.arguments) > 0 {
+		outer = fmt.Sprintf("%s | %s", c.arguments[0].string(), outer)
+		if len(c.arguments) == 1 {
+			args = []expression{}
+		} else {
+			args = c.arguments[1:]
+		}
+	}
 	argStringList := []string{}
-	for _, entry := range c.arguments {
+	for _, entry := range args {
 		argStringList = append(argStringList, entry.string())
 	}
-	return fmt.Sprintf("%s(%s)", c.name.string(), strings.Join(argStringList, ", "))
+	return fmt.Sprintf("%s(%s)", outer, strings.Join(argStringList, ", "))
 }
 func (c *callExpression) position() position {
 	return position{
@@ -493,23 +521,5 @@ func (af *arrowFunctionExpression) position() position {
 	return position{
 		start: af.paramName.position().start,
 		end:   af.endPos,
-	}
-}
-
-type pipeExpression struct {
-	tok       token
-	leftArg   expression
-	rightFunc *callExpression
-}
-
-func (pe *pipeExpression) expressionNode() {}
-func (pe *pipeExpression) token() token    { return pe.tok }
-func (pe *pipeExpression) string() string {
-	return fmt.Sprintf("%s | %s", pe.leftArg.string(), pe.rightFunc.string())
-}
-func (pe *pipeExpression) position() position {
-	return position{
-		start: pe.leftArg.position().end,
-		end:   pe.rightFunc.position().end,
 	}
 }

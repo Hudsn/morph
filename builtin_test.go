@@ -20,7 +20,7 @@ func TestBuiltinMap(t *testing.T) {
 			}`,
 			input: `
 			SET res = map(mydata, entry ~> {
-				set return.key = "prefix_" + entry.key 
+				set return.key = "prefix_" + entry.key
 				SET return.value = entry.value * 2
 			})
 			`,
@@ -104,7 +104,7 @@ func TestBuiltinMap(t *testing.T) {
 			`,
 			input: `
 			SET res = map(mydata, entry ~> {
-				when entry.index == 2 :: set return = entry.value * 2
+				if entry.index == 2 :: set return = entry.value * 2
 			})
 			`,
 			want: []interface{}{1, 2.5, 6},
@@ -116,7 +116,7 @@ func TestBuiltinMap(t *testing.T) {
 			`,
 			input: `
 			SET res = map(mydata, entry ~> {
-				set not_return = entry - 1
+				set not_return = entry.value - 1
 			})
 			`,
 			want: []interface{}{1, 2.5, 3},
@@ -161,8 +161,8 @@ func TestBuiltinFilter(t *testing.T) {
 			}`,
 			input: `
 			SET res = filter(mydata, entry ~> {
-				WHEN entry.key == "a" :: SET return = true
-				WHEN entry.value == 3 :: SET return = true
+				if entry.key == "a" :: SET return = true
+				if entry.value == 3 :: SET return = true
 			})
 			`,
 			want: map[string]interface{}{
@@ -179,8 +179,8 @@ func TestBuiltinFilter(t *testing.T) {
 			}`,
 			input: `
 			SET res = filter(mydata, entry ~> {
-				WHEN entry.key == "a" :: SET return = doesntexist
-				WHEN entry.value == 3 :: SET return = thiseither
+				IF entry.key == "a" :: SET return = doesntexist
+				IF entry.value == 3 :: SET return = thiseither
 			})
 			`,
 			want: map[string]interface{}{},
@@ -190,7 +190,7 @@ func TestBuiltinFilter(t *testing.T) {
 			data:     `[1, 2, "3", 4]`,
 			input: `
 			SET res = filter(mydata, entry ~> {
-				WHEN entry.value == string(3) :: SET return = true
+				IF entry.value == string(3) :: SET return = true
 			})
 			`,
 			want: []interface{}{"3"},
@@ -200,7 +200,7 @@ func TestBuiltinFilter(t *testing.T) {
 			data:     `[1, 2, "3", 4]`,
 			input: `
 			SET res = filter(mydata, entry ~> {
-				WHEN entry.index >= 2 :: SET return = true
+				IF entry.index >= 2 :: SET return = true
 			})
 			`,
 			want: []interface{}{"3", 4},
@@ -210,7 +210,7 @@ func TestBuiltinFilter(t *testing.T) {
 			data:     `[1, 2, "3", 4]`,
 			input: `
 			SET res = filter(mydata, entry ~> {
-				WHEN entry.value == 3 :: SET return = thiseither
+				IF entry.value == 3 :: SET return = thiseither
 			})
 			`,
 			want: []interface{}{},
@@ -269,7 +269,7 @@ func TestBuiltinReduce(t *testing.T) {
 			}`,
 			input: `
 			SET res = reduce(mydata, null, entry ~> {
-				WHEN entry.current == null :: SET entry.current = []
+				IF entry.current == null :: SET entry.current = []
 				SET return = append(entry.current, int(entry.value * 2))
 			})
 			`,
@@ -284,6 +284,7 @@ func TestBuiltinReduce(t *testing.T) {
 			}`,
 			input: `
 			SET res = reduce(mydata, null, entry ~> {
+				IF entry.current == NULL :: SET entry.current = 0
 				SET whocares = entry.current + entry.value
 			})
 			`,
@@ -298,7 +299,7 @@ func TestBuiltinReduce(t *testing.T) {
 			}`,
 			input: `
 			SET res = reduce(mydata, string(999), entry ~> {
-				SET whocares = entry.current + entry.value
+				SET whocares = int(entry.current) + entry.value
 			})
 			`,
 			want: "999",
@@ -314,10 +315,11 @@ func TestBuiltinReduce(t *testing.T) {
 			want: 12,
 		},
 		{
-			nameDesc: "reduce() on array with out acc without assignment",
+			nameDesc: "reduce() on array without acc without assignment",
 			data:     `[1, 2, "3"]`,
 			input: `
 			SET res = reduce(mydata, null, entry ~> {
+				IF entry.current == NULL :: SET entry.current = 0
 				SET whocares = entry.current + int(entry.value)
 			})
 			`,
@@ -328,7 +330,7 @@ func TestBuiltinReduce(t *testing.T) {
 			data:     `[1, 2, "3"]`,
 			input: `
 			SET res = reduce(mydata, null, entry ~> {
-				WHEN entry.current == NULL :: SET entry.current = 0
+				IF entry.current == NULL :: SET entry.current = 0
 				SET return = entry.current + int(entry.value)
 			})
 			`,
@@ -339,7 +341,7 @@ func TestBuiltinReduce(t *testing.T) {
 			data:     `[1, 2, "3"]`,
 			input: `
 			SET res = reduce(mydata, 0, entry ~> {
-				WHEN entry.index <=1 :: SET return = entry.current + int(entry.value)
+				IF entry.index <=1 :: SET return = entry.current + int(entry.value)
 			})
 			`,
 			want: 3,
@@ -351,7 +353,7 @@ func TestBuiltinReduce(t *testing.T) {
 			SET res = reduce(mydata, 0, entry ~> {
 				SET whocares = entry.current + int(entry.value)
 				SET return = entry.current + int(entry.value) 
-				WHEN entry.current >= 3 :: SET return = NULL
+				IF entry.current >= 3 :: SET return = NULL
 			})
 			`,
 			want: nil,

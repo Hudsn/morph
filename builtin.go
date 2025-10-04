@@ -365,7 +365,6 @@ func builtinMap(args ...*Object) *Object {
 	if err != nil {
 		return ObjectError("invalid argument for map(): second argument must be a valid ARROWFUNC. got type of %s", args[1].Type())
 	}
-
 	switch args[0].Type() {
 	case string(MAP):
 		in, err := args[0].AsMap()
@@ -440,6 +439,7 @@ func builtinMap(args ...*Object) *Object {
 			}
 			ret = append(ret, toAdd)
 		}
+
 		return CastArray(ret)
 	default:
 		return ObjectError("invalid argument for map(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())

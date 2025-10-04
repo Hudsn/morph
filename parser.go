@@ -2,7 +2,9 @@ package morph
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -20,7 +22,6 @@ const (
 )
 
 var precedenceMap = map[tokenType]int{
-	// tok_assign:     assign,
 	tok_arrow:      arrow_func,
 	tok_equal:      equality,
 	tok_not_equal:  equality,
@@ -100,7 +101,7 @@ func (p *parser) registerFuncs() {
 	p.registerInfixFunc(tok_lsquare, p.parseIndexExpression)
 	p.registerInfixFunc(tok_lparen, p.parseCallExpression)
 	p.registerInfixFunc(tok_arrow, p.parseArrowFunctionExpression)
-	p.registerInfixFunc(tok_pipe, p.parsePipeExpression)
+	p.registerInfixFunc(tok_pipe, p.parsePipeCall)
 }
 
 func (p *parser) next() {
@@ -119,11 +120,11 @@ func (p *parser) parseProgram() (*program, error) {
 	program := &program{statements: []statement{}}
 	for !p.isCurrentToken(tok_eof) && !p.isCurrentToken(tok_illegal) {
 		statement := p.parseStatement()
+		if p.hasErrors() {
+			return nil, p.errors[0]
+		}
 		program.statements = append(program.statements, statement)
 		p.next()
-	}
-	if len(p.errors) > 0 {
-		return nil, p.errors[0]
 	}
 
 	return program, nil
@@ -133,8 +134,8 @@ func (p *parser) parseStatement() statement {
 	switch p.currentToken.tokenType {
 	case tok_set:
 		return p.parseSetStatement()
-	case tok_when:
-		return p.parseWhenStatement()
+	case tok_if:
+		return p.parseIfStatement()
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -184,18 +185,21 @@ func (p *parser) parsePrefixExpression() expression {
 
 // pipe expr
 
-func (p *parser) parsePipeExpression(left expression) expression {
-	ret := &pipeExpression{leftArg: left, tok: p.currentToken}
+func (p *parser) parsePipeCall(left expression) expression {
+	args := []expression{left}
+	ret := &callExpression{isPipe: true, pipeTok: p.currentToken}
 	precedence := lookupPrecedence(p.currentToken.tokenType)
 	p.next()
-	tempPos := p.currentToken.start
 	right := p.parseExpression(precedence)
 	rightFunc, ok := right.(*callExpression)
 	if !ok {
-		p.err("invalid pipe call. right side of pipe must be a function call", tempPos)
+		p.err("invalid pipe call. right side of pipe must be a function call", right.position().start)
 		return nil
 	}
-	ret.rightFunc = rightFunc
+	ret.tok = rightFunc.tok
+	ret.name = rightFunc.name
+	ret.arguments = append(args, rightFunc.arguments...)
+	ret.endPos = rightFunc.endPos
 	return ret
 }
 
@@ -214,6 +218,9 @@ func (p *parser) parseArrowFunctionExpression(left expression) expression {
 	for !p.isPeekToken(tok_rcurly) {
 		p.next()
 		ret.block = append(ret.block, p.parseStatement())
+		if p.hasErrors() {
+			return nil
+		}
 	}
 	if !p.mustNextToken(tok_rcurly) {
 		return nil
@@ -242,6 +249,9 @@ func (p *parser) parseMapLiteral() expression {
 	for !p.isPeekToken(tok_rcurly) {
 		p.next()
 		key := p.parseExpression(lowest)
+		if p.hasErrors() {
+			return nil
+		}
 		strNode, ok := key.(*stringLiteral)
 		if !ok {
 			p.err("map key expression must be a string literal", key.position().start)
@@ -252,7 +262,13 @@ func (p *parser) parseMapLiteral() expression {
 		}
 		p.next()
 		ret.pairs[strNode.value] = p.parseExpression(lowest)
+		if p.hasErrors() {
+			return nil
+		}
 		if !p.isPeekToken(tok_rcurly) && !p.mustNextToken(tok_comma) {
+			return nil
+		}
+		if p.hasErrors() {
 			return nil
 		}
 	}
@@ -284,6 +300,9 @@ func (p *parser) parseExpressionList(endTok tokenType) []expression {
 		p.next() // to comma
 		p.next() // to next expression
 		ret = append(ret, p.parseExpression(lowest))
+		if p.hasErrors() {
+			return nil
+		}
 	}
 
 	if !p.mustNextToken(endTok) {
@@ -345,6 +364,9 @@ func (p *parser) parseTemplateExpression() expression {
 			if toAdd, gotExpr := p.parseTemplateInnerExpression(); gotExpr {
 				ret.parts = append(ret.parts, toAdd)
 			}
+		}
+		if p.hasErrors() {
+			return nil
 		}
 	}
 	return ret
@@ -462,22 +484,35 @@ func (p *parser) parseSetStatement() *setStatement {
 	return ret
 }
 
-func (p *parser) parseWhenStatement() *whenStatement {
-	ret := &whenStatement{tok: p.currentToken}
+func (p *parser) parseIfStatement() *ifStatement {
+	ret := &ifStatement{tok: p.currentToken, consequence: []statement{}}
 	p.next() // to expr
 	ret.condition = p.parseExpression(lowest)
 	if !p.mustNextToken(tok_double_colon) {
 		return nil
 	}
-	p.next()
-	markerStart := p.currentToken.start
-	stmt := p.parseStatement()
-	cons, ok := stmt.(*setStatement)
-	if !ok {
-		p.err("when statement must be followed by a SET statement", markerStart)
+	if !p.mustNextTokenOneOf(tok_lcurly, tok_set) {
 		return nil
 	}
-	ret.consequence = cons
+	if p.isCurrentToken(tok_lcurly) {
+		for !p.isPeekToken(tok_rcurly) {
+			p.next()
+			ret.consequence = append(ret.consequence, p.parseStatement())
+			if p.hasErrors() {
+				return nil
+			}
+		}
+		if !p.mustNextToken(tok_rcurly) {
+			return nil
+		}
+		ret.endPos = p.currentToken.end
+		ret.isBracketed = true
+	} else {
+		stmt := p.parseStatement()
+		ret.consequence = append(ret.consequence, stmt)
+		ret.endPos = stmt.position().end
+		ret.isBracketed = false
+	}
 	return ret
 }
 
@@ -504,6 +539,20 @@ func (p *parser) mustNextToken(t tokenType) bool {
 	p.err(msg, p.peekToken.start)
 	return false
 }
+func (p *parser) mustNextTokenOneOf(tt ...tokenType) bool {
+	if slices.Contains(tt, p.peekToken.tokenType) {
+		p.next()
+		return true
+	}
+	tokStringList := []string{}
+	for _, t := range tt {
+		tokStringList = append(tokStringList, fmt.Sprintf("%q", t))
+	}
+	msg := fmt.Sprintf("unexpected token type. expected one of %s. got=%q", strings.Join(tokStringList, " or "), p.peekToken.tokenType)
+	p.err(msg, p.peekToken.start)
+	return false
+}
+
 func (p *parser) mustCurrentToken(t tokenType) bool {
 	if p.isCurrentToken(t) {
 		return true
@@ -519,13 +568,13 @@ func (p *parser) err(message string, position int) {
 	p.errors = append(p.errors, err)
 }
 
+func (p *parser) hasErrors() bool {
+	return len(p.errors) > 0
+}
+
 func (p *parser) rawStringFromStartEnd(start, end int) string {
 	return string(p.lexer.input[start:end])
 }
-
-// func (p *parser) lineColString(targetIdx int) string {
-// 	return lineColString(lineAndCol(p.lexer.input, targetIdx))
-// }
 
 func (p *parser) registerPrefixFunc(t tokenType, fn prefixFunc) {
 	p.prefixFuncMap[t] = fn

@@ -17,7 +17,7 @@ A simple program looks something like this:
 // Morph program:
 SET dest.name == src.name
 SET dest.pet_type = "unknown"
-WHEN src.name == "Fluffy" :: SET dest.pet_type = "dog"
+IF src.name == "Fluffy" :: SET dest.pet_type = "dog"
 
 // output:
 {

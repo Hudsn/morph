@@ -107,15 +107,18 @@ func evalSetStatementHandleMAP(objHandle object, current *assignPath, valToSet o
 //
 // when statement
 
-func (w *whenStatement) eval(env *environment) object {
-	conditionObj := w.condition.eval(env)
+func (i *ifStatement) eval(env *environment) object {
+	conditionObj := i.condition.eval(env)
 	if isObjectErr(conditionObj) {
-		return unWrapErr(w.condition.token().lineCol, conditionObj)
+		return unWrapErr(i.condition.token().lineCol, conditionObj)
 	}
+
 	if conditionObj.isTruthy() {
-		res := w.consequence.eval(env)
-		if isObjectErr(res) {
-			return unWrapErr(w.consequence.token().lineCol, res)
+		for _, c := range i.consequence {
+			res := c.eval(env)
+			if isObjectErr(res) {
+				return unWrapErr(c.token().lineCol, res)
+			}
 		}
 	}
 	return obj_global_null
@@ -204,6 +207,20 @@ func (p *pathExpression) eval(env *environment) object {
 			return unWrapErr(v.tok.lineCol, ret)
 		}
 		return ret
+	case *templateExpression:
+		str := v.eval(env)
+		if isObjectErr(str) {
+			return unWrapErr(v.tok.lineCol, str)
+		}
+		if strVal, ok := str.(*objectString); ok {
+			ret := evalResolvePathEntryForKey(p, strVal.value, env)
+			if isObjectErr(ret) {
+				return unWrapErr(v.tok.lineCol, ret)
+			}
+			return ret
+		}
+		return newObjectErr(v.tok.lineCol, "invalid path part: %s", v.string())
+
 	default:
 		return newObjectErr(v.token().lineCol, "invalid path part: %s", v.string())
 	}
@@ -273,7 +290,6 @@ func evalHandlePrefixExclamation(rightExpr *prefixExpression, rightObj object) o
 	case obj_global_true:
 		return obj_global_false
 	default:
-		fmt.Printf("%#v\n", rightObj)
 		return newObjectErr(rightExpr.tok.lineCol, "incompatible non-boolean right-side exprssion for ! operator: %s", rightExpr.string())
 	}
 }
@@ -307,8 +323,6 @@ func (i *infixExpression) eval(env *environment) object {
 			return unWrapErr(i.token().lineCol, ret)
 		}
 		return ret
-	case leftObj.getType() != rightObj.getType():
-		return obj_global_false
 	case leftObj.getType() == t_string && rightObj.getType() == t_string:
 		ret := evalStringInfixExpression(leftObj, i.operator, rightObj)
 		if isObjectErr(ret) {
@@ -316,14 +330,21 @@ func (i *infixExpression) eval(env *environment) object {
 		}
 		return ret
 	case i.operator == "==":
+		if leftObj.getType() != rightObj.getType() {
+			return obj_global_false
+		}
 		return objectFromBoolean(leftObj == rightObj)
 	case i.operator == "!=":
+		if leftObj.getType() != rightObj.getType() {
+			return obj_global_true
+		}
 		return objectFromBoolean(leftObj != rightObj)
 	case i.operator == "&&":
 		return objectFromBoolean(leftObj.isTruthy() && rightObj.isTruthy())
 	case i.operator == "||":
 		return objectFromBoolean(leftObj.isTruthy() || rightObj.isTruthy())
-
+	// case leftObj.getType() != rightObj.getType():
+	// 	return newObjectErr()
 	default:
 		return newObjectErr(i.tok.lineCol, "invalid operator for types: %s %s %s", leftObj.getType(), i.operator, rightObj.getType())
 	}
@@ -450,23 +471,6 @@ func (a *arrowFunctionExpression) eval(env *environment) object {
 		statements: a.block,
 		functions:  env.functions,
 	}
-}
-
-// pipe expr
-func (p *pipeExpression) eval(env *environment) object {
-
-	//copy call expression to keep it from getting args appended in recurisve arrow funcs
-	callEx := &callExpression{
-		tok:       p.rightFunc.tok,
-		endPos:    p.rightFunc.endPos,
-		name:      p.rightFunc.name,
-		arguments: append([]expression{p.leftArg}, slices.Clone(p.rightFunc.arguments)...),
-	}
-	ret := callEx.eval(env)
-	if isObjectErr(ret) {
-		return unWrapErr(p.rightFunc.token().lineCol, ret)
-	}
-	return ret
 }
 
 //

@@ -401,9 +401,9 @@ func TestEvalPrefixExpression(t *testing.T) {
 	}
 }
 
-func TestEvalWhenStatement(t *testing.T) {
+func TestEvalIfStatement(t *testing.T) {
 	env := newEnvironment(nil)
-	parser := setupEvalTestParser("WHEN true :: SET my.path.var = 10")
+	parser := setupEvalTestParser("IF true :: SET my.path.var = 10")
 	if len(parser.errors) > 0 {
 		t.Fatalf("parser error: %s", parser.errors[0])
 	}

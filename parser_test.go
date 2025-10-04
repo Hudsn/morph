@@ -4,36 +4,32 @@ import (
 	"testing"
 )
 
-func TestParsePipeExpression(t *testing.T) {
+func TestParsePipeCall(t *testing.T) {
 	input := "asdf | myfunc(2)"
 	program := setupParserTest(t, input)
 	checkParserProgramLength(t, program, 1)
 	checkParserStatementType(t, program.statements[0], EXPRESSION_STATEMENT)
 	stmt := program.statements[0].(*expressionStatement)
-	pe, ok := stmt.expression.(*pipeExpression)
+	ce, ok := stmt.expression.(*callExpression)
 	if !ok {
-		t.Fatalf("stmt.expression is not of type *pipeExpression. got=%T", stmt.expression)
+		t.Fatalf("stmt.expression is not of type *callExpression. got=%T", stmt.expression)
 	}
-
-	arg1, ok := pe.leftArg.(*identifierExpression)
+	if len(ce.arguments) != 2 {
+		t.Fatalf("expected ce.arguments to be of length 2. got=%d", len(ce.arguments))
+	}
+	arg1, ok := ce.arguments[0].(*identifierExpression)
 	if !ok {
-		t.Fatalf("pe.leftArg is not of type *identifierExpression. got=%T", pe.leftArg)
+		t.Fatalf("ce.arguments[0] is not of type *identifierExpression. got=%T", ce.arguments[0])
 	}
 	if arg1.value != "asdf" {
 		t.Errorf("wrong value for left argument. want=%s got=%s", "asdf", arg1.value)
 	}
-	if pe.rightFunc == nil {
-		t.Fatal("expected rightFunc to exist. got nil")
-	}
-	if len(pe.rightFunc.arguments) != 1 {
-		t.Errorf("expected rightFunc argument count to be 1. got=%d", len(pe.rightFunc.arguments))
-	}
-	argInt, ok := pe.rightFunc.arguments[0].(*integerLiteral)
+	arg2, ok := ce.arguments[1].(*integerLiteral)
 	if !ok {
-		t.Fatalf("expected argument of func to be of type *integerLiteral. got=%T", pe.rightFunc.arguments[0])
+		t.Fatalf("ce.arguments[1] is not of type *integerLiteral. got=%T", ce.arguments[1])
 	}
-	if argInt.value != int64(2) {
-		t.Errorf("expected arg of function to be 2. got=%d", argInt.value)
+	if arg2.value != int64(2) {
+		t.Errorf("expected arg of function to be 2. got=%d", arg2.value)
 	}
 }
 
@@ -93,7 +89,6 @@ func TestParseFunctionCall(t *testing.T) {
 		gotArg := callExpr.arguments[idx]
 		testLiteralExpression(t, gotArg, want)
 	}
-
 }
 
 func TestParseIndexExpression(t *testing.T) {
@@ -197,16 +192,53 @@ func TestParseStringLiteral(t *testing.T) {
 	testLiteralExpression(t, stmt.expression, "hello world!")
 }
 
-func TestParseWhenStatement(t *testing.T) {
-	input := "WHEN true :: SET myvar = 5"
+func TestParseIfStatementMulti(t *testing.T) {
+	input := `IF true :: {
+		SET myvar = 5
+		SET myothervar = 10
+	}`
 	program := setupParserTest(t, input)
 	checkParserProgramLength(t, program, 1)
 	checkParserStatementType(t, program.statements[0], WHEN_STATEMENT)
-	stmt := program.statements[0].(*whenStatement)
+	stmt := program.statements[0].(*ifStatement)
 	testLiteralExpression(t, stmt.condition, true)
-	setStmt, ok := stmt.consequence.(*setStatement)
+	if len(stmt.consequence) != 2 {
+		t.Fatalf("stmt.consequence is not of length 2. got=%d", len(stmt.consequence))
+	}
+	setStmt, ok := stmt.consequence[0].(*setStatement)
 	if !ok {
-		t.Fatalf("stmt.consequence is not of type *setStatement. got=%T", stmt.consequence)
+		t.Fatalf("stmt.consequence[0] is not of type *setStatement. got=%T", stmt.consequence)
+	}
+	targetIdent, ok := setStmt.target.(*identifierExpression)
+	if !ok {
+		t.Fatalf("setStmt.target is not of type *identifierExpression. got=%T", setStmt.target)
+	}
+	testIdentifierExpression(t, targetIdent, "myvar")
+	testLiteralExpression(t, setStmt.value, 5)
+	setStmt, ok = stmt.consequence[1].(*setStatement)
+	if !ok {
+		t.Fatalf("stmt.consequence[1] is not of type *setStatement. got=%T", stmt.consequence)
+	}
+	targetIdent, ok = setStmt.target.(*identifierExpression)
+	if !ok {
+		t.Fatalf("setStmt.target is not of type *identifierExpression. got=%T", setStmt.target)
+	}
+	testIdentifierExpression(t, targetIdent, "myothervar")
+	testLiteralExpression(t, setStmt.value, 10)
+}
+func TestParseIfStatement(t *testing.T) {
+	input := "IF true :: SET myvar = 5"
+	program := setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], WHEN_STATEMENT)
+	stmt := program.statements[0].(*ifStatement)
+	testLiteralExpression(t, stmt.condition, true)
+	if len(stmt.consequence) != 1 {
+		t.Fatalf("stmt.consequence is not of length 1. got=%d", len(stmt.consequence))
+	}
+	setStmt, ok := stmt.consequence[0].(*setStatement)
+	if !ok {
+		t.Fatalf("stmt.consequence[0] is not of type *setStatement. got=%T", stmt.consequence)
 	}
 	targetIdent, ok := setStmt.target.(*identifierExpression)
 	if !ok {
@@ -606,8 +638,8 @@ func checkParserStatementType(t *testing.T, statement statement, stype statement
 			t.Fatalf("statement is not of type *setStatement. got=%T", statement)
 		}
 	case WHEN_STATEMENT:
-		if _, ok := statement.(*whenStatement); !ok {
-			t.Fatalf("statement is not of type *whenStatement. got=%T", statement)
+		if _, ok := statement.(*ifStatement); !ok {
+			t.Fatalf("statement is not of type *ifStatement. got=%T", statement)
 		}
 	default:
 		t.Errorf("statment type not supported")
