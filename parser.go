@@ -462,16 +462,16 @@ func (p *parser) parseNullLiteral() expression {
 
 func (p *parser) parseSetStatement() *setStatement {
 	ret := &setStatement{tok: p.currentToken}
-	start := p.currentToken.start
 	if !p.mustNextToken(tok_ident) { // ident is fine here since paths always start with ident
 		return nil
+	}
+	if p.currentToken.value == "src" { // restrict modification of "src" via set statement
+		p.err("SET statement cannot modify src data", p.currentToken.start)
 	}
 	potentialTarget := p.parseExpression(lowest)
 	target, ok := potentialTarget.(assignable)
 	if !ok {
-		sequence := p.rawStringFromStartEnd(start, p.currentToken.end)
-		msg := fmt.Sprintf("SET statement should be followed by an assignable expression. instead got: %s", sequence)
-		p.err(msg, p.currentToken.start)
+		p.err("SET statement should be followed by an assignable expression", p.currentToken.start)
 		return nil
 	}
 

@@ -86,6 +86,25 @@ func TestBuiltinMap(t *testing.T) {
 			},
 		},
 		{
+			nameDesc: "map() with attempt to directly assign .value (shouldn't work)",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 3
+			}`,
+			input: `
+			SET res = map(mydata, entry ~> {
+				SET entry.value = entry.value * 2
+				SET mydata = "ASDF"
+			})
+			`,
+			want: map[string]interface{}{
+				"a": 1,
+				"b": 2,
+				"c": 3,
+			},
+		},
+		{
 			nameDesc: "map() with array",
 			data: `
 				[1, 2.5, 3]
@@ -121,6 +140,19 @@ func TestBuiltinMap(t *testing.T) {
 			`,
 			want: []interface{}{1, 2.5, 3},
 		},
+		{
+			nameDesc: "map() on array with attempt to directly assign .value and .index (shouldn't work)",
+			data: `
+				[1, 2.5, 3]
+			`,
+			input: `
+			SET res = map(mydata, entry ~> {
+				SET entry.value = 5
+				SET entry.index = 0
+			})
+			`,
+			want: []interface{}{1, 2.5, 3},
+		},
 	}
 	for _, tt := range tests {
 		inputObj := convertBytesToObject([]byte(tt.data))
@@ -142,6 +174,13 @@ func TestBuiltinMap(t *testing.T) {
 		}
 		if !testConvertObject(t, gotObj, tt.want) {
 			t.Errorf("%s: incorrect result value", tt.nameDesc)
+		}
+		outObj, ok := env.get("mydata")
+		if !ok {
+			t.Fatalf("%s: expected env var res to exist. got null", tt.nameDesc)
+		}
+		if outObj != inputObj {
+			t.Fatal("original data object should be unchanged")
 		}
 	}
 }
@@ -169,6 +208,21 @@ func TestBuiltinFilter(t *testing.T) {
 				"a": 1,
 				"c": 3,
 			},
+		},
+		{
+			nameDesc: "filter() with attempt to directly assign .value (shouldn't work)",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 3
+			}`,
+			input: `
+			SET res = filter(mydata, entry ~> {
+				SET entry.key = "0"
+				SET entry.value = 0
+			})
+			`,
+			want: map[string]interface{}{},
 		},
 		{
 			nameDesc: "filter() on map with key and val reassignments to null",
@@ -215,6 +269,17 @@ func TestBuiltinFilter(t *testing.T) {
 			`,
 			want: []interface{}{},
 		},
+		{
+			nameDesc: "filter() on array with attempt to directly assign .value (shouldn't work)",
+			data:     `[1, 2, "3", 4]`,
+			input: `
+			SET res = filter(mydata, entry ~> {
+				SET entry.value = 0
+				SET entry.index = 0
+			})
+			`,
+			want: []interface{}{},
+		},
 	}
 	for _, tt := range tests {
 		inputObj := convertBytesToObject([]byte(tt.data))
@@ -237,8 +302,16 @@ func TestBuiltinFilter(t *testing.T) {
 		if !testConvertObject(t, gotObj, tt.want) {
 			t.Errorf("%s: incorrect result value", tt.nameDesc)
 		}
+		outObj, ok := env.get("mydata")
+		if !ok {
+			t.Fatalf("%s: expected env var res to exist. got null", tt.nameDesc)
+		}
+		if outObj != inputObj {
+			t.Fatal("original data object should be unchanged")
+		}
 	}
 }
+
 func TestBuiltinReduce(t *testing.T) {
 	tests := []struct {
 		nameDesc string
@@ -289,6 +362,20 @@ func TestBuiltinReduce(t *testing.T) {
 			})
 			`,
 			want: nil,
+		},
+		{
+			nameDesc: "reduce() on map with attempt to directly assign .value (shouldn't work)",
+			data: `{
+				"a": 1,
+				"b": 2,
+				"c": 2.5
+			}`,
+			input: `
+			SET res = reduce(mydata, string(999), entry ~> {
+				SET entry.value = 10
+			})
+			`,
+			want: "999",
 		},
 		{
 			nameDesc: "reduce() on map with existing acc without assignment",
@@ -358,6 +445,17 @@ func TestBuiltinReduce(t *testing.T) {
 			`,
 			want: nil,
 		},
+		{
+			nameDesc: "reduce() on array with attempt to directly assign .value (shouldn't work)",
+			data:     `[1, 2, "3"]`,
+			input: `
+			SET res = reduce(mydata, 0, entry ~> {
+				SET entry.value = 5
+				SET mydata = NULL
+			})
+			`,
+			want: 0,
+		},
 	}
 	for _, tt := range tests {
 		inputObj := convertBytesToObject([]byte(tt.data))
@@ -379,6 +477,13 @@ func TestBuiltinReduce(t *testing.T) {
 		}
 		if !testConvertObject(t, gotObj, tt.want) {
 			t.Errorf("%s: incorrect result value", tt.nameDesc)
+		}
+		outObj, ok := env.get("mydata")
+		if !ok {
+			t.Fatalf("%s: expected env var res to exist. got null", tt.nameDesc)
+		}
+		if outObj != inputObj {
+			t.Fatal("original data object should be unchanged")
 		}
 	}
 }

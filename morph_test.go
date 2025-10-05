@@ -77,9 +77,29 @@ func TestMorphInvalidPathErr(t *testing.T) {
 	tests := []testMorphError{
 		{
 			description:     "check that a string used as a path throws an error",
-			in:              `SET "asdf"."bdsa" = true`,
 			srcJSON:         `{}`,
+			in:              `SET "asdf"."bdsa" = true`,
 			wantErrContains: []string{"parsing error at 1:5:", "unexpected token type"},
+		},
+	}
+	for _, tt := range tests {
+		checkTestMorphParseError(t, tt, NewEmptyFunctionStore())
+	}
+}
+
+func TestMorphSetSrcErr(t *testing.T) {
+	tests := []testMorphError{
+		{
+			description:     "check that src cannot be set",
+			in:              `SET src = true`,
+			srcJSON:         `{}`,
+			wantErrContains: []string{"parsing error at 1:5:", "SET statement cannot modify src data"},
+		},
+		{
+			description:     "check that src subfields cannot be set",
+			in:              `SET src.subfield = 5`,
+			srcJSON:         `{}`,
+			wantErrContains: []string{"parsing error at 1:5:", "SET statement cannot modify src data"},
 		},
 	}
 	for _, tt := range tests {
