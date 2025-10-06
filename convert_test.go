@@ -2,6 +2,7 @@ package morph
 
 import (
 	"testing"
+	"time"
 )
 
 func TestConvertObjectFromBytes(t *testing.T) {
@@ -34,6 +35,8 @@ func testConvertObject(t *testing.T, data object, want interface{}) bool {
 		return testConvertObjectBool(t, data, v)
 	case string:
 		return testConvertObjectString(t, data, v)
+	case time.Time:
+		return testConvertObjectTime(t, data, v)
 	case map[string]interface{}:
 		return testConvertObjectMap(t, data, v)
 	case []interface{}:
@@ -42,6 +45,19 @@ func testConvertObject(t *testing.T, data object, want interface{}) bool {
 		t.Errorf("testConvertObject: unsupported type. got=%T", want)
 		return false
 	}
+}
+
+func testConvertObjectTime(t *testing.T, data object, want time.Time) bool {
+	tObj, ok := data.(*objectTime)
+	if !ok {
+		t.Errorf("data is not of type *objectTime. got=%T", data)
+		return false
+	}
+	if !tObj.value.Equal(want) {
+		t.Errorf("time value is incorrect. want=%q got=%q", want.String(), tObj.value.String())
+		return false
+	}
+	return true
 }
 
 func testConvertObjectString(t *testing.T, data object, want string) bool {

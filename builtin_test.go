@@ -2,6 +2,7 @@ package morph
 
 import (
 	"testing"
+	"time"
 )
 
 func TestBuiltinMap(t *testing.T) {
@@ -854,4 +855,51 @@ func TestBuiltinContains(t *testing.T) {
 		t.Fatalf("expected res5 field to exist in env")
 	}
 	testConvertObject(t, res, false)
+}
+
+// time
+
+func TestBuiltinNow(t *testing.T) {
+	realNow := time.Now()
+	input := `
+	SET now = now()
+	`
+	resEnv := newBuiltinTestEnv(t, input)
+	nowObj, ok := resEnv.get("now")
+	if !ok {
+		t.Fatal("expected now field to exist in env")
+	}
+	nowInterface, err := convertObjectToNative(nowObj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, ok := nowInterface.(time.Time)
+	if !ok {
+		t.Fatalf("nowInt is not of type time.Time. got=%T", nowInterface)
+	}
+	if got.IsZero() {
+		t.Errorf("now() generated a zero-based time. expected something recent")
+	}
+	if name, zInt := got.Zone(); zInt != 0 {
+		t.Errorf("now generated a non-UTC based timestamp. got name=%s offset=%d", name, zInt)
+	}
+	if got.Sub(realNow).Abs() >= time.Duration(1*time.Second) {
+		t.Fatalf("now() generated a value that is not reflective of the actual current time")
+	}
+}
+
+func newBuiltinTestEnv(t *testing.T, input string) *environment {
+	fnStore := newBuiltinFuncStore()
+	env := newEnvironment(fnStore)
+	l := newLexer([]rune(input))
+	p := newParser(l)
+	program, err := p.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	evalRes := program.eval(env)
+	if isObjectErr(evalRes) {
+		t.Fatal(objectToError(evalRes))
+	}
+	return env
 }

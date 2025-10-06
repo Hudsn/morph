@@ -3,6 +3,7 @@ package morph
 import (
 	"slices"
 	"strings"
+	"time"
 )
 
 func newBuiltinFuncStore() *functionStore {
@@ -29,6 +30,8 @@ func newBuiltinFuncStore() *functionStore {
 	store.Register(builtinMapEntry())
 	store.Register(builtinReduceEntry())
 	store.Register(builtinFilterEntry())
+
+	store.Register(builtinNowEntry())
 
 	return store
 }
@@ -641,4 +644,19 @@ func builtinAppend(args ...*Object) *Object {
 	}
 	arr = append(arr, toAdd)
 	return CastArray(arr)
+}
+
+// time
+
+func builtinNowEntry() *functionEntry {
+	fe := NewFunctionEntry("now", builtinNow)
+	fe.SetReturn("current time", TIME)
+	return fe
+}
+
+func builtinNow(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(0, args); !ok {
+		return res
+	}
+	return CastTime(time.Now().UTC())
 }

@@ -101,7 +101,7 @@ IF src.text == "sad" :: SET dest.emoji = "☹️"
 
 ## Types
 
-Morph has 7 main types that are available to be used as a part of any expression or statement:
+Morph has 8 main types that are available to be used as a part of any expression or statement:
 
 - Boolean
     -  `true` or `false`
@@ -126,6 +126,10 @@ Morph has 7 main types that are available to be used as a part of any expression
     - keys **MUST** be strings
     - values can be any of these main Morph types
     - all values are `truthey` **except for empty maps `{}`**
+- Time
+    - an item representing a timestamp
+    - must be explicity delcared or parsed from a string using functions; JSON typically uses strings or integers to represent time.
+    - all values are `truthey` **except for the 'zero' time value equal to January 1, year 1, 00:00:00 UTC** 
 - NULL
     - a non-value; empty, like my soul when writing documentation, expressed as a keyword `NULL` or `null`
     - commonly encountered when referencing variables that don't exist. For example: `src.doesnt_exist` would return `NULL`
@@ -292,6 +296,10 @@ Second argument can be any type if the first argument is an `ARRAY`, but must be
 
 ### append(array, item) array
 Returns the first argument `ARRAY` with the item added to the end.
+
+
+### now() time 
+Returns a time item representing the current time in UTC.
 
 
 ### A note on arrow function arguments
