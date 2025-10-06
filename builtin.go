@@ -31,6 +31,7 @@ func newBuiltinFuncStore() *functionStore {
 	store.Register(builtinReduceEntry())
 	store.Register(builtinFilterEntry())
 
+	store.Register(builtinTimeEntry())
 	store.Register(builtinNowEntry())
 
 	return store
@@ -553,7 +554,7 @@ func builtinReduce(args ...*Object) *Object {
 	}
 	arrowFn, err := args[2].AsArrowFunction()
 	if err != nil {
-		return ObjectError("reduce() second argument must be a valid ARROWFUNC. got type of %s", args[1].Type())
+		return ObjectError("reduce() third argument must be a valid ARROWFUNC. got type of %s", args[2].Type())
 	}
 
 	acc, err := args[1].AsAny()
@@ -565,7 +566,7 @@ func builtinReduce(args ...*Object) *Object {
 	case string(MAP):
 		in, err := args[0].AsMap()
 		if err != nil {
-			return ObjectError("reduce() input data argument issue. type is not compatible with map operation: %s", args[0].Type())
+			return ObjectError("reduce() input data argument issue. type is not compatible with MAP operations: %s", args[0].Type())
 		}
 		ret := acc
 		keyList := []string{}
@@ -647,6 +648,24 @@ func builtinAppend(args ...*Object) *Object {
 }
 
 // time
+func builtinTimeEntry() *functionEntry {
+	fe := NewFunctionEntry("time", builtinTime)
+	fe.SetArgument("input", TIME, INTEGER, FLOAT, STRING)
+	fe.SetReturn("result", TIME)
+	return fe
+}
+
+func builtinTime(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(1, args); !ok {
+		return res
+	}
+	a := args[0]
+	val, err := a.AsAny()
+	if err != nil {
+		return ObjectError("unable to convert item to TIME. invalid input type: %s", a.Type())
+	}
+	return CastTime(val)
+}
 
 func builtinNowEntry() *functionEntry {
 	fe := NewFunctionEntry("now", builtinNow)

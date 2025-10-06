@@ -424,7 +424,68 @@ func TestMorphReduce(t *testing.T) {
 	}
 }
 
-func TestMultiLineDQuoteStringError(t *testing.T) {
+func TestMorphComparisonChecks(t *testing.T) {
+	tests := []testMorphCase{
+		{
+			description: "check that comparisons are working as intended",
+			srcJSON: `
+			{}
+			`,
+			in: `
+			set dest = "abc" == "abc"
+			`,
+			wantJSON: `true`,
+		},
+		{
+			description: "check that comparisons are working as intended",
+			srcJSON: `
+			{}
+			`,
+			in: `
+			set a = "abc"
+			set dest = a == "abc"
+			`,
+			wantJSON: `true`,
+		},
+		{
+			description: "check that comparisons are working as intended",
+			srcJSON: `
+			{}
+			`,
+			in: `
+			set a = 1
+			set dest = a <= 5
+			`,
+			wantJSON: `true`,
+		},
+		{
+			description: "check that comparisons are working as intended",
+			srcJSON: `
+			{}
+			`,
+			in: `
+			set a = 1
+			set dest = a != NULL
+			`,
+			wantJSON: `true`,
+		},
+		{
+			description: "check that comparisons are working as intended",
+			srcJSON: `
+			{}
+			`,
+			in: `
+			set dest = a == NULL
+			`,
+			wantJSON: `true`,
+		},
+	}
+	for _, tt := range tests {
+		checkTestMorphCase(t, tt, NewDefaultFunctionStore())
+	}
+}
+
+func TestMorphMultiLineDQuoteStringError(t *testing.T) {
 	test := testMorphError{
 		description: "check multiline string is error",
 		srcJSON: `

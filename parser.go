@@ -167,11 +167,21 @@ func (p *parser) parseExpression(precedence int) expression {
 }
 
 func (p *parser) parseInfixExpression(left expression) expression {
+	if p.isComparisonChain(left) {
+		p.err("chained comparison operations are not supported - use booleans to separate comparisons like 'term1 == term2 && term2 == term 3'", p.currentToken.start)
+	}
 	ret := &infixExpression{tok: p.currentToken, left: left, operator: p.currentToken.value}
 	precedence := lookupPrecedence(p.currentToken.tokenType)
 	p.next()
 	ret.right = p.parseExpression(precedence)
 	return ret
+}
+
+func (p *parser) isComparisonChain(left expression) bool {
+	if l, ok := left.(*infixExpression); ok {
+		return lookupPrecedence(p.currentToken.tokenType) == equality && lookupPrecedence(l.tok.tokenType) == equality
+	}
+	return false
 }
 
 func (p *parser) parsePrefixExpression() expression {

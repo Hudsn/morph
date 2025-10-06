@@ -1,6 +1,7 @@
 package morph
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -886,6 +887,27 @@ func TestBuiltinNow(t *testing.T) {
 	if got.Sub(realNow).Abs() >= time.Duration(1*time.Second) {
 		t.Fatalf("now() generated a value that is not reflective of the actual current time")
 	}
+}
+
+func TestBuiltinTime(t *testing.T) {
+	tInt := 1759782264
+	start := time.Unix(int64(tInt), 0).UTC()
+	addStr := start.Format(time.RFC3339)
+
+	input := `
+	SET time_int = 1759782264
+	SET time_float = 1759782264.0
+	SET time_string_unix = "1759782264"
+	SET result = time(time_int) == time(time_float)
+	SET result = result && time(time_float) == time(time_string_unix) && time(time_string_unix) == time(time_string)  
+	`
+	input = fmt.Sprintf("SET time_string = %q\n%s", addStr, input)
+	env := newBuiltinTestEnv(t, input)
+	got, ok := env.get("result")
+	if !ok {
+		t.Fatal("expected key result to exist in environment")
+	}
+	testConvertObject(t, got, true)
 }
 
 func newBuiltinTestEnv(t *testing.T, input string) *environment {

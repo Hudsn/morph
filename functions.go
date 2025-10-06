@@ -466,9 +466,48 @@ func CastTime(value interface{}) *Object {
 		ret.inner = &objectTime{value: v}
 	case *time.Time:
 		ret.inner = &objectTime{value: *v}
+	case int, int32, int64, float32, float64:
+		return castTimeNumCase(v)
+	case string:
+		return castTimeStringCase(v)
 	default:
-		return ObjectError("unable to cast underlying type as TIME. unsupported input type: %T", v)
+		return ObjectError("unable to cast underlying type as TIME. unsupported input type")
 	}
+	return ret
+}
+
+func castTimeStringCase(s string) *Object {
+	// try 3339, int64/float64 and unix seconds. if not, error
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return &Object{inner: &objectTime{value: t}}
+	}
+	if asInt, err := strconv.ParseInt(s, 10, 64); err == nil {
+		return castTimeNumCase(asInt)
+	}
+	if asFloat, err := strconv.ParseFloat(s, 64); err == nil {
+		return castTimeNumCase(asFloat)
+	}
+	return ObjectError("unable to cast STRING as TIME. Invalid STRING %s", s)
+}
+
+func castTimeNumCase(i interface{}) *Object {
+	var i64 int64
+	ret := &Object{
+		inner: &objectTime{value: time.Time{}},
+	}
+	switch v := i.(type) {
+	case float32:
+		i64 = int64(v)
+	case float64:
+		i64 = int64(v)
+	case int:
+		i64 = int64(v)
+	case int32:
+		i64 = int64(v)
+	case int64:
+		i64 = v
+	}
+	ret.inner = &objectTime{value: time.Unix(i64, 0).UTC()}
 	return ret
 }
 
@@ -539,7 +578,7 @@ func CastFloat(value interface{}) *Object {
 }
 
 // casts a Go type to a morph String Object so it can be used when defining custom functions
-// input must be one of: int, int8, int16, int32, int64, float32, float64, string, bool
+// input must be one of: int, int8, int16, int32, int64, float32, float64, string, bool, time
 func CastString(value interface{}) *Object {
 	ret := &Object{
 		inner: obj_global_null,
@@ -563,6 +602,8 @@ func CastString(value interface{}) *Object {
 		ret.inner = &objectString{value: fmt.Sprintf("%d", v)}
 	case int64:
 		ret.inner = &objectString{value: fmt.Sprintf("%d", v)}
+	case time.Time:
+		ret.inner = &objectString{value: v.Format(time.RFC3339Nano)}
 	default:
 		return ObjectError("unable to cast type as String. unsupported type: %T", v)
 	}
@@ -632,6 +673,8 @@ func CastAuto(value interface{}) *Object {
 		return CastMap(v)
 	case []interface{}:
 		return CastArray(v)
+	case time.Time:
+		return CastTime(v)
 	default:
 		return ObjectError("unable to automatically cast type for value")
 	}

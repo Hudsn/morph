@@ -333,6 +333,11 @@ func (i *infixExpression) eval(env *environment) object {
 		if leftObj.getType() != rightObj.getType() {
 			return obj_global_false
 		}
+		if leftObj.getType() == t_time {
+			lTime := leftObj.(*objectTime) // don't really need to bool check type assertions; we know that type are equal, and that they're of type t_time.
+			rTime := rightObj.(*objectTime)
+			return objectFromBoolean(lTime.value.Equal(rTime.value))
+		}
 		return objectFromBoolean(leftObj == rightObj)
 	case i.operator == "!=":
 		if leftObj.getType() != rightObj.getType() {
