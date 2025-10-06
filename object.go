@@ -3,6 +3,7 @@ package morph
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 type objectType string
@@ -21,6 +22,7 @@ const (
 	t_float   objectType = "FLOAT"
 	t_boolean objectType = "BOOLEAN"
 	t_string  objectType = "STRING"
+	t_time    objectType = "TIME"
 
 	t_map   objectType = "MAP"
 	t_array objectType = "ARRAY"
@@ -200,3 +202,20 @@ func (e *objectError) clone() object {
 	return &objectError{message: e.message}
 }
 func (e *objectError) isTruthy() bool { return false }
+
+//
+
+type objectTime struct {
+	value time.Time
+}
+
+func (t *objectTime) getType() objectType { return t_time }
+func (t *objectTime) inspect() string {
+	return t.value.String()
+}
+func (t *objectTime) clone() object {
+	return &objectTime{value: t.value}
+}
+func (t *objectTime) isTruthy() bool {
+	return !t.value.IsZero()
+}

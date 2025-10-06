@@ -3,6 +3,7 @@ package morph
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 // helpers for accessing objects from arbitrary types
@@ -44,6 +45,8 @@ func convertAnyToObject(rawData interface{}, isJSON bool) object {
 		return objectFromBoolean(v)
 	case string:
 		return &objectString{value: v}
+	case time.Time:
+		return &objectTime{value: v}
 	case map[string]interface{}:
 		return convertMapToObject(v, isJSON)
 	case []interface{}:
@@ -126,6 +129,8 @@ func convertObjectToNative(o object) (interface{}, error) {
 	case *objectString:
 		return v.value, nil
 	case *objectBoolean:
+		return v.value, nil
+	case *objectTime:
 		return v.value, nil
 	case *objectError:
 		return nil, objectToError(o)

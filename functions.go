@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // creates a new function store using default builtin functions
@@ -260,11 +261,12 @@ const (
 	MAP       PublicObject = PublicObject(t_map)
 	ARRAY     PublicObject = PublicObject(t_array)
 	ARROWFUNC PublicObject = PublicObject(t_arrow)
+	TIME      PublicObject = PublicObject(t_time)
 	NULL      PublicObject = PublicObject(t_null)
 	ERROR     PublicObject = PublicObject(t_error)
 )
 
-var ANY = []PublicObject{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, ARROWFUNC, ERROR, NULL}
+var ANY = []PublicObject{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, ARROWFUNC, TIME, ERROR, NULL}
 
 func (o *Object) AsAny() (interface{}, error) {
 	switch o.Type() {
@@ -282,10 +284,21 @@ func (o *Object) AsAny() (interface{}, error) {
 		return o.AsArrowFunction()
 	case string(STRING):
 		return o.AsString()
+	case string(TIME):
+		return o.AsTime()
 	default:
 		return nil, fmt.Errorf("unable to convert Object: not a convertible type. got=%s", o.Type())
 	}
 }
+
+func (o *Object) AsTime() (time.Time, error) {
+	t, ok := o.inner.(*objectTime)
+	if !ok {
+		return time.Time{}, fmt.Errorf("unable to convert object to Integer: underlying structure is not an integer type. got=%s", o.inner.getType())
+	}
+	return t.value, nil
+}
+
 func (o *Object) AsInt() (int64, error) {
 	i, ok := o.inner.(*objectInteger)
 	if !ok {
@@ -433,11 +446,6 @@ var ObjectNull = &Object{inner: obj_global_null}
 var ObjectTerminate = &Object{inner: obj_global_term}
 var ObjectTerminateDrop = &Object{inner: obj_global_term_drop}
 
-func lcObjectError(lineCol string, msg string, args ...interface{}) *Object {
-	return &Object{
-		inner: newObjectErr(lineCol, msg, args...),
-	}
-}
 func ObjectError(msg string, args ...interface{}) *Object {
 	return &Object{
 		inner: newObjectErrWithoutLC(msg, args...),
@@ -446,6 +454,23 @@ func ObjectError(msg string, args ...interface{}) *Object {
 
 //
 // typecast helpers
+
+// casts a Go time struct to a morph Time Object so it can be used when defining custom functions
+// input must be one of: int, int8, int16, int32, int64, float32, float64
+func CastTime(value interface{}) *Object {
+	ret := &Object{
+		inner: obj_global_null,
+	}
+	switch v := value.(type) {
+	case time.Time:
+		ret.inner = &objectTime{value: v}
+	case *time.Time:
+		ret.inner = &objectTime{value: *v}
+	default:
+		return ObjectError("unable to cast underlying type as TIME. unsupported input type: %T", v)
+	}
+	return ret
+}
 
 // casts a Go number to a morph Integer Object so it can be used when defining custom functions
 // input must be one of: int, int8, int16, int32, int64, float32, float64
@@ -553,7 +578,8 @@ func CastBool(value interface{}) *Object {
 	switch v := value.(type) {
 	case bool:
 		ret.inner = objectFromBoolean(v)
-
+	case *bool:
+		ret.inner = objectFromBoolean(*v)
 	default:
 		return ObjectError("unable to cast type as Boolean. unsupported type: %T", v)
 	}
