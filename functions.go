@@ -27,6 +27,24 @@ type functionStore struct {
 	namespaces map[string]*functionNamespace
 }
 
+// // returns a nested map of namespaces, their function names, and their function signatures.
+// func (s *functionStore) listFunctions() map[string]map[string]string {
+// 	topMap := make(map[string]map[string]string)
+// 	stdMap := make(map[string]string)
+// 	for name, stdFn := range s.std.store {
+// 		stdMap[name] = stdFn.string()
+// 	}
+// 	topMap["std"] = stdMap
+// 	for nsName, namespace := range s.namespaces {
+// 		nsMap := make(map[string]string)
+// 		for fnName, fnEntry := range namespace.store {
+// 			nsMap[fnName] = fnEntry.string()
+// 		}
+// 		topMap[nsName] = nsMap
+// 	}
+// 	return topMap
+// }
+
 func (s *functionStore) Register(fn *functionEntry) {
 	s.std.register(fn)
 }
@@ -458,28 +476,32 @@ func ObjectError(msg string, args ...interface{}) *Object {
 // casts a Go time struct to a morph Time Object so it can be used when defining custom functions
 // input must be one of: int, int8, int16, int32, int64, float32, float64
 func CastTime(value interface{}) *Object {
-	ret := &Object{
-		inner: obj_global_null,
-	}
+	var err error
+	var t time.Time
 	switch v := value.(type) {
 	case time.Time:
-		ret.inner = &objectTime{value: v}
+		t = v
 	case *time.Time:
-		ret.inner = &objectTime{value: *v}
+		t = *v
 	case int, int32, int64, float32, float64:
-		return castTimeNumCase(v)
+		t, err = castTimeNumCase(v)
+		if err != nil {
+			return ObjectError(err.Error())
+		}
 	case string:
-		return castTimeStringCase(v)
+		t, err = castTimeStringCase(v)
+		if err != nil {
+			return ObjectError(err.Error())
+		}
 	default:
 		return ObjectError("unable to cast underlying type as TIME. unsupported input type")
 	}
-	return ret
+	return &Object{inner: &objectTime{value: t}}
 }
 
-func castTimeStringCase(s string) *Object {
-	// try 3339, int64/float64 and unix seconds. if not, error
+func castTimeStringCase(s string) (time.Time, error) {
 	if t, err := time.Parse(time.RFC3339, s); err == nil {
-		return &Object{inner: &objectTime{value: t}}
+		return t, nil
 	}
 	if asInt, err := strconv.ParseInt(s, 10, 64); err == nil {
 		return castTimeNumCase(asInt)
@@ -487,28 +509,48 @@ func castTimeStringCase(s string) *Object {
 	if asFloat, err := strconv.ParseFloat(s, 64); err == nil {
 		return castTimeNumCase(asFloat)
 	}
-	return ObjectError("unable to cast STRING as TIME. Invalid STRING %s", s)
+	return time.Time{}, fmt.Errorf("unable to cast STRING as TIME. Invalid STRING %s", s)
 }
 
-func castTimeNumCase(i interface{}) *Object {
-	var i64 int64
-	ret := &Object{
-		inner: &objectTime{value: time.Time{}},
-	}
+func castTimeNumCase(i interface{}) (time.Time, error) {
+	var retTime time.Time
+	var err error
 	switch v := i.(type) {
 	case float32:
-		i64 = int64(v)
+		retTime, err = castTimeFloatToUnixSecN(float64(v))
+		if err != nil {
+			return time.Time{}, err
+		}
 	case float64:
-		i64 = int64(v)
+		retTime, err = castTimeFloatToUnixSecN(v)
+		if err != nil {
+			return time.Time{}, err
+		}
 	case int:
-		i64 = int64(v)
+		retTime = time.Unix(int64(v), 0)
 	case int32:
-		i64 = int64(v)
+		retTime = time.Unix(int64(v), 0)
 	case int64:
-		i64 = v
+		retTime = time.Unix(int64(v), 0)
 	}
-	ret.inner = &objectTime{value: time.Unix(i64, 0).UTC()}
-	return ret
+	return retTime.UTC(), nil
+}
+
+func castTimeFloatToUnixSecN(f float64) (time.Time, error) {
+	fstring := strconv.FormatFloat(f, 'f', 9, 64)
+	spl := strings.Split(fstring, ".")
+	if len(spl) != 2 {
+		return time.Time{}, fmt.Errorf("unable to cast FLOAT as TIME. invalid FLOAT %f", f)
+	}
+	sec, err := strconv.ParseInt(spl[0], 10, 64)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("unable to cast FLOAT as TIME. invalid FLOAT %f", f)
+	}
+	nsec, err := strconv.ParseInt(spl[1], 10, 64)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("unable to cast FLOAT as TIME. invalid FLOAT %f", f)
+	}
+	return time.Unix(sec, nsec), nil
 }
 
 // casts a Go number to a morph Integer Object so it can be used when defining custom functions
@@ -589,9 +631,9 @@ func CastString(value interface{}) *Object {
 	case bool:
 		ret.inner = &objectString{value: fmt.Sprintf("%t", v)}
 	case float32:
-		ret.inner = &objectString{value: strconv.FormatFloat(float64(v), 'f', -1, 32)}
+		ret.inner = &objectString{value: strconv.FormatFloat(float64(v), 'g', -1, 32)}
 	case float64:
-		ret.inner = &objectString{value: strconv.FormatFloat(float64(v), 'f', -1, 64)}
+		ret.inner = &objectString{value: strconv.FormatFloat(float64(v), 'g', -1, 64)}
 	case int:
 		ret.inner = &objectString{value: fmt.Sprintf("%d", v)}
 	case int8:

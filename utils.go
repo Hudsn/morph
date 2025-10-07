@@ -3,6 +3,7 @@ package morph
 import (
 	"fmt"
 	"math"
+	"strconv"
 )
 
 const float_equality_tolerance = 1e-9
@@ -28,4 +29,17 @@ func lineAndCol(input []rune, targetIdx int) (int, int) {
 		}
 	}
 	return line, col
+}
+
+func anyToInt64(original interface{}) (int64, error) {
+	switch v := original.(type) {
+	case string:
+		return strconv.ParseInt(v, 10, 64)
+	case int64:
+		return v, nil
+	case float64:
+		return int64(v), nil
+	default:
+		return 0, fmt.Errorf("unable to convert input argument. unsupported type")
+	}
 }

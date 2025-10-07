@@ -2,6 +2,7 @@ package morph
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -33,6 +34,7 @@ func newBuiltinFuncStore() *functionStore {
 
 	store.Register(builtinTimeEntry())
 	store.Register(builtinNowEntry())
+	store.Register(builtinParseTimeEntry())
 
 	return store
 }
@@ -665,6 +667,106 @@ func builtinTime(args ...*Object) *Object {
 		return ObjectError("unable to convert item to TIME. invalid input type: %s", a.Type())
 	}
 	return CastTime(val)
+}
+
+func builtinParseTimeEntry() *functionEntry {
+	fe := NewFunctionEntry("parse_time", builtinParseTime)
+	fe.SetArgument("input", INTEGER, FLOAT, STRING)
+	fe.SetArgument("format string", STRING)
+	fe.SetReturn("result", TIME)
+	return fe
+}
+
+func builtinParseTime(args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
+	}
+	a1 := args[0]
+	a2 := args[1]
+	fmtString, err := a2.AsString()
+	if err != nil {
+		return ObjectError("unable to convert item to TIME. invalid input type for second argument. got=%s", a2.Type())
+	}
+	switch strings.ToLower(fmtString) {
+	case "rfc_3339":
+		inputString, err := a1.AsString()
+		if err != nil {
+			return ObjectError("unable to convert item to TIME. parsing the time format from rfc_3339 requires the first argument to be a STRING type. got=%s", a1.Type())
+		}
+		t, err := time.Parse(time.RFC3339, inputString)
+		if err != nil {
+			return ObjectError("unable to convert item to TIME. invalid TIME string: %s", inputString)
+		}
+		return CastTime(t)
+	case "rfc_3339_nano":
+		inputString, err := a1.AsString()
+		if err != nil {
+			return ObjectError("unable to convert item to TIME. parsing the time format from rfc_3339 requires the first argument to be a STRING type. got=%s", a1.Type())
+		}
+		t, err := time.Parse(time.RFC3339Nano, inputString)
+		if err != nil {
+			return ObjectError("unable to convert item to TIME. invalid TIME string: %s", inputString)
+		}
+		return CastTime(t)
+	case "unix":
+		arg1Any, err := a1.AsAny()
+		if err != nil {
+			return ObjectError("unable to convert item to TIME. invalid first argument")
+		}
+		switch a1.Type() {
+		case string(INTEGER), string(FLOAT), string(STRING):
+			return CastTime(arg1Any)
+		default:
+			return ObjectError("unable to convert item to TIME. parsing the time from unix seconds requires the first argument to be an INT, FLOAT, or STRING type: %s", a1.Type())
+		}
+	case "unix_micro":
+		if argInt, err := a1.AsInt(); err == nil {
+			return CastTime(time.UnixMicro(argInt).UTC())
+		}
+		if argStr, err := a1.AsString(); err == nil {
+			asInt, err := strconv.ParseInt(argStr, 10, 64)
+			if err != nil {
+				return ObjectError("unable to convert item to TIME. invalid TIME string: %s", argStr)
+			}
+			return CastTime(time.UnixMicro(asInt).UTC())
+		}
+		return ObjectError("unable to convert item to TIME. first argument must be an INTEGER or STRING when parsing from unix micro")
+	case "unix_milli":
+		if argInt, err := a1.AsInt(); err == nil {
+			return CastTime(time.UnixMilli(argInt).UTC())
+		}
+		if argStr, err := a1.AsString(); err == nil {
+			asInt, err := strconv.ParseInt(argStr, 10, 64)
+			if err != nil {
+				return ObjectError("unable to convert item to TIME. invalid TIME string: %s", argStr)
+			}
+			return CastTime(time.UnixMilli(asInt).UTC())
+		}
+		return ObjectError("unable to convert item to TIME. first argument must be an INTEGER or STRING when parsing from unix milli")
+	case "unix_nano":
+		if argInt, err := a1.AsInt(); err == nil {
+			return CastTime(time.Unix(0, argInt).UTC())
+		}
+		if argStr, err := a1.AsString(); err == nil {
+			asInt, err := strconv.ParseInt(argStr, 10, 64)
+			if err != nil {
+				return ObjectError("unable to convert item to TIME. invalid TIME string: %s", argStr)
+			}
+			return CastTime(time.Unix(0, asInt).UTC())
+		}
+		return ObjectError("unable to convert item to TIME. first argument must be an INTEGER or STRING when parsing from unix nano")
+	default:
+		inputString, err := a1.AsString()
+		if err != nil {
+			return ObjectError("unable to convert item to TIME. parsing an arbitrary time format requires the first argument to be a STRING tpye. got=%s", a1.Type())
+		}
+		t, err := time.Parse(fmtString, inputString)
+		if err != nil {
+			return ObjectError("unable to convert item to TIME. issue parsing time %s with format string %s: %s", inputString, fmtString, err.Error())
+		}
+		return CastTime(t)
+	}
+
 }
 
 func builtinNowEntry() *functionEntry {

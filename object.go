@@ -211,7 +211,7 @@ type objectTime struct {
 
 func (t *objectTime) getType() objectType { return t_time }
 func (t *objectTime) inspect() string {
-	return t.value.String()
+	return t.value.Format(time.RFC3339)
 }
 func (t *objectTime) clone() object {
 	return &objectTime{value: t.value}

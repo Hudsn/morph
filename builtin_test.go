@@ -910,6 +910,49 @@ func TestBuiltinTime(t *testing.T) {
 	testConvertObject(t, got, true)
 }
 
+func TestBuiltinParseTime(t *testing.T) {
+	mdyTime, err := time.Parse("2006-01-02", "2025-10-07")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantMap := map[string]time.Time{
+		"nano":     time.Unix(0, 1759875973453511000),
+		"sec_nano": time.Unix(0, 1759875973453511000),
+		"micro":    time.UnixMicro(1759875973453511),
+		"milli":    time.UnixMilli(1759875973453),
+		"sec":      time.Unix(1759875973, 0),
+		"mdy":      mdyTime,
+	}
+
+	input := ` 
+	SET sec_int = 1759875973
+	SET sec_string = "1759875973"
+	IF parse_time(sec_int, "unix") == parse_time(sec_string, "unix") :: SET sec = parse_time(sec_int, "unix")
+	SET sec_nano_float = 1759875973.453511000
+	SET sec_nano_string = "1759875973.453511000"
+	IF parse_time(sec_nano_float, "unix") == parse_time(sec_nano_string, "unix") :: SET sec_nano = parse_time(sec_nano_string, "unix")
+	SET nano_int = 1759875973453511000
+	SET nano_string = "1759875973453511000"
+	IF parse_time(nano_int, "unix_nano") == parse_time(nano_string, "unix_nano") :: SET nano = parse_time(nano_string, "unix_nano")
+	SET micro_int = 1759875973453511
+	SET micro_string = "1759875973453511"
+	IF parse_time(micro_int, "unix_micro") == parse_time(micro_string, "unix_micro") :: SET micro = parse_time(micro_int, "unix_micro")
+	SET milli_int = 1759875973453
+	SET milli_string = "1759875973453"
+	IF parse_time(milli_int, "unix_milli") == parse_time(milli_string, "unix_milli") :: SET milli = parse_time(milli_int, "unix_milli")
+	SET mdy = parse_time("2025-10-07", "2006-01-02")
+	`
+	env := newBuiltinTestEnv(t, input)
+
+	for wantKey, wantTime := range wantMap {
+		gotObj, ok := env.get(wantKey)
+		if !ok {
+			t.Fatalf("expected env key %q to exist", wantKey)
+		}
+		testConvertObject(t, gotObj, wantTime)
+	}
+}
+
 func newBuiltinTestEnv(t *testing.T, input string) *environment {
 	fnStore := newBuiltinFuncStore()
 	env := newEnvironment(fnStore)
