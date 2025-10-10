@@ -329,6 +329,12 @@ func (i *infixExpression) eval(env *environment) object {
 			return unWrapErr(i.token().lineCol, ret)
 		}
 		return ret
+	case leftObj.getType() == t_array && rightObj.getType() == t_array:
+		ret := evalArrayInfixExpression(leftObj, i.operator, rightObj)
+		if isObjectErr(ret) {
+			return unWrapErr(i.token().lineCol, ret)
+		}
+		return ret
 	case i.operator == "==":
 		if leftObj.getType() != rightObj.getType() {
 			return obj_global_false
@@ -429,6 +435,24 @@ func objHandleMathOperation(l float64, operator string, r float64, areBothIntege
 		return &objectInteger{value: int64(result)}
 	}
 	return &objectFloat{value: result}
+}
+
+func evalArrayInfixExpression(leftObj object, operator string, rightObj object) object {
+	l := leftObj.(*objectArray).entries
+	r := rightObj.(*objectArray).entries
+	switch operator {
+	case "+":
+		combined := []object{}
+		for _, add := range l {
+			combined = append(combined, add.clone())
+		}
+		for _, add := range r {
+			combined = append(combined, add.clone())
+		}
+		return &objectArray{entries: combined}
+	default:
+		return newObjectErrWithoutLC("unsupported operator for arrays: %s", operator)
+	}
 }
 
 //

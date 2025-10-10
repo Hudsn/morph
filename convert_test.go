@@ -67,7 +67,7 @@ func testConvertObjectString(t *testing.T, data object, want string) bool {
 		return false
 	}
 	if strObj.value != want {
-		t.Errorf("integer value is incorrect. want=%q got=%q", want, strObj.value)
+		t.Errorf("string value is incorrect. want=%q got=%q", want, strObj.value)
 		return false
 	}
 	return true
@@ -80,7 +80,7 @@ func testConvertObjectNull(t *testing.T, data object) bool {
 		return false
 	}
 	if nullObj != obj_global_null {
-		t.Errorf("nil value is incorrect. expected to be shared global null object.")
+		t.Errorf("null value is incorrect. expected to be shared global null object.")
 		return false
 	}
 	return true

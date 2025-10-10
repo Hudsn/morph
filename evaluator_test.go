@@ -698,6 +698,44 @@ func TestEvalNonexistentPathReturnsNull(t *testing.T) {
 	}
 }
 
+func TestEvalArrayInfixPl(t *testing.T) {
+	env := newEnvironment(nil)
+	dataMap := convertBytesToObject([]byte(`{
+		"nested": {
+			"arr": ["e", "f"]
+		}
+	}`))
+	if isObjectErr(dataMap) {
+		t.Fatal(objectToError(dataMap))
+	}
+	env.set("myobj", dataMap)
+	testInputs := []struct {
+		input string
+		want  []interface{}
+	}{
+		{
+			`set result = ["a", "b"] + ["c", "d"] + myobj.nested.arr`,
+			[]interface{}{"a", "b", "c", "d", "e", "f"},
+		},
+	}
+	for idx, tt := range testInputs {
+		parser := setupEvalTestParser(tt.input)
+		program, err := parser.parseProgram()
+		if err != nil {
+			t.Fatal(err)
+		}
+		runRes := program.eval(env)
+		if isObjectErr(runRes) {
+			t.Fatalf("case %d: %s", idx+1, runRes.inspect())
+		}
+		got, ok := env.get("result")
+		if !ok {
+			t.Fatal("expected environment to contain 'result' value")
+		}
+		testConvertObject(t, got, tt.want)
+	}
+}
+
 func setupEvalTestParser(input string) *parser {
 	l := newLexer([]rune(input))
 	return newParser(l)

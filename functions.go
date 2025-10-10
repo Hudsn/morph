@@ -581,7 +581,7 @@ func CastInt(value interface{}) *Object {
 		}
 		ret.inner = &objectInteger{value: int64(i)}
 	default:
-		return ObjectError("unable to cast underlying type as INTEGER. unsupported input type: %T", v)
+		return ObjectError("unable to cast underlying type as INTEGER. unsupported input type")
 	}
 	return ret
 }
@@ -614,7 +614,7 @@ func CastFloat(value interface{}) *Object {
 		}
 		ret.inner = &objectFloat{value: float64(i)}
 	default:
-		return ObjectError("unable to cast type as Float. unsupported type: %T", v)
+		return ObjectError("unable to cast type as FLOAT. unsupported type")
 	}
 	return ret
 }
@@ -647,7 +647,7 @@ func CastString(value interface{}) *Object {
 	case time.Time:
 		ret.inner = &objectString{value: v.Format(time.RFC3339Nano)}
 	default:
-		return ObjectError("unable to cast type as String. unsupported type: %T", v)
+		return ObjectError("unable to cast type as STRING. unsupported type")
 	}
 	return ret
 }
@@ -664,7 +664,7 @@ func CastBool(value interface{}) *Object {
 	case *bool:
 		ret.inner = objectFromBoolean(*v)
 	default:
-		return ObjectError("unable to cast type as Boolean. unsupported type: %T", v)
+		return ObjectError("unable to cast type as BOOLEAN. unsupported type")
 	}
 	return ret
 }
@@ -677,7 +677,7 @@ func CastMap(value interface{}) *Object {
 		m := convertMapToObject(v, false)
 		return &Object{inner: m}
 	default:
-		return ObjectError("unable to cast type as Map. unsupported type: %T", v)
+		return ObjectError("unable to cast type as MAP. unsupported type")
 	}
 }
 
@@ -692,7 +692,7 @@ func CastArray(value interface{}) *Object {
 		a := convertArrayToObject(v, false)
 		ret.inner = a
 	default:
-		return ObjectError("unable to cast type as Array. unsupported type: %T", v)
+		return ObjectError("unable to cast type as Array. unsupported type")
 	}
 	return ret
 }
