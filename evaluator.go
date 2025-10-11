@@ -438,18 +438,11 @@ func objHandleMathOperation(l float64, operator string, r float64, areBothIntege
 }
 
 func evalArrayInfixExpression(leftObj object, operator string, rightObj object) object {
-	l := leftObj.(*objectArray).entries
-	r := rightObj.(*objectArray).entries
+	lArr := leftObj.(*objectArray)
+	rArr := rightObj.(*objectArray)
 	switch operator {
 	case "+":
-		combined := []object{}
-		for _, add := range l {
-			combined = append(combined, add.clone())
-		}
-		for _, add := range r {
-			combined = append(combined, add.clone())
-		}
-		return &objectArray{entries: combined}
+		return &objectArray{entries: append(lArr.entries, rArr.entries...)}
 	default:
 		return newObjectErrWithoutLC("unsupported operator for arrays: %s", operator)
 	}
