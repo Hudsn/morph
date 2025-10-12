@@ -36,7 +36,7 @@ const (
 	ERROR     PublicType = PublicType(t_error)
 )
 
-var ANY = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, ARROWFUNC, TIME, ERROR, NULL}
+var ANY = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, TIME, ERROR, NULL}
 
 func (o *Object) AsAny() (interface{}, error) {
 	switch o.Type() {

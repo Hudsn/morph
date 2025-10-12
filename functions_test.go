@@ -8,23 +8,23 @@ func TestFunctionRegistry(t *testing.T) {
 	registry := newFunctionStore()
 
 	fnName1 := "my_cool_func"
-	fnEntry := NewFunctionEntry(fnName1, testFunctionCustomSum)
+	fnEntry := NewFunctionEntryOld(fnName1, testFunctionCustomSum)
 	fnEntry.SetArgument("a", INTEGER)
 	fnEntry.SetArgument("b", INTEGER)
 	fnEntry.SetReturn("result", INTEGER)
 
-	fnEntry.SetAttributes(FUNCTION_ATTRIBUTE_VARIADIC)
+	fnEntry.SetAttributes(FUNCTION_ATTRIBUTE_VARIADIC_OLD)
 	registry.Register(fnEntry)
 
 	fnName2 := "my_other_func"
-	fnEntry2 := NewFunctionEntry(fnName2, testFunctionCustomSum)
+	fnEntry2 := NewFunctionEntryOld(fnName2, testFunctionCustomSum)
 	fnEntry2.SetArgument("a", INTEGER)
 	fnEntry2.SetArgument("b", INTEGER)
 	fnEntry2.SetReturn("result", INTEGER, STRING)
 	registry.RegisterToNamespace("custom", fnEntry2)
 
 	fnName3 := "my_any_func"
-	fnEntry3 := NewFunctionEntry(fnName3, testFunctionCustomAny)
+	fnEntry3 := NewFunctionEntryOld(fnName3, testFunctionCustomAny)
 	fnEntry3.SetArgument("a", ANY...)
 	fnEntry3.SetReturn("result", ANY...)
 	registry.Register(fnEntry3)

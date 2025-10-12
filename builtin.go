@@ -7,6 +7,60 @@ import (
 	"time"
 )
 
+// WIP, unused.
+func newBuiltinFunctionStore() *FunctionStore {
+	store := NewFunctionStore()
+
+	store.Register(builtinCatchEntryNew())
+
+	return store
+}
+
+// wip, unused
+func builtinCatchEntryNew() *FunctionEntry {
+	return NewFunctionEntry(
+		"catch",
+		"Checks a target item for errors. If the item is an error, the fallback is returned. If not, the item is returned",
+		builtinCatch,
+		WithArgs(
+			NewFunctionArg(
+				"item",
+				"The expression to check for potential errors",
+				ANY...,
+			),
+			NewFunctionArg(
+				"fallback",
+				"The literal value to use as a fallback if the target item is an error",
+				ANY...,
+			),
+		),
+		WithReturn(
+			NewFunctionReturn(
+				"the item or fallback, depending on whether the item is an error or not, respectively",
+				ANY...,
+			),
+		),
+		WithTags(FUNCTION_TAG_ERR_NULL_CHECKS),
+		WithExamples(
+			NewProgramExample(
+				``,
+				`SET dest.result = catch("hello world", "goodbye world")`,
+				`{"result": "hello world}`,
+			),
+			NewProgramExample(
+				``,
+				`SET dest.result = catch(int("goodbye world"), "saved the world")`,
+				`{"result": "saved the world}`,
+			),
+			NewProgramExample(
+				``,
+				`SET dest.result = int("goodbye world") | catch("saved the world")`,
+				`{"result": "saved the world}`,
+			),
+		),
+	)
+}
+
 func newBuiltinFuncStore() *functionStore {
 	store := newFunctionStore()
 
@@ -41,7 +95,7 @@ func newBuiltinFuncStore() *functionStore {
 
 // len
 func builtinLenEntry() *functionEntry {
-	l := NewFunctionEntry("len", builtinLen)
+	l := NewFunctionEntryOld("len", builtinLen)
 	l.SetArgument("target", STRING, ARRAY, MAP)
 	l.SetReturn("length", INTEGER)
 	return l
@@ -82,7 +136,7 @@ func builtinLen(args ...*Object) *Object {
 
 // contains
 func builtinContainsEntry() *functionEntry {
-	l := NewFunctionEntry("contains", builtinContains)
+	l := NewFunctionEntryOld("contains", builtinContains)
 	l.SetArgument("item", STRING, ARRAY)
 	l.SetArgument("target", ANY...)
 	l.SetReturn("result", BOOLEAN)
@@ -128,7 +182,7 @@ func builtinContains(args ...*Object) *Object {
 //min
 
 func builtinMinEntry() *functionEntry {
-	fe := NewFunctionEntry("min", builtinMin)
+	fe := NewFunctionEntryOld("min", builtinMin)
 	fe.SetArgument("num1", INTEGER, FLOAT)
 	fe.SetArgument("num2", INTEGER, FLOAT)
 	fe.SetReturn("minimum", INTEGER, FLOAT)
@@ -169,7 +223,7 @@ func builtinMin(args ...*Object) *Object {
 // max
 
 func builtinMaxEntry() *functionEntry {
-	fe := NewFunctionEntry("max", builtinMax)
+	fe := NewFunctionEntryOld("max", builtinMax)
 	fe.SetArgument("num1", INTEGER, FLOAT)
 	fe.SetArgument("num2", INTEGER, FLOAT)
 	fe.SetReturn("minimum", INTEGER, FLOAT)
@@ -206,7 +260,7 @@ func builtinMax(args ...*Object) *Object {
 
 // drop
 func builtinDropEntry() *functionEntry {
-	fe := NewFunctionEntry("drop", builtinDrop)
+	fe := NewFunctionEntryOld("drop", builtinDrop)
 	return fe
 }
 
@@ -219,7 +273,7 @@ func builtinDrop(args ...*Object) *Object {
 
 // emit
 func builtinEmitEntry() *functionEntry {
-	fe := NewFunctionEntry("emit", builtinEmit)
+	fe := NewFunctionEntryOld("emit", builtinEmit)
 	return fe
 }
 
@@ -232,7 +286,7 @@ func builtinEmit(args ...*Object) *Object {
 
 // int
 func builtinIntEntry() *functionEntry {
-	fe := NewFunctionEntry("int", builtinInt)
+	fe := NewFunctionEntryOld("int", builtinInt)
 	fe.SetArgument("target", INTEGER, FLOAT, STRING)
 	fe.SetReturn("result", INTEGER)
 	return fe
@@ -252,7 +306,7 @@ func builtinInt(args ...*Object) *Object {
 
 // float
 func builtinFloatEntry() *functionEntry {
-	fe := NewFunctionEntry("float", builtinFloat)
+	fe := NewFunctionEntryOld("float", builtinFloat)
 	fe.SetArgument("target", INTEGER, FLOAT, STRING)
 	fe.SetReturn("result", FLOAT)
 	return fe
@@ -272,7 +326,7 @@ func builtinFloat(args ...*Object) *Object {
 
 // string
 func builtinStringEntry() *functionEntry {
-	fe := NewFunctionEntry("string", builtinString)
+	fe := NewFunctionEntryOld("string", builtinString)
 	fe.SetArgument("target", INTEGER, FLOAT, STRING, BOOLEAN)
 	fe.SetReturn("result", STRING)
 	return fe
@@ -292,7 +346,7 @@ func builtinString(args ...*Object) *Object {
 
 // catch (handle errors)
 func builtinCatchEntry() *functionEntry {
-	fe := NewFunctionEntry("catch", builtinCatch)
+	fe := NewFunctionEntryOld("catch", builtinCatch)
 	fe.SetArgument("target", ANY...)
 	fe.SetArgument("fallback", BOOLEAN, INTEGER, FLOAT, STRING, ARRAY, MAP)
 	fe.SetReturn("result", ANY...)
@@ -314,7 +368,7 @@ func builtinCatch(args ...*Object) *Object {
 
 // coalesce (catch nulls)
 func builtinCoalesceEntry() *functionEntry {
-	fe := NewFunctionEntry("coalesce", builtinCoalesce)
+	fe := NewFunctionEntryOld("coalesce", builtinCoalesce)
 	fe.SetArgument("target", ANY...)
 	fe.SetArgument("fallback", BOOLEAN, INTEGER, FLOAT, STRING, ARRAY, MAP)
 	fe.SetReturn("result", ANY...)
@@ -335,7 +389,7 @@ func builtinCoalesce(args ...*Object) *Object {
 
 // fallback (catch errors or nulls)
 func builtinFallbackEntry() *functionEntry {
-	fe := NewFunctionEntry("fallback", builtinFallback)
+	fe := NewFunctionEntryOld("fallback", builtinFallback)
 	fe.SetArgument("target", ANY...)
 	fe.SetArgument("fallback", BOOLEAN, INTEGER, FLOAT, STRING, ARRAY, MAP)
 	fe.SetReturn("result", ANY...)
@@ -356,7 +410,7 @@ func builtinFallback(args ...*Object) *Object {
 
 // map
 func builtinMapEntry() *functionEntry {
-	fe := NewFunctionEntry("map", builtinMap)
+	fe := NewFunctionEntryOld("map", builtinMap)
 	fe.SetArgument("input_data", "the array or map on which to apply the statements", ARRAY, MAP)
 	fe.SetArgument("function", ARROWFUNC)
 	fe.SetReturn("result", ARRAY, MAP)
@@ -454,7 +508,7 @@ func builtinMap(args ...*Object) *Object {
 
 // filter
 func builtinFilterEntry() *functionEntry {
-	fe := NewFunctionEntry("filter", builtinFilter)
+	fe := NewFunctionEntryOld("filter", builtinFilter)
 	fe.SetArgument("input_data", "the array or map on which to apply the filter statements", ARRAY, MAP)
 	fe.SetArgument("function", ARROWFUNC)
 	fe.SetReturn("result", ARRAY, MAP)
@@ -542,7 +596,7 @@ func builtinFilter(args ...*Object) *Object {
 
 // reduce
 func builtinReduceEntry() *functionEntry {
-	fe := NewFunctionEntry("reduce", builtinReduce)
+	fe := NewFunctionEntryOld("reduce", builtinReduce)
 	fe.SetArgument("input_data", ARRAY, MAP)
 	fe.SetArgument("accumulator", STRING, INTEGER, FLOAT, BOOLEAN, ARRAY, MAP, NULL)
 	fe.SetArgument("function", ARROWFUNC)
@@ -626,7 +680,7 @@ func builtinReduce(args ...*Object) *Object {
 
 // append
 func builtinAppendEntry() *functionEntry {
-	fe := NewFunctionEntry("append", builtinAppend)
+	fe := NewFunctionEntryOld("append", builtinAppend)
 	fe.SetArgument("arr", ARRAY)
 	fe.SetArgument("to_add", INTEGER, FLOAT, STRING, ARRAY, MAP, NULL)
 	fe.SetReturn("result", ARRAY)
@@ -651,7 +705,7 @@ func builtinAppend(args ...*Object) *Object {
 
 // time
 func builtinTimeEntry() *functionEntry {
-	fe := NewFunctionEntry("time", builtinTime)
+	fe := NewFunctionEntryOld("time", builtinTime)
 	fe.SetArgument("input", TIME, INTEGER, FLOAT, STRING)
 	fe.SetReturn("result", TIME)
 	return fe
@@ -670,7 +724,7 @@ func builtinTime(args ...*Object) *Object {
 }
 
 func builtinParseTimeEntry() *functionEntry {
-	fe := NewFunctionEntry("parse_time", builtinParseTime)
+	fe := NewFunctionEntryOld("parse_time", builtinParseTime)
 	fe.SetArgument("input", INTEGER, FLOAT, STRING)
 	fe.SetArgument("format string", STRING)
 	fe.SetReturn("result", TIME)
@@ -770,7 +824,7 @@ func builtinParseTime(args ...*Object) *Object {
 }
 
 func builtinNowEntry() *functionEntry {
-	fe := NewFunctionEntry("now", builtinNow)
+	fe := NewFunctionEntryOld("now", builtinNow)
 	fe.SetReturn("current time", TIME)
 	return fe
 }

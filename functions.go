@@ -19,8 +19,8 @@ func NewEmptyFunctionStore() *functionStore {
 }
 
 type functionStore struct {
-	std        *functionNamespace
-	namespaces map[string]*functionNamespace
+	std        *functionNamespaceOld
+	namespaces map[string]*functionNamespaceOld
 }
 
 func (s *functionStore) Register(fn *functionEntry) {
@@ -34,7 +34,7 @@ func (s *functionStore) RegisterToNamespace(namespace string, fn *functionEntry)
 		return
 	}
 	if _, ok := s.namespaces[namespace]; !ok {
-		s.namespaces[namespace] = newFunctionNamespace(namespace)
+		s.namespaces[namespace] = newFunctionNamespaceOld(namespace)
 	}
 	ns := s.namespaces[namespace]
 	ns.register(fn)
@@ -54,19 +54,19 @@ func (s *functionStore) getNamespace(namespace string, name string) (*functionEn
 	return nil, fmt.Errorf("namespace %q does not found", namespace)
 }
 
-type functionNamespace struct {
+type functionNamespaceOld struct {
 	name  string
 	store map[string]*functionEntry
 }
 
-func newFunctionNamespace(name string) *functionNamespace {
-	return &functionNamespace{
+func newFunctionNamespaceOld(name string) *functionNamespaceOld {
+	return &functionNamespaceOld{
 		name:  name,
 		store: make(map[string]*functionEntry),
 	}
 }
 
-func (n *functionNamespace) get(name string) (*functionEntry, error) {
+func (n *functionNamespaceOld) get(name string) (*functionEntry, error) {
 	if ret, ok := n.store[name]; ok {
 		return ret, nil
 	}
@@ -76,17 +76,17 @@ func (n *functionNamespace) get(name string) (*functionEntry, error) {
 	}
 	return nil, fmt.Errorf("%s", msg)
 }
-func (n *functionNamespace) register(fe *functionEntry) {
+func (n *functionNamespaceOld) register(fe *functionEntry) {
 	n.store[fe.name] = fe
 }
 
 func newFunctionStore() *functionStore {
 	return &functionStore{
-		std: &functionNamespace{
+		std: &functionNamespaceOld{
 			name:  "std",
 			store: make(map[string]*functionEntry),
 		},
-		namespaces: make(map[string]*functionNamespace),
+		namespaces: make(map[string]*functionNamespaceOld),
 	}
 }
 
@@ -98,7 +98,7 @@ type functionEntry struct {
 	function   Function
 }
 
-func NewFunctionEntry(name string, function Function) *functionEntry {
+func NewFunctionEntryOld(name string, function Function) *functionEntry {
 	return &functionEntry{
 		name:       name,
 		function:   function,
@@ -205,7 +205,7 @@ func (fe *functionEntry) checkVariadic(args ...object) error {
 	if len(args) == 0 {
 		return nil
 	}
-	isVariadic := slices.Contains(fe.attributes, FUNCTION_ATTRIBUTE_VARIADIC)
+	isVariadic := slices.Contains(fe.attributes, FUNCTION_ATTRIBUTE_VARIADIC_OLD)
 	if len(args) > len(fe.args) && !isVariadic {
 		return fmt.Errorf("invalid number of args for function %q: too many arguments supplied. want=%d got=%d", fe.name, len(fe.args), len(args))
 	}
@@ -227,7 +227,7 @@ func (fe *functionEntry) checkVariadic(args ...object) error {
 type functionAttribute string
 
 const (
-	FUNCTION_ATTRIBUTE_VARIADIC = "VARIADIC"
+	FUNCTION_ATTRIBUTE_VARIADIC_OLD = "VARIADIC"
 )
 
 type functionIO struct {

@@ -29,7 +29,7 @@ func TestMorphBasicExample(t *testing.T) {
 func TestMorphCustomFunction(t *testing.T) {
 
 	fs := NewDefaultFunctionStore()
-	funcEntry := NewFunctionEntry("mycoolfunc", testMorphCustomFn999)
+	funcEntry := NewFunctionEntryOld("mycoolfunc", testMorphCustomFn999)
 	fs.RegisterToNamespace("myfuncs", funcEntry)
 	fs.RegisterToNamespace("std", funcEntry)
 	test := testMorphCase{
