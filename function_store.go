@@ -1,6 +1,10 @@
 package morph
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+	"strings"
+)
 
 type FunctionStore struct {
 	namespaces map[string]*functionNamespace
@@ -50,6 +54,7 @@ func (fs *FunctionStore) register(namespace string, fe *FunctionEntry) {
 	if len(namespace) == 0 {
 		namespace = "std"
 	}
+	fe.namespace = namespace
 	if ns, ok := fs.namespaces[namespace]; ok {
 		ns.functions[fe.Name] = fe
 		return
@@ -61,11 +66,12 @@ func (fs *FunctionStore) register(namespace string, fe *FunctionEntry) {
 
 // function entries contain documentation information AND runnable instances of functions
 type FunctionEntry struct {
+	namespace   string // populated when the function is registered.
 	Name        string
 	Description string
 	Fn          Function
 	Args        []FunctionArg
-	Return      FunctionReturn
+	Return      *FunctionReturn
 	Attributes  []FunctionAttribute
 	Tags        []FunctionTag
 	Examples    []ProgramExample
@@ -74,14 +80,89 @@ type FunctionEntry struct {
 func NewFunctionEntry(name string, description string, fn Function, opts ...functionEntryOpt) *FunctionEntry {
 	return &FunctionEntry{
 		Name:        name,
+		namespace:   "",
 		Description: description,
 		Fn:          fn,
 		Args:        []FunctionArg{},
-		Return:      FunctionReturn{},
+		Return:      nil,
 		Attributes:  []FunctionAttribute{},
 		Tags:        []FunctionTag{"General"},
 		Examples:    []ProgramExample{},
 	}
+}
+
+// retruns functions namespace.name as a string
+func (fe *FunctionEntry) fullName() string {
+	if len(fe.namespace) == 0 {
+		return fe.Name
+	}
+	return fmt.Sprintf("%s.%s", fe.namespace, fe.Name)
+}
+
+// returns the function signature string
+func (fe *FunctionEntry) signature() string {
+	argStrList := []string{}
+	for _, a := range fe.Args {
+		argStrList = append(argStrList, a.typesString())
+	}
+	args := strings.Join(argStrList, ", ")
+	ret := ""
+	if fe.Return != nil {
+		ret = fe.Return.typesString()
+	}
+	return fmt.Sprintf("%s(%s) %s", fe.fullName(), args, ret)
+}
+
+func (fe *FunctionEntry) run(args ...object) object {
+	if len(args) < len(fe.Args) {
+		return newObjectErrWithoutLC("function %q too few arguments supplied. want=%d got=%d\n\tfunction signature: %s", fe.fullName(), len(fe.Args), len(args), fe.signature())
+	}
+
+	for argIdx, wantArg := range fe.Args {
+		if len(wantArg.Types) == 0 {
+			continue
+		}
+		arg := args[argIdx]
+		if !slices.Contains(wantArg.Types, PublicType(arg.getType())) {
+			return newObjectErrWithoutLC("function %q invalid argument type for %q. want=%s. got=%s\n\tfunction signature: %s", fe.fullName(), wantArg.Name, wantArg.typesString(), arg.getType(), fe.signature())
+		}
+	}
+	if err := fe.checkVariadic(args...); err != nil {
+		return newObjectErrWithoutLC(err.Error())
+	}
+	ret := evalFunction(fe.Fn, args...)
+	if isObjectErr(ret) {
+		return ret
+	}
+	if fe.Return != nil {
+		if !slices.Contains(fe.Return.Types, PublicType(ret.getType())) {
+			return newObjectErr("function %q invalid return type. want=%s got=%s\n\tfunction signature: %s", fe.Name, fe.Return.typesString(), ret.getType(), fe.signature())
+		}
+	}
+	return ret
+}
+
+func (fe *FunctionEntry) checkVariadic(args ...object) error {
+	if len(args) == 0 {
+		return nil
+	}
+	isVariadic := slices.Contains(fe.Attributes, FUNCTION_ATTRIBUTE_VARIADIC)
+	if len(args) > len(fe.Args) && !isVariadic {
+		return fmt.Errorf("invalid number of args for function %q: too many arguments supplied. want=%d got=%d", fe.fullName(), len(fe.Args), len(args))
+	}
+	if !isVariadic {
+		return nil
+	}
+	firstVariadicArg := fe.Args[len(fe.Args)-1]
+	curIdx := len(fe.Args) - 1
+	lastArgs := args[curIdx:]
+	for _, arg := range lastArgs {
+		if !slices.Contains(firstVariadicArg.Types, PublicType(arg.getType())) {
+			return fmt.Errorf("type error for function %q: argument at zero-indexed position %d does not match any type of variadic parameter %q (%s)", fe.fullName(), curIdx, firstVariadicArg.Name, firstVariadicArg.typesString())
+		}
+		curIdx++
+	}
+	return nil
 }
 
 type functionEntryOpt func(*FunctionEntry)
@@ -91,7 +172,7 @@ func WithArgs(args ...FunctionArg) functionEntryOpt {
 		fe.Args = args
 	}
 }
-func WithReturn(ret FunctionReturn) functionEntryOpt {
+func WithReturn(ret *FunctionReturn) functionEntryOpt {
 	return func(fe *FunctionEntry) {
 		fe.Return = ret
 	}
@@ -130,16 +211,52 @@ func NewFunctionArg(name string, description string, types ...PublicType) Functi
 	}
 }
 
+func (fa FunctionArg) typesString() string {
+	isAny := true
+	for _, t := range ANY {
+		if !slices.Contains(fa.Types, t) {
+			isAny = false
+			break
+		}
+	}
+	if isAny {
+		return "ANY_BASIC"
+	}
+	strs := []string{}
+	for _, t := range fa.Types {
+		strs = append(strs, string(t))
+	}
+	return fmt.Sprintf("%s:%s", fa.Name, strings.Join(strs, "|"))
+}
+
 type FunctionReturn struct {
 	Description string
 	Types       []PublicType
 }
 
-func NewFunctionReturn(description string, types ...PublicType) FunctionReturn {
-	return FunctionReturn{
+func NewFunctionReturn(description string, types ...PublicType) *FunctionReturn {
+	return &FunctionReturn{
 		Description: description,
 		Types:       types,
 	}
+}
+
+func (fr *FunctionReturn) typesString() string {
+	isAny := true
+	for _, t := range ANY {
+		if !slices.Contains(fr.Types, t) {
+			isAny = false
+			break
+		}
+	}
+	if isAny {
+		return "ANY_BASIC"
+	}
+	strs := []string{}
+	for _, t := range fr.Types {
+		strs = append(strs, string(t))
+	}
+	return strings.Join(strs, "|")
 }
 
 type FunctionAttribute string
