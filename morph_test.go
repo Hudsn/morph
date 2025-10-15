@@ -16,7 +16,7 @@ func TestMorphBasicExample(t *testing.T) {
 			"mood": "happy"
 		}
 		`,
-		in: `
+		program: `
 			IF src.mood == "happy" :: SET dest = "🙂"
 		`,
 		wantJSON: `
@@ -39,7 +39,7 @@ func TestMorphCustomFunction(t *testing.T) {
 			"mood": "happy"
 		}
 		`,
-		in: `
+		program: `
 			set dest.mood = std.string(src.mood)
 			set dest.num = myfuncs.mycoolfunc()
 			set dest.num2 = mycoolfunc()
@@ -63,7 +63,7 @@ func TestMorphComments(t *testing.T) {
 		srcJSON: `
 		{}
 		`,
-		in: `
+		program: `
 		SET x = 5 // some comment
 		SET dest = x*2 // a second comment
 		// SET dest = 0
@@ -78,7 +78,7 @@ func TestMorphInvalidPathErr(t *testing.T) {
 		{
 			description:     "check that a string used as a path throws an error",
 			srcJSON:         `{}`,
-			in:              `SET "asdf"."bdsa" = true`,
+			program:         `SET "asdf"."bdsa" = true`,
 			wantErrContains: []string{"parsing error at 1:5:", "unexpected token type"},
 		},
 	}
@@ -91,13 +91,13 @@ func TestMorphSetSrcErr(t *testing.T) {
 	tests := []testMorphError{
 		{
 			description:     "check that src cannot be set",
-			in:              `SET src = true`,
+			program:         `SET src = true`,
 			srcJSON:         `{}`,
 			wantErrContains: []string{"parsing error at 1:5:", "SET statement cannot modify src data"},
 		},
 		{
 			description:     "check that src subfields cannot be set",
-			in:              `SET src.subfield = 5`,
+			program:         `SET src.subfield = 5`,
 			srcJSON:         `{}`,
 			wantErrContains: []string{"parsing error at 1:5:", "SET statement cannot modify src data"},
 		},
@@ -114,7 +114,7 @@ func TestMorphPathWithStrings(t *testing.T) {
 			srcJSON: `
 			{"my spaced out path": 10}
 			`,
-			in: `
+			program: `
 				SET dest = src."my spaced out path"
 				`,
 			wantJSON: `10`,
@@ -124,7 +124,7 @@ func TestMorphPathWithStrings(t *testing.T) {
 			srcJSON: `
 			{"my spaced out path": 10}
 			`,
-			in: `
+			program: `
 				SET part = "ce"
 				SET missing_piece = '${"s" + '${"pa" + part}'}d'
 				SET dest = src.'my ${missing_piece} out path'
@@ -143,7 +143,7 @@ func TestMorphIfMulti(t *testing.T) {
 		srcJSON: `
 		{}
 		`,
-		in: `
+		program: `
 		SET x = 5
 		IF x >= 5 :: {
 			SET y = x
@@ -162,7 +162,7 @@ func TestMorphIfErr(t *testing.T) {
 	tests := []testMorphError{
 		{
 			description:     "check that a single-line if statment can only point to a SET statement",
-			in:              `IF true :: IF false :: set dest = 0`,
+			program:         `IF true :: IF false :: set dest = 0`,
 			srcJSON:         `{}`,
 			wantErrContains: []string{"parsing error at 1:12:", "expected one of", "{", "SET"},
 		},
@@ -173,15 +173,27 @@ func TestMorphIfErr(t *testing.T) {
 }
 
 func TestMorphReturnNull(t *testing.T) {
-	test := testMorphCase{
-		description: "check unset dest returns null",
-		srcJSON: `
-		{}
-		`,
-		in:       ``,
-		wantJSON: `null`,
+	tests := []testMorphCase{
+		{
+			description: "check unset dest returns null",
+			srcJSON: `
+			{}
+			`,
+			program:  ``,
+			wantJSON: `null`,
+		},
+		{
+			description: "check set dest with nonexistent value returns null",
+			srcJSON: `
+			{}
+			`,
+			program:  `SET dest = src.i_dont_exist`,
+			wantJSON: `null`,
+		},
 	}
-	checkTestMorphCase(t, test, NewDefaultFunctionStore())
+	for _, tt := range tests {
+		checkTestMorphCase(t, tt, NewDefaultFunctionStore())
+	}
 }
 
 func TestMorphExclamationOnIndirectBool(t *testing.T) {
@@ -191,7 +203,7 @@ func TestMorphExclamationOnIndirectBool(t *testing.T) {
 			srcJSON: `
 			{}
 			`,
-			in: `
+			program: `
 			SET dest.a = !("a" == 2)
 			SET dest.b = !false
 			SET dest.c = !true
@@ -220,7 +232,7 @@ func TestMorphTemplateStrings(t *testing.T) {
 		srcJSON: `
 		{}
 		`,
-		in:       `SET dest = 'my ${1300 + 37} ${"str" + "ing"}'`,
+		program:  `SET dest = 'my ${1300 + 37} ${"str" + "ing"}'`,
 		wantJSON: `"my 1337 string"`,
 	}
 	checkTestMorphCase(t, test, NewDefaultFunctionStore())
@@ -236,7 +248,7 @@ func TestMorphPipes(t *testing.T) {
 					"my_arr": [1, 2, "three", "4", 4]
 				}
 				`,
-			in: `
+			program: `
 			SET dest = filter(src.my_arr, entry ~> {
 				IF entry.index >= 2 && ((entry.value % 2 == 0) | catch(false) || (int(entry.value) >= 4) | catch(false)) :: SET return = true
 			})
@@ -248,7 +260,7 @@ func TestMorphPipes(t *testing.T) {
 			srcJSON: `
 				{}
 				`,
-			in: `
+			program: `
 			SET dest = 3 * 2 / 3 + 4 - 2 | min(100)
 			`,
 			wantJSON: `4`,
@@ -258,7 +270,7 @@ func TestMorphPipes(t *testing.T) {
 			srcJSON: `
 				{}
 				`,
-			in: `
+			program: `
 			SET dest = 4 == 4 | max(100)
 			`,
 			wantJSON: `false`,
@@ -268,7 +280,7 @@ func TestMorphPipes(t *testing.T) {
 			srcJSON: `
 				{}
 				`,
-			in: `
+			program: `
 			SET dest = true && "pizza" | contains("iz")
 			`,
 			wantJSON: `true`,
@@ -278,7 +290,7 @@ func TestMorphPipes(t *testing.T) {
 			srcJSON: `
 				{}
 				`,
-			in: `
+			program: `
 			SET dest = 2 + 2 | max(50) | min(100) | string() | contains("5")
 			`,
 			wantJSON: `true`,
@@ -299,7 +311,7 @@ func TestMorphTheCoolerDaniel(t *testing.T) {
 				"cool_factor": 999
 			}
 			`,
-		in: `
+		program: `
 			SET is_cool = src.cool_factor >= 500
 			SET dest.name = src.name
 			IF src.name == "Daniel" || is_cool :: SET dest.name = 'The cooler ${src.name}'
@@ -322,7 +334,7 @@ func TestMorphMapEdgeCase(t *testing.T) {
 				"c": 3
 			}
 			`,
-		in: `
+		program: `
 			SET dest = map(src, entry ~> {
 				IF entry.value == 3 :: SET return.key = "a"
 				IF entry.value == 3 :: SET return.value = 3
@@ -346,7 +358,7 @@ func TestMorphFilter(t *testing.T) {
 				"my_arr": [1, 2, "three", "4", 4]
 			}
 			`,
-			in: `
+			program: `
 			SET dest = filter(src.my_arr, entry ~> {
 				IF entry.index >= 2 && (catch(entry.value % 2 == 0, false) || catch(int(entry.value) >= 4, false)) :: SET return = true
 			})
@@ -362,7 +374,7 @@ func TestMorphFilter(t *testing.T) {
 				"c": 3
 			}
 			`,
-			in: `
+			program: `
 			SET dest = filter(src, entry ~> {
 				IF entry.key == "a" :: SET return = true
 				if entry.value == 3 :: SET return = true
@@ -388,7 +400,7 @@ func TestMorphReduce(t *testing.T) {
 				"my_arr": [1, 2, "3"]
 			}
 			`,
-			in: `
+			program: `
 			SET dest.result = reduce(src.my_arr, null, entry ~> {
 				IF entry.current == NULL :: SET entry.current = 0
 				SET return = entry.current + int(entry.value)
@@ -407,7 +419,7 @@ func TestMorphReduce(t *testing.T) {
 				"c": 3
 			}
 			`,
-			in: `
+			program: `
 			SET dest.result = reduce(src, null, entry ~> {
 				IF entry.current == NULL :: SET entry.current = 0
 				IF entry.key != "a" :: SET return = entry.current + int(entry.value)
@@ -431,7 +443,7 @@ func TestMorphComparisonChecks(t *testing.T) {
 			srcJSON: `
 			{}
 			`,
-			in: `
+			program: `
 			set dest = "abc" == "abc"
 			`,
 			wantJSON: `true`,
@@ -441,7 +453,7 @@ func TestMorphComparisonChecks(t *testing.T) {
 			srcJSON: `
 			{}
 			`,
-			in: `
+			program: `
 			set a = "abc"
 			set dest = a == "abc"
 			`,
@@ -452,7 +464,7 @@ func TestMorphComparisonChecks(t *testing.T) {
 			srcJSON: `
 			{}
 			`,
-			in: `
+			program: `
 			set a = 1
 			set dest = a <= 5
 			`,
@@ -463,7 +475,7 @@ func TestMorphComparisonChecks(t *testing.T) {
 			srcJSON: `
 			{}
 			`,
-			in: `
+			program: `
 			set a = 1
 			set dest = a != NULL
 			`,
@@ -474,7 +486,7 @@ func TestMorphComparisonChecks(t *testing.T) {
 			srcJSON: `
 			{}
 			`,
-			in: `
+			program: `
 			set dest = a == NULL
 			`,
 			wantJSON: `true`,
@@ -491,7 +503,7 @@ func TestMorphMultiLineDQuoteStringError(t *testing.T) {
 		srcJSON: `
 		{}
 		`,
-		in: `
+		program: `
 		SET dest = "holy
 		smokes"
 		`,
@@ -509,7 +521,7 @@ func TestMorphDropArrow(t *testing.T) {
 				"arr": [1, 2, 3]
 			}
 			`,
-			in: `
+			program: `
 			SET dest = map(src.arr, entry ~> {
 				drop()
 			})
@@ -523,7 +535,7 @@ func TestMorphDropArrow(t *testing.T) {
 				"arr": [1, 2, 3]
 			}
 			`,
-			in: `
+			program: `
 			SET dest = filter(src.arr, entry ~> {
 				SET return = true
 				drop()
@@ -538,7 +550,7 @@ func TestMorphDropArrow(t *testing.T) {
 				"arr": [1, 2, 3]
 			}
 			`,
-			in: `
+			program: `
 			SET dest = reduce(src.arr, 0, entry ~> {
 				SET return = entry.current + 5
 				drop()
@@ -558,7 +570,7 @@ func TestMorphDrop(t *testing.T) {
 		srcJSON: `
 		{}
 		`,
-		in: `
+		program: `
 		SET dest = "holy smokes"
 		drop()
 		SET dest = "no way dude"
@@ -574,7 +586,7 @@ func TestMorphEmit(t *testing.T) {
 		srcJSON: `
 		{}
 		`,
-		in: `
+		program: `
 		SET dest = "holy smokes"
 		emit()
 		SET dest = "no way dude"
@@ -590,7 +602,7 @@ func TestMorphSetByValue(t *testing.T) {
 		srcJSON: `
 		{}
 		`,
-		in: `
+		program: `
 			set x = 1
 			set y = x
 			set x = 5
@@ -615,7 +627,7 @@ func testMorphCustomFn999(args ...*Object) *Object {
 }
 
 func checkTestMorphParseError(t *testing.T, tt testMorphError, fnStore *functionStore) bool {
-	_, err := New(tt.in, WithFunctionStore(fnStore))
+	_, err := New(tt.program, WithFunctionStore(fnStore))
 	if err == nil {
 		t.Fatalf("expected error to contain %q. instead got no error", tt.wantErrContains)
 	}
@@ -634,7 +646,7 @@ func checkTestMorphParseError(t *testing.T, tt testMorphError, fnStore *function
 }
 
 func checkTestMorphCase(t *testing.T, tt testMorphCase, fnStore *functionStore) bool {
-	m, err := New(tt.in, WithFunctionStore(fnStore))
+	m, err := New(tt.program, WithFunctionStore(fnStore))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -672,13 +684,13 @@ func testMorphCheckContainsAll(mainString string, checkStrings ...string) bool {
 
 type testMorphError struct {
 	description     string
-	in              string
+	program         string
 	srcJSON         string
 	wantErrContains []string
 }
 type testMorphCase struct {
 	description string
-	in          string
+	program     string
 	srcJSON     string
 	wantJSON    string
 }
