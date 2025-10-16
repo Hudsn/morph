@@ -270,7 +270,7 @@ func (p *parser) parseMapLiteral() expression {
 		if !p.mustNextToken(tok_colon) {
 			return nil
 		}
-		p.next()
+		p.next() // from colon to right side expression
 		ret.pairs[strNode.value] = p.parseExpression(lowest)
 		if p.hasErrors() {
 			return nil
@@ -475,8 +475,8 @@ func (p *parser) parseSetStatement() *setStatement {
 	if !p.mustNextToken(tok_ident) { // ident is fine here since paths always start with ident
 		return nil
 	}
-	if p.currentToken.value == "src" { // restrict modification of "src" via set statement
-		p.err("SET statement cannot modify src data", p.currentToken.start)
+	if p.currentToken.value == "@in" { // restrict modification of "@in" via set statement
+		p.err("SET statement cannot modify input data", p.currentToken.start)
 	}
 	potentialTarget := p.parseExpression(lowest)
 	target, ok := potentialTarget.(assignable)

@@ -41,17 +41,16 @@ func New(input string, opts ...Opt) (*morph, error) {
 
 func (m *morph) ToAny(inputData []byte) (interface{}, error) {
 	env := newEnvironment(m.functionStore)
-	env.set("src", convertBytesToObject(inputData))
+	env.set("@in", convertBytesToObject(inputData))
 	res := m.program.eval(env)
 	if isObjectErr(res) {
 		return nil, errors.New(res.inspect())
 	}
-	res, ok := env.get("dest")
+	res, ok := env.get("@out")
 	if !ok {
 		return nil, nil
 	}
 	return convertObjectToNative(res)
-
 }
 
 func (m *morph) ToJSON(inputData []byte) ([]byte, error) {

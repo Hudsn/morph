@@ -44,17 +44,17 @@ func builtinCatchEntryNew() *FunctionEntry {
 		WithExamples(
 			NewProgramExample(
 				``,
-				`SET dest.result = catch("hello world", "goodbye world")`,
+				`SET @out.result = catch("hello world", "goodbye world")`,
 				`{"result": "hello world}`,
 			),
 			NewProgramExample(
 				``,
-				`SET dest.result = catch(int("goodbye world"), "saved the world")`,
+				`SET @out.result = catch(int("goodbye world"), "saved the world")`,
 				`{"result": "saved the world}`,
 			),
 			NewProgramExample(
 				``,
-				`SET dest.result = int("goodbye world") | catch("saved the world")`,
+				`SET @out.result = int("goodbye world") | catch("saved the world")`,
 				`{"result": "saved the world}`,
 			),
 		),

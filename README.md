@@ -15,9 +15,9 @@ A simple program looks something like this:
 }
 
 // Morph program:
-SET dest.name == src.name
-SET dest.pet_type = "unknown"
-IF src.name == "Fluffy" :: SET dest.pet_type = "dog"
+SET @out.name == @in.name
+SET @out.pet_type = "unknown"
+IF @in.name == "Fluffy" :: SET @out.pet_type = "dog"
 
 // output:
 {
@@ -64,7 +64,7 @@ Run a minimal program:
 ```go
 jsonIn := []byte(`{"hello": "world"}`)
 input := `
-SET dest.message = "hello " + src.hello
+SET @out.message = "hello " + @in.hello
 `
 m, err := morph.New(input)
 if err != nil {

@@ -3,13 +3,13 @@
 ## How it works
 
 A Morph program consists of three major components:
-- A source JSON blob, accessible in Morph syntax as: `src`
+- An input JSON blob, accessible in Morph syntax as: `@in`
 - A series of one or more Morph statments
-- A destination JSON blob, assignable in Morph syntax as: `dest`
+- An output JSON blob, assignable in Morph syntax as: `@out`
 
-To sucessfully transform and return data, you must assign the desired values or fields to the `dest` object via `SET` statments.
+To sucessfully transform and return data, you must assign the desired values or fields to the `@out` object via `SET` statments.
 
-For example, setting `dest.my_value` to `5`, will result in a final object that looks like: 
+For example, setting `@out.my_value` to `5`, will result in a final object that looks like: 
 
 ```
 {
@@ -21,15 +21,15 @@ For example, setting `dest.my_value` to `5`, will result in a final object that 
 
 You can reference any data object via its variable name. 
 
-`src` will be the only variable available at the start of any program. You can access it directly, or you can use different expression types depending on the data type of the variable you're referencing.
+`@in` will be the only variable available at the start of any program. You can access it directly, or you can use different expression types depending on the data type of the variable you're referencing.
 
-For example, if `src` (or any other target variable) is an integer, float, string, or boolean, you can only access it directly via its name.
+For example, if `@in` (or any other target variable) is an integer, float, string, or boolean, you can only access it directly via its name.
 
-If your target variable is an object with sub-fields, you can access them via `.` path notation, such as `src.my_field.my_nested_field`
+If your target variable is an object with sub-fields, you can access them via `.` path notation, such as `@in.my_field.my_nested_field`
 
 If your target variable is an array, you can reference a specific index with `[int]` notation, such as `myarray[4]` or `myarr[2+2]`
 
-You can also combine these. For example, if you set a variable that is an object with an array inside it, you can access an index of that array like: `myobj.nested_arr[0]`
+You can also chain these ways of accessing data. For example, if you set a variable that is an object with an array inside it, you can access an index of that array like: `myobj.nested_arr[0]`
 
 ## SET Statements
 `SET` statments are the only way to create and set variables in Morph. 
@@ -38,7 +38,7 @@ A `SET` statement follows the syntax:
 
 `SET variable = value`
 
-Note that when setting a variable to another variable like `SET x = y`, the right side variable is cloned, meaning that future changes to `x` should ***not*** change `y`. 
+Note that when setting a variable to another variable like `SET x = y`, the right side variable is cloned before being assigned, meaning that future changes to `x` should ***not*** change `y`. 
 
 Note that `SET` is case insensitive, but it is encouraged to use all-caps for readability.
 
@@ -86,11 +86,11 @@ Here is what that would look like:
 }
 
 //morph program:
-SET dest.text = src.text // You can also add single line comments like this!
+SET @out.text = @in.text // You can also add single line comments like this!
 // or like this!
-SET dest.emoji = "😶"
-IF src.text == "happy" :: SET dest.emoji = "🙂"
-IF src.text == "sad" :: SET dest.emoji = "☹️"
+SET @out.emoji = "😶"
+IF @in.text == "happy" :: SET @out.emoji = "🙂"
+IF @in.text == "sad" :: SET @out.emoji = "☹️"
 
 //out
 {
@@ -132,7 +132,7 @@ Morph has 8 main types that are available to be used as a part of any expression
     - all values are `truthey` **except for the 'zero' time value equal to January 1, year 1, 00:00:00 UTC** 
 - NULL
     - a non-value; empty, like my soul when writing documentation, expressed as a keyword `NULL` or `null`
-    - commonly encountered when referencing variables that don't exist. For example: `src.doesnt_exist` would return `NULL`
+    - commonly encountered when referencing variables that don't exist. For example: `@in.doesnt_exist` would return `NULL`
     - always `falsey`
 
 
@@ -187,19 +187,19 @@ Note that these operators do not work on Arrays or Maps
 We've learned a bit more, so let's have another example using some of the operators and expressions.
 
 ```
-// src:
+//@in:
 {
     "name": "Daniel"
     "cool_factor": 999
 }
 
 // morph
-SET is_cool = src.cool_factor >= 500
-SET dest.name = src.name
-IF src.name == "Daniel" || is_cool :: SET dest.name = 'The Cooler ${src.name}'
+SET is_cool = @in.cool_factor >= 500
+SET @out.name = @in.name
+IF @in.name == "Daniel" || is_cool :: SET @out.name = 'The Cooler ${@in.name}'
 
 
-//dest:
+//@out:
 {
     "name": "The Cooler Daniel"
 }
@@ -245,25 +245,25 @@ Checks if `item` is `NULL`, and if so, returns the `fallback` value instead. Oth
 Example: 
 ```
 SET my_variable =  coalesce(NULL, "coalesce ftw!")
-// my_variable results in "coalesce"
+// my_variable results in "coalesce ftw"
 ```
 
 ### fallback(item, fallback): result
 A combination of `catch` and `coalesce`. Checks if `item` is `NULL` or an error, and if so, returns the `fallback` value instead. Otherwise, returns `item`.
 
 ### drop()
-Stops the current run of the Morph program, and returns dest as NULL.
+Stops the current run of the Morph program, and returns @out as NULL.
 Useful in IF statements for short-circuiting
 
 ### emit()
-Stops the current run of the Morph program, and returns dest at its current state.
+Stops the current run of the Morph program, and returns @out at its current state.
 Useful in IF statements for short-circuiting
 
 Example:
 ```
-SET dest = "hello world"
+SET @out = "hello world"
 emit()
-SET dest = "goodbye world"
+SET @out = "goodbye world"
 
 // returns "hello world"
 ```
@@ -326,14 +326,14 @@ An arrow function will effectively run its own instance of a morph program with 
 Here's an example of what it looks like in the `map()` builtin:
 
 ```
-map(src.my_array, entry ~> {
+map(@in.my_array, entry ~> {
     SET return = entry.value.item
 })
 ```
 
-In this example, the array `src.my_array` is being made available via the `entry` variable in the arrow function. 
+In this example, the array `@in.my_array` is being made available via the `entry` variable in the arrow function. 
 
-The statements in the curly brackets will run for EACH item in `src.my_array`, which can be accessed inside the brackets as part of the `entry` variable. In the case of `map()`, it's `entry.value`, but the point is that `entry` is the inner variable that will be used to access your initial data. 
+The statements in the curly brackets will run for EACH item in `@in.my_array`, which can be accessed inside the brackets as part of the `entry` variable. In the case of `map()`, it's `entry.value`, but the point is that `entry` is the inner variable that will be used to access your initial data. 
 
 You can ignore the `return` variable for now, since it's specific to the `map` function.
 
@@ -356,7 +356,7 @@ Example:
 }
 
 //morph
-SET dest.new_arr = map(src.my_arr, entry ~> {
+SET @out.new_arr = map(@in.my_arr, entry ~> {
     IF entry.index == 2 :: SET return = entry.value * 2
 }) 
 
@@ -389,7 +389,7 @@ Example:
 }
 
 //morph:
-SET dest = map(src, entry ~> {
+SET @out = map(@in, entry ~> {
     SET return.key = "prefix_" + entry.key 
     SET return.value = entry.value * 2
 })
@@ -422,7 +422,7 @@ Example:
 }
 
 // morph:
-SET dest = filter(src.my_arr, entry ~> {
+SET @out = filter(@in.my_arr, entry ~> {
 			IF entry.index >= 2 && (catch(entry.value % 2 == 0, false) || catch(int(entry.value) >= 4, false)) :: SET return = true
     })
 
@@ -443,7 +443,7 @@ Example:
 }
 
 //morph:
-SET res = filter(src, entry ~> {
+SET res = filter(@in, entry ~> {
         IF entry.key == "a" :: SET return = true
         IF entry.value == 3 :: SET return = true
     })
@@ -477,7 +477,7 @@ Example:
 }
 
 //morph:
-SET dest.result = reduce(src.my_arr, null, entry ~> {
+SET @out.result = reduce(@in.my_arr, null, entry ~> {
         IF entry.current == NULL :: SET entry.current = 0
         SET return = entry.current + int(entry.value)
     })
@@ -501,7 +501,7 @@ Example:
 }
 
 //morph:
-SET dest.result = reduce(src, null, entry ~> {
+SET @out.result = reduce(@in, null, entry ~> {
     IF entry.current == NULL :: SET entry.current = 0
     IF entry.key != "a" :: SET return = entry.current + int(entry.value)
 })
@@ -609,8 +609,8 @@ jsonIn := []byte(`{"number": 2}`)
 // we use both instances of the function:
 // the custom namespace and the std one, for demonstration purposes:
 input := `
-SET from_custom = my_custom_namespace.my_func(src.number)
-SET dest = my_func(from_custom)
+SET from_custom = my_custom_namespace.my_func(@in.number)
+SET @out = my_func(from_custom)
 `
 //initialize morph with our custom function store
 m, err := morph.New(input, WithFunctionStore(myFuncStore))
