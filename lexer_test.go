@@ -1021,6 +1021,75 @@ func TestLexNumber(t *testing.T) {
 	checkLexTestCase(t, input, tests)
 }
 
+func TestLexIdentAtSign(t *testing.T) {
+	input := "@in.sub @out.res @nonsense"
+	tests := []testCase{
+		{
+			tokenType:  tok_ident,
+			value:      "@in",
+			start:      0,
+			end:        3,
+			rangeValue: "@in",
+			line:       1,
+			col:        1,
+		},
+		{
+			tokenType:  tok_dot,
+			value:      ".",
+			start:      3,
+			end:        4,
+			rangeValue: ".",
+			line:       1,
+			col:        4,
+		},
+		{
+			tokenType:  tok_ident,
+			value:      "sub",
+			start:      4,
+			end:        7,
+			rangeValue: "sub",
+			line:       1,
+			col:        5,
+		},
+		{
+			tokenType:  tok_ident,
+			value:      "@out",
+			start:      8,
+			end:        12,
+			rangeValue: "@out",
+			line:       1,
+			col:        9,
+		},
+		{
+			tokenType:  tok_dot,
+			value:      ".",
+			start:      12,
+			end:        13,
+			rangeValue: ".",
+			line:       1,
+			col:        13,
+		},
+		{
+			tokenType:  tok_ident,
+			value:      "res",
+			start:      13,
+			end:        16,
+			rangeValue: "res",
+			line:       1,
+			col:        14,
+		},
+		{
+			tokenType:  tok_illegal,
+			value:      "identifiers that start with @ must be @in or @out",
+			start:      17,
+			end:        26,
+			rangeValue: "@nonsense",
+			line:       1,
+			col:        18,
+		},
+	}
+	checkLexTestCase(t, input, tests)
+}
 func TestLexIdent(t *testing.T) {
 	input := "abc.def"
 	tests := []testCase{

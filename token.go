@@ -59,7 +59,6 @@ const (
 
 	//keywords
 	tok_if    tokenType = "IF"
-	tok_when  tokenType = "WHEN"
 	tok_set   tokenType = "SET"
 	tok_true  tokenType = "TRUE"
 	tok_false tokenType = "FALSE"

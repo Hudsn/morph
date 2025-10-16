@@ -2,6 +2,7 @@ package morph
 
 import (
 	"slices"
+	"strings"
 )
 
 type lexer struct {
@@ -135,7 +136,7 @@ func (l *lexer) tokenize() token {
 		if isDigit(l.currentChar) {
 			tok = l.readNumber()
 			return tok
-		} else if isLetter(l.currentChar) {
+		} else if isLetter(l.currentChar) || l.currentChar == '@' {
 			tok = l.readIdentifier()
 			return tok
 		} else {
@@ -483,6 +484,18 @@ func (l *lexer) lineColString(targetIdx int) string {
 
 func (l *lexer) readIdentifier() token {
 	start := l.currentIdx
+	if l.currentChar == '@' {
+		l.next()
+	}
+	if !isLetter(l.currentChar) {
+		return token{
+			tokenType: tok_illegal,
+			value:     "identifiers that start with @ must be @in or @out",
+			start:     start,
+			end:       l.currentIdx,
+			lineCol:   l.lineColString(start),
+		}
+	}
 	for isDigit(l.currentChar) || isLetter(l.currentChar) || isLineChar(l.currentChar) {
 		l.next()
 	}
@@ -491,6 +504,15 @@ func (l *lexer) readIdentifier() token {
 		endIdx = l.nextIdx
 	}
 	val := string(l.input[start:endIdx])
+	if strings.HasPrefix(val, "@") && !slices.Contains([]string{"@in", "@out"}, val) {
+		return token{
+			tokenType: tok_illegal,
+			value:     "identifiers that start with @ must be @in or @out",
+			start:     start,
+			end:       endIdx,
+			lineCol:   l.lineColString(start),
+		}
+	}
 	return token{
 		tokenType: lookupTokenKeyword(val),
 		value:     val,
