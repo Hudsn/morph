@@ -45,7 +45,7 @@ Note that when setting a variable to another variable like `SET x = y`, the righ
 Note that `SET` is case insensitive, but it is encouraged to use all-caps for readability.
 
 ## DEL Statements
-`DEL` statements delete a given variable from any variable except "@in", which cannot be modified.
+`DEL` statements delete a given variable at a target path except "@in", which cannot be modified.
 
 A `DEL` statement follows the syntax: 
 
