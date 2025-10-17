@@ -104,8 +104,55 @@ func evalSetStatementHandleMAP(objHandle object, current *assignPath, valToSet o
 	return existing
 }
 
+// del statement
+func (d *delStatement) eval(env *environment) object {
+	switch v := d.target.(type) {
+	case *identifierExpression:
+		delete(env.store, v.value)
+	case *pathExpression:
+		leftObj := v.left.eval(env)
+		if isObjectErr(leftObj) {
+			return unWrapErr(v.left.token().lineCol, leftObj)
+		}
+		if leftObj == obj_global_null {
+			return leftObj
+		}
+		leftMap, ok := leftObj.(*objectMap)
+		if !ok {
+			return newObjectErr(v.left.token().lineCol, "cannot delete a path item %q on a non-map object. %q is of type %s", v.string(), v.left.string(), leftObj.getType())
+		}
+		attrString, errObj := evalMapPathAttributeToString(v.attribute, env)
+		if errObj != obj_global_null {
+			return unWrapErr(v.attribute.token().lineCol, errObj)
+		}
+		delete(leftMap.kvPairs, attrString)
+	}
+	return obj_global_null
+}
+
+func evalMapPathAttributeToString(attribute pathPartExpression, env *environment) (attrString string, errObj object) {
+	switch v := attribute.(type) {
+	case *stringLiteral:
+		return v.value, obj_global_null
+	case *identifierExpression:
+		return v.value, obj_global_null
+	case *templateExpression:
+		str := v.eval(env)
+		if isObjectErr(str) {
+			return "", unWrapErr(v.tok.lineCol, str)
+		}
+		if strVal, ok := str.(*objectString); ok {
+			return strVal.value, obj_global_null
+		}
+		return "", newObjectErr(v.tok.lineCol, "invalid path part: %s", v.string())
+
+	default:
+		return "", newObjectErr(v.token().lineCol, "invalid path part: %s", v.string())
+	}
+}
+
 //
-// when statement
+// if statement
 
 func (i *ifStatement) eval(env *environment) object {
 	conditionObj := i.condition.eval(env)

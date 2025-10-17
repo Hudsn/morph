@@ -134,6 +134,8 @@ func (p *parser) parseStatement() statement {
 	switch p.currentToken.tokenType {
 	case tok_set:
 		return p.parseSetStatement()
+	case tok_del:
+		return p.parseDelStatement()
 	case tok_if:
 		return p.parseIfStatement()
 	default:
@@ -476,21 +478,46 @@ func (p *parser) parseSetStatement() *setStatement {
 		return nil
 	}
 	if p.currentToken.value == "@in" { // restrict modification of "@in" via set statement
-		p.err("SET statement cannot modify input data", p.currentToken.start)
+		p.err("SET statement cannot modify @in data", p.currentToken.start)
 	}
 	potentialTarget := p.parseExpression(lowest)
 	target, ok := potentialTarget.(assignable)
 	if !ok {
-		p.err("SET statement should be followed by an assignable expression", p.currentToken.start)
+		p.err("SET statement should be followed by an assignable expression (identifier or dot-path)", p.currentToken.start)
 		return nil
 	}
-
+	ok, errStr := target.checkAssignPathPure()
+	if !ok {
+		p.err(errStr, target.position().start)
+	}
 	ret.target = target
 	if !p.mustNextToken(tok_assign) {
 		return nil
 	}
 	p.next()
 	ret.value = p.parseExpression(lowest)
+	return ret
+}
+
+func (p *parser) parseDelStatement() *delStatement {
+	ret := &delStatement{tok: p.currentToken}
+	if !p.mustNextToken(tok_ident) {
+		return nil
+	}
+	if p.currentToken.value == "@in" {
+		p.err("DEL statement cannot delete @in data", p.currentToken.start)
+	}
+	potentialTarget := p.parseExpression(lowest)
+	target, ok := potentialTarget.(assignable)
+	if !ok {
+		p.err("DEL statement should be followed by an by an assignable expression (identifier or dot-path)", p.currentToken.start)
+		return nil
+	}
+	ok, errStr := target.checkAssignPathPure()
+	if !ok {
+		p.err(errStr, target.position().start)
+	}
+	ret.target = target
 	return ret
 }
 
@@ -501,7 +528,7 @@ func (p *parser) parseIfStatement() *ifStatement {
 	if !p.mustNextToken(tok_double_colon) {
 		return nil
 	}
-	if !p.mustNextTokenOneOf(tok_lcurly, tok_set) {
+	if !p.mustNextTokenOneOf(tok_lcurly, tok_set, tok_del) {
 		return nil
 	}
 	if p.isCurrentToken(tok_lcurly) {

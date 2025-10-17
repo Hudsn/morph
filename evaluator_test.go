@@ -5,6 +5,41 @@ import (
 	"testing"
 )
 
+func TestEvalDel(t *testing.T) {
+	input := `
+	set val = "abcd"
+	del val
+	set val_2.a = "1"
+	del val_2.a
+	set val_2.b = ["c", "d", "e"] 
+	if val_2.a == null :: set val_2.c.d = val_2.b
+	if len(val_2.c.d) == len(val_2.b) :: {
+		del val_2.d // no-op
+		del val_2.c // deletes .c and .c.d with it
+	}
+	// so now this should be true and delete .b
+	if val_2.c.d == null :: del val_2.b
+	
+	//and we should get all are null, setting result to 'true'
+	set result = val == null && val_2.b == val && val_2.b == val_2.c.d
+	`
+	env := newEnvironment(newBuiltinFuncStore())
+	parser := setupEvalTestParser(input)
+	program, err := parser.parseProgram()
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := program.eval(env)
+	if isObjectErr(res) {
+		t.Fatal(objectToError(res))
+	}
+	got, ok := env.get("result")
+	if !ok {
+		t.Fatalf("expected an existing env entry for %q, but got no result", "result")
+	}
+	testConvertObject(t, got, true)
+}
+
 func TestEvalPipe(t *testing.T) {
 	input := `
 	set result = append([1, 2, "3"], 4) | append(5)

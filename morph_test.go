@@ -95,13 +95,13 @@ func TestMorphSetInErr(t *testing.T) {
 			description:     "check that @in cannot be set",
 			program:         `SET @in = true`,
 			srcJSON:         `{}`,
-			wantErrContains: []string{"parsing error at 1:5:", "SET statement cannot modify input data"},
+			wantErrContains: []string{"parsing error at 1:5:", "SET statement cannot modify @in data"},
 		},
 		{
 			description:     "check that @in subfields cannot be set",
 			program:         `SET @in.subfield = 5`,
 			srcJSON:         `{}`,
-			wantErrContains: []string{"parsing error at 1:5:", "SET statement cannot modify input data"},
+			wantErrContains: []string{"parsing error at 1:5:", "SET statement cannot modify @in data"},
 		},
 	}
 	for _, tt := range tests {

@@ -65,6 +65,7 @@ type setStatement struct {
 type assignable interface {
 	expression
 	toAssignPath() *assignPath
+	checkAssignPathPure() (isPure bool, errString string) // ensures that the assign path is only composed parts that can be used to reprsent a valid dot-path for SET and DEL statements (*identifierExpression, and *pathExpression)
 }
 
 type assignStepType string
@@ -88,12 +89,33 @@ func (s *setStatement) string() string {
 	if s.target != nil {
 		ret = s.target.string()
 	}
-	return fmt.Sprintf("%s = %s", ret, s.value.string())
+	return fmt.Sprintf("%s %s = %s", s.tok.value, ret, s.value.string())
 }
 func (s *setStatement) position() position {
 	return position{
 		start: s.target.position().start,
 		end:   s.value.position().end,
+	}
+}
+
+type delStatement struct {
+	tok    token
+	target assignable
+}
+
+func (d *delStatement) statementNode() {}
+func (d *delStatement) token() token   { return d.tok }
+func (d *delStatement) string() string {
+	ret := ""
+	if d.target != nil {
+		ret = d.target.string()
+	}
+	return fmt.Sprintf("%s %s", d.tok.value, ret)
+}
+func (d *delStatement) position() position {
+	return position{
+		start: d.tok.start,
+		end:   d.target.position().end,
 	}
 }
 
@@ -289,6 +311,9 @@ func (ie *identifierExpression) position() position {
 func (ie *identifierExpression) toAssignPath() *assignPath {
 	return &assignPath{stepType: assign_step_env, partName: ie.value, next: nil}
 }
+func (ie *identifierExpression) checkAssignPathPure() (bool, string) { // raw ident should always be true
+	return true, ""
+}
 
 //
 
@@ -341,6 +366,31 @@ func handlePathStepAttribute(attr pathPartExpression) (assignStepType, string) {
 	default:
 		return assign_step_invalid, ""
 	}
+}
+func (pe *pathExpression) checkAssignPathPure() (isPure bool, errMsg string) {
+	if pe.left == nil { // first node in assign path will always have left = nil; first node must always be an identifier
+		if _, ok := pe.attribute.(*identifierExpression); !ok {
+			return false, "the first node in a dot-path must be an identifier"
+		}
+	}
+	switch v := pe.attribute.(type) {
+	case *identifierExpression:
+	case *stringLiteral:
+	case *templateExpression:
+	case *pathExpression:
+		return v.checkAssignPathPure()
+	default:
+		return false, "dot-paths must made up of identifiers or strings in SET and DEL statements"
+	}
+
+	switch v := pe.left.(type) {
+	case *identifierExpression:
+	case *pathExpression:
+		return v.checkAssignPathPure()
+	default:
+		return false, "dot-paths must made up of identifiers or strings in SET and DEL statements"
+	}
+	return true, ""
 }
 
 //

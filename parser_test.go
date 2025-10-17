@@ -199,7 +199,7 @@ func TestParseIfStatementMulti(t *testing.T) {
 	}`
 	program := setupParserTest(t, input)
 	checkParserProgramLength(t, program, 1)
-	checkParserStatementType(t, program.statements[0], WHEN_STATEMENT)
+	checkParserStatementType(t, program.statements[0], IF_STATEMENT)
 	stmt := program.statements[0].(*ifStatement)
 	testLiteralExpression(t, stmt.condition, true)
 	if len(stmt.consequence) != 2 {
@@ -230,7 +230,7 @@ func TestParseIfStatement(t *testing.T) {
 	input := "IF true :: SET myvar = 5"
 	program := setupParserTest(t, input)
 	checkParserProgramLength(t, program, 1)
-	checkParserStatementType(t, program.statements[0], WHEN_STATEMENT)
+	checkParserStatementType(t, program.statements[0], IF_STATEMENT)
 	stmt := program.statements[0].(*ifStatement)
 	testLiteralExpression(t, stmt.condition, true)
 	if len(stmt.consequence) != 1 {
@@ -246,6 +246,28 @@ func TestParseIfStatement(t *testing.T) {
 	}
 	testIdentifierExpression(t, targetIdent, "myvar")
 	testLiteralExpression(t, setStmt.value, 5)
+}
+
+func TestParseDelStatement(t *testing.T) {
+	input := `DEL myvar."sub"`
+	program := setupParserTest(t, input)
+	checkParserProgramLength(t, program, 1)
+	checkParserStatementType(t, program.statements[0], DEL_STATEMENT)
+	stmt := program.statements[0].(*delStatement)
+	path, ok := stmt.target.(*pathExpression)
+	if !ok {
+		t.Fatalf("stmt.target is not *pathExpression. got=%T", stmt.target)
+	}
+	subStr, ok := path.attribute.(*stringLiteral)
+	if !ok {
+		t.Fatalf("path.attribute is not *stringLiteral. got=%T", path.attribute)
+	}
+	testLiteralExpression(t, subStr, "sub")
+	myvarIndent, ok := path.left.(*identifierExpression)
+	if !ok {
+		t.Fatalf("path.left is not *identifierExpression. got=%T", path.left)
+	}
+	testLiteralExpression(t, myvarIndent, "myvar")
 }
 
 func TestParseSetStatement(t *testing.T) {
@@ -624,7 +646,8 @@ const (
 	_ statementType = iota
 	EXPRESSION_STATEMENT
 	SET_STATEMENT
-	WHEN_STATEMENT
+	IF_STATEMENT
+	DEL_STATEMENT
 )
 
 func checkParserStatementType(t *testing.T, statement statement, stype statementType) {
@@ -637,7 +660,11 @@ func checkParserStatementType(t *testing.T, statement statement, stype statement
 		if _, ok := statement.(*setStatement); !ok {
 			t.Fatalf("statement is not of type *setStatement. got=%T", statement)
 		}
-	case WHEN_STATEMENT:
+	case DEL_STATEMENT:
+		if _, ok := statement.(*delStatement); !ok {
+			t.Fatalf("statement is not of type *delStatement. got=%T", statement)
+		}
+	case IF_STATEMENT:
 		if _, ok := statement.(*ifStatement); !ok {
 			t.Fatalf("statement is not of type *ifStatement. got=%T", statement)
 		}

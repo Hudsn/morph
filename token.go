@@ -60,6 +60,7 @@ const (
 	//keywords
 	tok_if    tokenType = "IF"
 	tok_set   tokenType = "SET"
+	tok_del   tokenType = "DEL"
 	tok_true  tokenType = "TRUE"
 	tok_false tokenType = "FALSE"
 	tok_null  tokenType = "NULL"
@@ -71,6 +72,7 @@ const (
 var keywordMap = map[string]tokenType{
 	"if":    tok_if,
 	"set":   tok_set,
+	"del":   tok_del,
 	"true":  tok_true,
 	"false": tok_false,
 	"null":  tok_null,

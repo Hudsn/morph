@@ -34,6 +34,8 @@ You can also chain these ways of accessing data. For example, if you set a varia
 ## SET Statements
 `SET` statments are the only way to create and set variables in Morph. 
 
+The only variable `SET` will not work on is the "@in" variable, which cannot be modified.
+
 A `SET` statement follows the syntax: 
 
 `SET variable = value`
@@ -41,6 +43,15 @@ A `SET` statement follows the syntax:
 Note that when setting a variable to another variable like `SET x = y`, the right side variable is cloned before being assigned, meaning that future changes to `x` should ***not*** change `y`. 
 
 Note that `SET` is case insensitive, but it is encouraged to use all-caps for readability.
+
+## DEL Statements
+`DEL` statements delete a given variable from any variable except "@in", which cannot be modified.
+
+A `DEL` statement follows the syntax: 
+
+`DEL variable`
+
+Note that `DEL` is case insensitive, but it is encouraged to use all-caps for readability.
 
 
 ## IF Statements
