@@ -1,6 +1,7 @@
 package morph
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -9,7 +10,8 @@ import (
 	"time"
 )
 
-type Function func(args ...*Object) *Object
+type Function func(ctx context.Context, args ...*Object) *Object
+type FunctionOld func(args ...*Object) *Object
 
 // public wrapper of object to be used for implementing custom functions
 type Object struct {

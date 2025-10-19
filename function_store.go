@@ -1,6 +1,7 @@
 package morph
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -113,7 +114,7 @@ func (fe *FunctionEntry) signature() string {
 	return fmt.Sprintf("%s(%s) %s", fe.fullName(), args, ret)
 }
 
-func (fe *FunctionEntry) run(args ...object) object {
+func (fe *FunctionEntry) run(ctx context.Context, args ...object) object {
 	if len(args) < len(fe.Args) {
 		return newObjectErrWithoutLC("function %q too few arguments supplied. want=%d got=%d\n\tfunction signature: %s", fe.fullName(), len(fe.Args), len(args), fe.signature())
 	}
@@ -130,7 +131,7 @@ func (fe *FunctionEntry) run(args ...object) object {
 	if err := fe.checkVariadic(args...); err != nil {
 		return newObjectErrWithoutLC(err.Error())
 	}
-	ret := evalFunction(fe.Fn, args...)
+	ret := evalFunction(ctx, fe.Fn, args...)
 	if isObjectErr(ret) {
 		return ret
 	}
@@ -140,6 +141,15 @@ func (fe *FunctionEntry) run(args ...object) object {
 		}
 	}
 	return ret
+}
+
+func evalFunction(ctx context.Context, fn Function, args ...object) object {
+	objList := []*Object{}
+	for _, arg := range args {
+		objList = append(objList, &Object{inner: arg})
+	}
+	obj := fn(ctx, objList...)
+	return obj.inner
 }
 
 func (fe *FunctionEntry) checkVariadic(args ...object) error {

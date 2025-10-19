@@ -1,6 +1,7 @@
 package morph
 
 import (
+	"context"
 	"slices"
 	"strconv"
 	"strings"
@@ -60,6 +61,23 @@ func builtinCatchEntryNew() *FunctionEntry {
 		),
 	)
 }
+
+func builtinCatch(ctx context.Context, args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
+	}
+	target := args[0]
+	fallback := args[1]
+	target.Type()
+	if target.Type() == string(ERROR) {
+		return fallback
+	}
+	return target
+}
+
+//
+//
+// OLD
 
 func newBuiltinFuncStore() *functionStore {
 	store := newFunctionStore()
@@ -346,14 +364,14 @@ func builtinString(args ...*Object) *Object {
 
 // catch (handle errors)
 func builtinCatchEntry() *functionEntry {
-	fe := NewFunctionEntryOld("catch", builtinCatch)
+	fe := NewFunctionEntryOld("catch", builtinCatchOld)
 	fe.SetArgument("target", ANY...)
 	fe.SetArgument("fallback", BOOLEAN, INTEGER, FLOAT, STRING, ARRAY, MAP)
 	fe.SetReturn("result", ANY...)
 	return fe
 }
 
-func builtinCatch(args ...*Object) *Object {
+func builtinCatchOld(args ...*Object) *Object {
 	if res, ok := IsArgCountEqual(2, args); !ok {
 		return res
 	}

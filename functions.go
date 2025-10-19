@@ -95,10 +95,10 @@ type functionEntry struct {
 	ret        *functionIO
 	args       []functionIO
 	attributes []functionAttribute
-	function   Function
+	function   FunctionOld
 }
 
-func NewFunctionEntryOld(name string, function Function) *functionEntry {
+func NewFunctionEntryOld(name string, function FunctionOld) *functionEntry {
 	return &functionEntry{
 		name:       name,
 		function:   function,
@@ -163,7 +163,7 @@ func (fio *functionIO) typesString() string {
 	return strings.Join(strs, "|")
 }
 
-func evalFunction(fn Function, args ...object) object {
+func evalFunctionOld(fn FunctionOld, args ...object) object {
 	objList := []*Object{}
 	for _, arg := range args {
 		objList = append(objList, &Object{inner: arg})
@@ -189,7 +189,7 @@ func (fe *functionEntry) eval(args ...object) object {
 	if err := fe.checkVariadic(args...); err != nil {
 		return newObjectErrWithoutLC(err.Error())
 	}
-	ret := evalFunction(fe.function, args...)
+	ret := evalFunctionOld(fe.function, args...)
 	if isObjectErr(ret) {
 		return ret
 	}
