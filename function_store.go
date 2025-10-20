@@ -79,7 +79,7 @@ type FunctionEntry struct {
 }
 
 func NewFunctionEntry(name string, description string, fn Function, opts ...functionEntryOpt) *FunctionEntry {
-	return &FunctionEntry{
+	ret := &FunctionEntry{
 		Name:        name,
 		namespace:   "",
 		Description: description,
@@ -90,6 +90,10 @@ func NewFunctionEntry(name string, description string, fn Function, opts ...func
 		Tags:        []FunctionTag{"General"},
 		Examples:    []ProgramExample{},
 	}
+	for _, fn := range opts {
+		fn(ret)
+	}
+	return ret
 }
 
 // retruns functions namespace.name as a string
@@ -230,7 +234,17 @@ func (fa FunctionArg) typesString() string {
 		}
 	}
 	if isAny {
-		return "ANY_BASIC"
+		return "ANY"
+	}
+	isBasic := true
+	for _, t := range BASIC {
+		if !slices.Contains(fa.Types, t) {
+			isAny = false
+			break
+		}
+	}
+	if isBasic {
+		return "BASIC"
 	}
 	strs := []string{}
 	for _, t := range fa.Types {

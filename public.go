@@ -38,7 +38,8 @@ const (
 	ERROR     PublicType = PublicType(t_error)
 )
 
-var ANY = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, TIME, ERROR, NULL}
+var ANY = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, TIME, ERROR, NULL, ARROWFUNC}
+var BASIC = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, TIME, ERROR, NULL}
 
 func (o *Object) AsAny() (interface{}, error) {
 	switch o.Type() {
@@ -58,15 +59,25 @@ func (o *Object) AsAny() (interface{}, error) {
 		return o.AsString()
 	case string(TIME):
 		return o.AsTime()
+	case string(ERROR):
+		return o.AsError()
 	default:
 		return nil, fmt.Errorf("unable to convert Object: not a convertible type. got=%s", o.Type())
 	}
 }
 
+func (o *Object) AsError() (error, error) {
+	e, ok := o.inner.(*objectError)
+	if !ok {
+		return nil, fmt.Errorf("unable to convert object to error: underlying structure is not an integer type. got=%s", o.inner.getType())
+	}
+	return fmt.Errorf(e.message), nil
+}
+
 func (o *Object) AsTime() (time.Time, error) {
 	t, ok := o.inner.(*objectTime)
 	if !ok {
-		return time.Time{}, fmt.Errorf("unable to convert object to Integer: underlying structure is not an integer type. got=%s", o.inner.getType())
+		return time.Time{}, fmt.Errorf("unable to convert object to Time: underlying structure is not an integer type. got=%s", o.inner.getType())
 	}
 	return t.value, nil
 }
@@ -331,7 +342,7 @@ func CastInt(value interface{}) *Object {
 	case string:
 		i, err := strconv.Atoi(v)
 		if err != nil {
-			return ObjectError("unable to cast string as INTEGER. invalid string: %s", v)
+			return ObjectError("unable to cast string as INTEGER. invalid string")
 		}
 		ret.inner = &objectInteger{value: int64(i)}
 	default:
@@ -451,6 +462,15 @@ func CastArray(value interface{}) *Object {
 	return ret
 }
 
+func CastError(value interface{}) *Object {
+	if e, ok := value.(error); ok {
+		return &Object{
+			inner: &objectError{message: e.Error()},
+		}
+	}
+	return ObjectError("unable to cast type as error. unsupported type")
+}
+
 func CastAuto(value interface{}) *Object {
 	if value == nil {
 		return ObjectNull
@@ -471,6 +491,8 @@ func CastAuto(value interface{}) *Object {
 		return CastArray(v)
 	case time.Time:
 		return CastTime(v)
+	case error:
+		return CastError(v)
 	default:
 		return ObjectError("unable to automatically cast type for value")
 	}

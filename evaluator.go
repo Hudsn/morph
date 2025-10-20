@@ -186,11 +186,12 @@ func (e *expressionStatement) eval(env *environment) object {
 //call expression
 
 func (c *callExpression) eval(env *environment) object {
-	var fnEntry *functionEntry
+	var fnEntry runnableFN
 	var err error
 	switch v := c.name.(type) {
 	case *identifierExpression:
-		fnEntry, err = env.functions.get(v.value)
+		// fnEntry, err = env.functions.get(v.value)
+		fnEntry, err = env.getFunction(v.value)
 		if err != nil {
 			return newObjectErr(v.token().lineCol, err.Error())
 		}
@@ -205,14 +206,14 @@ func (c *callExpression) eval(env *environment) object {
 		toAdd := argExpr.eval(env)
 		args = append(args, toAdd)
 	}
-	ret := fnEntry.eval(args...)
+	ret := fnEntry.run(env.ctx, args...)
 	if isObjectErr(ret) {
 		return unWrapErr(c.name.token().lineCol, ret)
 	}
 	return ret
 }
 
-func evalFunctionNamePath(pathExpr *pathExpression, env *environment) (*functionEntry, error) {
+func evalFunctionNamePath(pathExpr *pathExpression, env *environment) (runnableFN, error) {
 	switch v := pathExpr.attribute.(type) {
 	case *identifierExpression:
 		return evalResolvePathForFunction(pathExpr, v.value, env)
@@ -220,11 +221,12 @@ func evalFunctionNamePath(pathExpr *pathExpression, env *environment) (*function
 	return nil, fmt.Errorf("function path must be composed of valid identifiers")
 }
 
-func evalResolvePathForFunction(pathExpr *pathExpression, key string, env *environment) (*functionEntry, error) {
+func evalResolvePathForFunction(pathExpr *pathExpression, key string, env *environment) (runnableFN, error) {
 	switch v := pathExpr.left.(type) {
 	case *identifierExpression:
 		namespace := v.value
-		return env.functions.getNamespace(namespace, key)
+		// return env.functions.getNamespace(namespace, key)
+		return env.getFunctionByNamespace(namespace, key)
 	}
 	return nil, fmt.Errorf("function path must be composed of valid identifiers")
 }

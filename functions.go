@@ -1,6 +1,7 @@
 package morph
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -172,7 +173,7 @@ func evalFunctionOld(fn FunctionOld, args ...object) object {
 	return obj.inner
 }
 
-func (fe *functionEntry) eval(args ...object) object {
+func (fe *functionEntry) run(ctx context.Context, args ...object) object {
 	if len(args) < len(fe.args) {
 		return newObjectErrWithoutLC("function %q too few arguments supplied. want=%d got=%d\n\tfunction signature: %s", fe.name, len(fe.args), len(args), fe.string())
 	}

@@ -54,7 +54,7 @@ func testConvertObjectTime(t *testing.T, data object, want time.Time) bool {
 		return false
 	}
 	if !tObj.value.Equal(want) {
-		t.Errorf("time value is incorrect. want=%q got=%q", want.String(), tObj.value.String())
+		t.Errorf("time value is incorrect. want=%s got=%s", want.String(), tObj.value.String())
 		return false
 	}
 	return true
@@ -67,7 +67,7 @@ func testConvertObjectString(t *testing.T, data object, want string) bool {
 		return false
 	}
 	if strObj.value != want {
-		t.Errorf("string value is incorrect. want=%q got=%q", want, strObj.value)
+		t.Errorf("string value is incorrect. want=%s got=%s", want, strObj.value)
 		return false
 	}
 	return true

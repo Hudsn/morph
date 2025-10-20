@@ -1,6 +1,7 @@
 package morph
 
 import (
+	"context"
 	"testing"
 )
 
@@ -68,7 +69,7 @@ func TestFunctionRegistry(t *testing.T) {
 			inputObjs = append(inputObjs, toAdd)
 		}
 		entry := tt.fnEntry
-		resObj := entry.eval(inputObjs...)
+		resObj := entry.run(context.Background(), inputObjs...)
 		if isObjectErr(resObj) {
 			t.Fatal(objectToError(resObj))
 		}

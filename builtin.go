@@ -12,26 +12,27 @@ import (
 func newBuiltinFunctionStore() *FunctionStore {
 	store := NewFunctionStore()
 
-	store.Register(builtinCatchEntryNew())
+	store.Register(builtinCatchEntry())
+	store.Register(builtinIntEntry())
 
 	return store
 }
 
-// wip, unused
-func builtinCatchEntryNew() *FunctionEntry {
+func builtinCatchEntry() *FunctionEntry {
 	return NewFunctionEntry(
 		"catch",
-		"Checks a target item for errors. If the item is an error, the fallback is returned. If not, the item is returned",
+		"Checks a target item for errors. If the item is an error or evaluates to an error, the fallback is returned. If not, the item is returned",
 		builtinCatch,
 		WithArgs(
 			NewFunctionArg(
 				"item",
 				"The expression to check for potential errors",
-				ANY...,
+				BASIC...,
 			),
 			NewFunctionArg(
 				"fallback",
-				"The literal value to use as a fallback if the target item is an error",
+				`The value to use as a fallback if the target item is an error.
+The argument can also be an arrow function callback, where the target error string is accessible by the named parameter, and the resulting fallback must be assigned to the 'return' variable within the arrow function.`,
 				ANY...,
 			),
 		),
@@ -45,18 +46,31 @@ func builtinCatchEntryNew() *FunctionEntry {
 		WithExamples(
 			NewProgramExample(
 				``,
-				`SET @out.result = catch("hello world", "goodbye world")`,
-				`{"result": "hello world}`,
+				`//using the target (no error)
+SET @out.result = catch("hello world", "goodbye world")`,
+				`{"result": "hello world"}`,
 			),
 			NewProgramExample(
 				``,
-				`SET @out.result = catch(int("goodbye world"), "saved the world")`,
-				`{"result": "saved the world}`,
+				`//using the fallback (error)
+SET @out.result = catch(int("goodbye world"), "saved the world")`,
+				`{"result": "saved the world"}`,
 			),
 			NewProgramExample(
 				``,
-				`SET @out.result = int("goodbye world") | catch("saved the world")`,
-				`{"result": "saved the world}`,
+				`//using pipe syntax
+SET @out.result = int("goodbye world") | catch("saved the world")`,
+				`{"result": "saved the world"}`,
+			),
+			NewProgramExample(
+				``,
+				`//using arrow callback syntax
+SET @out.result = catch(int("goodbye world"), err ~> {
+	SET return = {
+		"err_msg": err
+	} 
+})`,
+				`{"result": {"err_msg": "unable to convert item to INTEGER. invalid input type: STRING"}}`,
 			),
 		),
 	)
@@ -70,9 +84,69 @@ func builtinCatch(ctx context.Context, args ...*Object) *Object {
 	fallback := args[1]
 	target.Type()
 	if target.Type() == string(ERROR) {
+		if fallback.Type() == string(ARROWFUNC) {
+			arrow, err := fallback.AsArrowFunction()
+			if err != nil {
+				return ObjectError(err.Error())
+			}
+			inputErr, err := target.AsError()
+			if err != nil {
+				return ObjectError(err.Error())
+			}
+			envOut := arrow.Run(inputErr.Error())
+			mapOut, ok := envOut.(map[string]interface{})
+			if !ok {
+				return ObjectError("error calling fallback arrow function: unable to extract 'return' field from arrow function")
+			}
+			if ret, ok := mapOut["return"]; ok {
+				return CastAuto(ret)
+			}
+		}
 		return fallback
 	}
 	return target
+}
+
+func builtinIntEntry() *FunctionEntry {
+	return NewFunctionEntry(
+		"int",
+		"attempts to convert the target item into an integer type",
+		builtinInt,
+
+		WithArgs(
+			NewFunctionArg(
+				"target",
+				"The expression to convert into an INTEGER",
+				FLOAT, STRING, INTEGER,
+			),
+		),
+		WithReturn(
+			NewFunctionReturn(
+				"The resultant integer after conversion. Throws an error if unable to convert.",
+				INTEGER,
+			),
+		),
+		WithTags(FUNCTION_TAG_GENERAL),
+		WithExamples(
+			NewProgramExample(
+				``,
+				`SET @out.result = int("5")`,
+				`{"result": 5}`,
+			),
+		),
+	)
+}
+
+func builtinInt(ctx context.Context, args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(1, args); !ok {
+		return res
+	}
+	a := args[0]
+	val, err := a.AsAny()
+	if err != nil {
+		return ObjectError("unable to cast item as INTEGER. invalid input type: %s", a.Type())
+	}
+	return CastInt(val)
 }
 
 //
@@ -82,14 +156,14 @@ func builtinCatch(ctx context.Context, args ...*Object) *Object {
 func newBuiltinFuncStore() *functionStore {
 	store := newFunctionStore()
 
-	store.Register(builtinCatchEntry())
+	store.Register(builtinCatchEntryOld())
 	store.Register(builtinCoalesceEntry())
 	store.Register(builtinFallbackEntry())
 
 	store.Register(builtinDropEntry())
 	store.Register(builtinEmitEntry())
 
-	store.Register(builtinIntEntry())
+	store.Register(builtinIntEntryOld())
 	store.Register(builtinFloatEntry())
 	store.Register(builtinStringEntry())
 
@@ -303,14 +377,14 @@ func builtinEmit(args ...*Object) *Object {
 }
 
 // int
-func builtinIntEntry() *functionEntry {
-	fe := NewFunctionEntryOld("int", builtinInt)
+func builtinIntEntryOld() *functionEntry {
+	fe := NewFunctionEntryOld("int", builtinIntOld)
 	fe.SetArgument("target", INTEGER, FLOAT, STRING)
 	fe.SetReturn("result", INTEGER)
 	return fe
 }
 
-func builtinInt(args ...*Object) *Object {
+func builtinIntOld(args ...*Object) *Object {
 	if res, ok := IsArgCountEqual(1, args); !ok {
 		return res
 	}
@@ -363,7 +437,7 @@ func builtinString(args ...*Object) *Object {
 }
 
 // catch (handle errors)
-func builtinCatchEntry() *functionEntry {
+func builtinCatchEntryOld() *functionEntry {
 	fe := NewFunctionEntryOld("catch", builtinCatchOld)
 	fe.SetArgument("target", ANY...)
 	fe.SetArgument("fallback", BOOLEAN, INTEGER, FLOAT, STRING, ARRAY, MAP)
