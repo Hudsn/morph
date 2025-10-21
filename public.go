@@ -38,8 +38,8 @@ const (
 	ERROR     PublicType = PublicType(t_error)
 )
 
-var ANY = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, TIME, ERROR, NULL, ARROWFUNC}
 var BASIC = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, TIME, ERROR, NULL}
+var ANY = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, TIME, ERROR, NULL, ARROWFUNC}
 
 func (o *Object) AsAny() (interface{}, error) {
 	switch o.Type() {
@@ -265,6 +265,9 @@ func CastTime(value interface{}) *Object {
 }
 
 func castTimeStringCase(s string) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t, nil
+	}
 	if t, err := time.Parse(time.RFC3339, s); err == nil {
 		return t, nil
 	}
@@ -373,11 +376,11 @@ func CastFloat(value interface{}) *Object {
 	case int64:
 		ret.inner = &objectFloat{value: float64(v)}
 	case string:
-		i, err := strconv.Atoi(v)
+		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			return ObjectError("unable to cast string as FLOAT. invalid string: %s", v)
 		}
-		ret.inner = &objectFloat{value: float64(i)}
+		ret.inner = &objectFloat{value: f}
 	default:
 		return ObjectError("unable to cast type as FLOAT. unsupported type")
 	}

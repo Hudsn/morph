@@ -612,7 +612,7 @@ func TestBuiltinMax(t *testing.T) {
 	})
 }
 
-func TestBuiltinDrop(t *testing.T) {
+func TestBuiltinDropOld(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
 	env := newEnvironment(fnStore)
 	input := `
@@ -635,7 +635,7 @@ func TestBuiltinDrop(t *testing.T) {
 		t.Errorf("expected drop() to cause the env to be empty. got len=%d", len(env.store))
 	}
 }
-func TestBuiltinEmit(t *testing.T) {
+func TestBuiltinEmitOld(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
 	env := newEnvironment(fnStore)
 	input := `
@@ -665,7 +665,7 @@ func TestBuiltinEmit(t *testing.T) {
 	testConvertObject(t, res, "mydatastring")
 }
 
-func TestBuiltinInt(t *testing.T) {
+func TestBuiltinIntOld(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
 	env := newEnvironment(fnStore)
 	input := `
@@ -689,7 +689,7 @@ func TestBuiltinInt(t *testing.T) {
 	}
 	testConvertObjectInt(t, res, int64(want))
 }
-func TestBuiltinFloat(t *testing.T) {
+func TestBuiltinFloatOld(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
 	env := newEnvironment(fnStore)
 	input := `
@@ -713,7 +713,7 @@ func TestBuiltinFloat(t *testing.T) {
 	}
 	testConvertObjectFloat(t, res, float64(want))
 }
-func TestBuiltinString(t *testing.T) {
+func TestBuiltinStringOld(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
 	env := newEnvironment(fnStore)
 	input := `
@@ -762,7 +762,7 @@ func TestBuiltinCatchOLD(t *testing.T) {
 	testConvertObjectInt(t, res, int64(want))
 }
 
-func TestBuiltinCoalesce(t *testing.T) {
+func TestBuiltinCoalesceOld(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
 	env := newEnvironment(fnStore)
 	input := `
@@ -889,11 +889,10 @@ func TestBuiltinNow(t *testing.T) {
 	}
 }
 
-func TestBuiltinTime(t *testing.T) {
+func TestBuiltinTimeOld(t *testing.T) {
 	tInt := 1759782264
 	start := time.Unix(int64(tInt), 0).UTC()
 	addStr := start.Format(time.RFC3339)
-
 	input := `
 	SET time_int = 1759782264
 	SET time_float = 1759782264.0

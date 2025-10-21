@@ -12,8 +12,20 @@ import (
 func newBuiltinFunctionStore() *FunctionStore {
 	store := NewFunctionStore()
 
+	//nulls and err handling
 	store.Register(builtinCatchEntry())
+	store.Register(builtinCoalesceEntry())
+	store.Register(builtinFallbackEntry())
+
+	//type coercion
 	store.Register(builtinIntEntry())
+	store.Register(builtinFloatEntry())
+	store.Register(builtinStringEntry())
+	store.Register(builtinTimeEntry())
+
+	//flow control
+	store.Register(builtinDropEntry())
+	store.Register(builtinEmitEntry())
 
 	return store
 }
@@ -39,7 +51,7 @@ The argument can also be an arrow function callback, where the target error stri
 		WithReturn(
 			NewFunctionReturn(
 				"the item or fallback, depending on whether the item is an error or not, respectively",
-				ANY...,
+				BASIC...,
 			),
 		),
 		WithTags(FUNCTION_TAG_ERR_NULL_CHECKS),
@@ -106,6 +118,132 @@ func builtinCatch(ctx context.Context, args ...*Object) *Object {
 	}
 	return target
 }
+func builtinFallbackEntry() *FunctionEntry {
+	return NewFunctionEntry(
+		"coalesce",
+		"Checks if target item is null or an error. If the item is null or evaluates to null, the fallback is returned. If not, the item is returned",
+		builtinFallback,
+		WithArgs(
+			NewFunctionArg(
+				"item",
+				"The expression to check for being null or an error",
+				BASIC...,
+			),
+			NewFunctionArg(
+				"fallback",
+				`The value to use as a fallback if the target item is null or an error.`,
+				BASIC...,
+			),
+		),
+		WithReturn(
+			NewFunctionReturn(
+				"the item or fallback, depending on whether the item is null or an error, or not, respectively",
+				BASIC...,
+			),
+		),
+		WithTags(FUNCTION_TAG_ERR_NULL_CHECKS),
+		WithExamples(
+			NewProgramExample(
+				``,
+				`//using the target (no null or error)
+SET this_exists = "hello world"
+SET @out.result = fallback(this_exists, "goodbye world")`,
+				`{"result": "hello world"}`,
+			),
+			NewProgramExample(
+				``,
+				`//using the fallback (error)
+SET @out.result = fallback(int("goodbye world"), "saved the world")`,
+				`{"result": "saved the world"}`,
+			),
+			NewProgramExample(
+				``,
+				`//using the fallback (null)
+SET @out.result = fallback(this.doesnt.exist, "saved the world")`,
+				`{"result": "saved the world"}`,
+			),
+			NewProgramExample(
+				``,
+				`//using pipe syntax
+SET @out.result = this.doesnt.exist | fallback("saved the world")`,
+				`{"result": "saved the world"}`,
+			),
+		),
+	)
+}
+
+func builtinFallback(ctx context.Context, args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
+	}
+	target := args[0]
+	fallback := args[1]
+	target.Type()
+	if target.Type() == string(NULL) || target.Type() == string(ERROR) {
+		return fallback
+	}
+	return target
+}
+func builtinCoalesceEntry() *FunctionEntry {
+	return NewFunctionEntry(
+		"coalesce",
+		"Checks if target item is null. If the item is null or evaluates to null, the fallback is returned. If not, the item is returned",
+		builtinCoalesce,
+		WithArgs(
+			NewFunctionArg(
+				"item",
+				"The expression to check for being null",
+				BASIC...,
+			),
+			NewFunctionArg(
+				"fallback",
+				`The value to use as a fallback if the target item is null.`,
+				BASIC...,
+			),
+		),
+		WithReturn(
+			NewFunctionReturn(
+				"the item or fallback, depending on whether the item is null or not, respectively",
+				BASIC...,
+			),
+		),
+		WithTags(FUNCTION_TAG_ERR_NULL_CHECKS),
+		WithExamples(
+			NewProgramExample(
+				``,
+				`//using the target (no null)
+SET this_exists = "hello world"
+SET @out.result = coalesce(this_exists, "goodbye world")`,
+				`{"result": "hello world"}`,
+			),
+			NewProgramExample(
+				``,
+				`//using the fallback (null)
+SET @out.result = coalesce(this.doesnt.exist, "saved the world")`,
+				`{"result": "saved the world"}`,
+			),
+			NewProgramExample(
+				``,
+				`//using pipe syntax
+SET @out.result = this.doesnt.exist | coalesce("saved the world")`,
+				`{"result": "saved the world"}`,
+			),
+		),
+	)
+}
+
+func builtinCoalesce(ctx context.Context, args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(2, args); !ok {
+		return res
+	}
+	target := args[0]
+	fallback := args[1]
+	target.Type()
+	if target.Type() == string(NULL) {
+		return fallback
+	}
+	return target
+}
 
 func builtinIntEntry() *FunctionEntry {
 	return NewFunctionEntry(
@@ -116,7 +254,7 @@ func builtinIntEntry() *FunctionEntry {
 		WithArgs(
 			NewFunctionArg(
 				"target",
-				"The expression to convert into an INTEGER",
+				"The expression to convert into an integer",
 				FLOAT, STRING, INTEGER,
 			),
 		),
@@ -126,7 +264,7 @@ func builtinIntEntry() *FunctionEntry {
 				INTEGER,
 			),
 		),
-		WithTags(FUNCTION_TAG_GENERAL),
+		WithTags(FUNCTION_TAG_TYPE_COERCION),
 		WithExamples(
 			NewProgramExample(
 				``,
@@ -149,6 +287,201 @@ func builtinInt(ctx context.Context, args ...*Object) *Object {
 	return CastInt(val)
 }
 
+func builtinFloat(ctx context.Context, args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(1, args); !ok {
+		return res
+	}
+	a := args[0]
+	val, err := a.AsAny()
+	if err != nil {
+		return ObjectError("unable to cast item as FLOAT. invalid input type: %s", a.Type())
+	}
+	return CastFloat(val)
+}
+func builtinFloatEntry() *FunctionEntry {
+	return NewFunctionEntry(
+		"float",
+		"Attempts to convert the target item into a float type",
+		builtinFloat,
+
+		WithArgs(
+			NewFunctionArg(
+				"target",
+				"The expression to convert into a float",
+				INTEGER, STRING, FLOAT,
+			),
+		),
+		WithReturn(
+			NewFunctionReturn(
+				"The resultant float after conversion. Throws an error if unable to convert.",
+				FLOAT,
+			),
+		),
+		WithTags(FUNCTION_TAG_TYPE_COERCION),
+		WithExamples(
+			NewProgramExample(
+				``,
+				`SET @out.result = float("5.5")`,
+				`{"result": 5.5}`,
+			),
+		),
+	)
+}
+
+func builtinStringEntry() *FunctionEntry {
+	return NewFunctionEntry(
+		"string",
+		"Attempts to convert the target item into a string type",
+		builtinString,
+
+		WithArgs(
+			NewFunctionArg(
+				"target",
+				"The expression to convert into a string",
+				INTEGER, FLOAT, BOOLEAN, TIME, STRING,
+			),
+		),
+		WithReturn(
+			NewFunctionReturn(
+				"The resultant string after conversion. Throws an error if unable to convert.",
+				STRING,
+			),
+		),
+		WithTags(FUNCTION_TAG_TYPE_COERCION),
+		WithExamples(
+			NewProgramExample(
+				``,
+				`SET @out.result = string(5.5)`,
+				`{"result": "5.5"}`,
+			),
+		),
+	)
+}
+func builtinString(ctx context.Context, args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(1, args); !ok {
+		return res
+	}
+	a := args[0]
+	val, err := a.AsAny()
+	if err != nil {
+		return ObjectError("unable to convert item to STRING. invalid input type: %s", a.Type())
+	}
+	return CastString(val)
+}
+
+func builtinTimeEntry() *FunctionEntry {
+	return NewFunctionEntry(
+		"time",
+		`Attempts to convert the target item into a time type.`,
+		builtinTime,
+
+		WithArgs(
+			NewFunctionArg(
+				"target",
+				`The expression to convert into a time.
+Strings must be in RFC3339/RFC3339Nano format, or directly convertible to a number representing UNIX time as described below.
+Integers must represent UNIX time in seconds.
+Floats must represent UNIX time in seconds with nanosecond precision`,
+				TIME, INTEGER, FLOAT, STRING,
+			),
+		),
+		WithReturn(
+			NewFunctionReturn(
+				"The resultant time object after conversion. Throws an error if unable to convert.",
+				TIME,
+			),
+		),
+		WithTags(FUNCTION_TAG_TYPE_COERCION),
+		WithExamples(
+			NewProgramExample(
+				`{"int_unix": 1759782264}`,
+				`//parse an integer as unix time in seconds
+SET @out.result = time(@src.int_unix) | string()`,
+				`{"result": "2025-10-06T20:24:24Z"}`,
+			),
+		),
+		WithExamples(
+			NewProgramExample(
+				`{"float_unix": 1759782264.0}`,
+				`//parse a float as unix time in seconds w/ nanosecond precision
+SET @out.result = time(@src.float_unix) | string()`,
+				`{"result": "2025-10-06T20:24:24Z"}`,
+			),
+			NewProgramExample(
+				`{string": "2025-10-06T20:24:24Z"}`,
+				`//parse an RFC3339 string
+SET @out.result = time(@src.string) | string()`,
+				`{"result": "2025-10-06T20:24:24Z"}`,
+			),
+			NewProgramExample(
+				`{string_unix": "1759782264"}`,
+				`//parse a string as unix time in seconds
+SET @out.result = time(@src.string_unix) | string()`,
+				`{"result": "2025-10-06T20:24:24Z"}`,
+			),
+		),
+	)
+}
+func builtinTime(ctx context.Context, args ...*Object) *Object {
+	if res, ok := IsArgCountEqual(1, args); !ok {
+		return res
+	}
+	a := args[0]
+	val, err := a.AsAny()
+	if err != nil {
+		return ObjectError("unable to convert item to TIME. invalid input type: %s", a.Type())
+	}
+	return CastTime(val)
+}
+
+func builtinDropEntry() *FunctionEntry {
+	return NewFunctionEntry(
+		"drop",
+		"Stops the current run of Morph statements, and returns NULL",
+		builtinDrop,
+
+		WithTags(FUNCTION_TAG_FLOW_CONTROL),
+		WithExamples(
+			NewProgramExample(
+				``,
+				`SET @out.result = 100
+drop()`,
+				`null`,
+			),
+		),
+	)
+}
+func builtinDrop(ctx context.Context, args ...*Object) *Object {
+	if ret, ok := IsArgCountEqual(0, args); !ok {
+		return ret
+	}
+	return ObjectTerminateDrop
+}
+func builtinEmitEntry() *FunctionEntry {
+	return NewFunctionEntry(
+		"emit",
+		"Stops the current run of Morph statements, and returns data in its current state",
+		builtinEmit,
+
+		WithTags(FUNCTION_TAG_FLOW_CONTROL),
+		WithExamples(
+			NewProgramExample(
+				``,
+				`SET @out.result = 100
+emit()
+SET @out.result = 0`,
+				`{"result": 100}`,
+			),
+		),
+	)
+}
+func builtinEmit(ctx context.Context, args ...*Object) *Object {
+	if ret, ok := IsArgCountEqual(0, args); !ok {
+		return ret
+	}
+	return ObjectTerminate
+}
+
 //
 //
 // OLD
@@ -157,15 +490,15 @@ func newBuiltinFuncStore() *functionStore {
 	store := newFunctionStore()
 
 	store.Register(builtinCatchEntryOld())
-	store.Register(builtinCoalesceEntry())
-	store.Register(builtinFallbackEntry())
+	store.Register(builtinCoalesceEntryOld())
+	store.Register(builtinFallbackEntryOld())
 
-	store.Register(builtinDropEntry())
-	store.Register(builtinEmitEntry())
+	store.Register(builtinDropEntryOld())
+	store.Register(builtinEmitEntryOld())
 
 	store.Register(builtinIntEntryOld())
-	store.Register(builtinFloatEntry())
-	store.Register(builtinStringEntry())
+	store.Register(builtinFloatEntryOld())
+	store.Register(builtinStringEntryOld())
 
 	store.Register(builtinLenEntry())
 	store.Register(builtinMinEntry())
@@ -175,10 +508,10 @@ func newBuiltinFuncStore() *functionStore {
 	store.Register(builtinAppendEntry())
 
 	store.Register(builtinMapEntry())
-	store.Register(builtinReduceEntry())
 	store.Register(builtinFilterEntry())
+	store.Register(builtinReduceEntry())
 
-	store.Register(builtinTimeEntry())
+	store.Register(builtinTimeEntryOld())
 	store.Register(builtinNowEntry())
 	store.Register(builtinParseTimeEntry())
 
@@ -351,12 +684,12 @@ func builtinMax(args ...*Object) *Object {
 }
 
 // drop
-func builtinDropEntry() *functionEntry {
-	fe := NewFunctionEntryOld("drop", builtinDrop)
+func builtinDropEntryOld() *functionEntry {
+	fe := NewFunctionEntryOld("drop", builtinDropOld)
 	return fe
 }
 
-func builtinDrop(args ...*Object) *Object {
+func builtinDropOld(args ...*Object) *Object {
 	if ret, ok := IsArgCountEqual(0, args); !ok {
 		return ret
 	}
@@ -364,12 +697,12 @@ func builtinDrop(args ...*Object) *Object {
 }
 
 // emit
-func builtinEmitEntry() *functionEntry {
-	fe := NewFunctionEntryOld("emit", builtinEmit)
+func builtinEmitEntryOld() *functionEntry {
+	fe := NewFunctionEntryOld("emit", builtinEmitOld)
 	return fe
 }
 
-func builtinEmit(args ...*Object) *Object {
+func builtinEmitOld(args ...*Object) *Object {
 	if ret, ok := IsArgCountEqual(0, args); !ok {
 		return ret
 	}
@@ -397,14 +730,14 @@ func builtinIntOld(args ...*Object) *Object {
 }
 
 // float
-func builtinFloatEntry() *functionEntry {
-	fe := NewFunctionEntryOld("float", builtinFloat)
+func builtinFloatEntryOld() *functionEntry {
+	fe := NewFunctionEntryOld("float", builtinFloatOld)
 	fe.SetArgument("target", INTEGER, FLOAT, STRING)
 	fe.SetReturn("result", FLOAT)
 	return fe
 }
 
-func builtinFloat(args ...*Object) *Object {
+func builtinFloatOld(args ...*Object) *Object {
 	if res, ok := IsArgCountEqual(1, args); !ok {
 		return res
 	}
@@ -417,14 +750,14 @@ func builtinFloat(args ...*Object) *Object {
 }
 
 // string
-func builtinStringEntry() *functionEntry {
-	fe := NewFunctionEntryOld("string", builtinString)
+func builtinStringEntryOld() *functionEntry {
+	fe := NewFunctionEntryOld("string", builtinStringOld)
 	fe.SetArgument("target", INTEGER, FLOAT, STRING, BOOLEAN)
 	fe.SetReturn("result", STRING)
 	return fe
 }
 
-func builtinString(args ...*Object) *Object {
+func builtinStringOld(args ...*Object) *Object {
 	if res, ok := IsArgCountEqual(1, args); !ok {
 		return res
 	}
@@ -459,15 +792,15 @@ func builtinCatchOld(args ...*Object) *Object {
 }
 
 // coalesce (catch nulls)
-func builtinCoalesceEntry() *functionEntry {
-	fe := NewFunctionEntryOld("coalesce", builtinCoalesce)
+func builtinCoalesceEntryOld() *functionEntry {
+	fe := NewFunctionEntryOld("coalesce", builtinCoalesceOld)
 	fe.SetArgument("target", ANY...)
 	fe.SetArgument("fallback", BOOLEAN, INTEGER, FLOAT, STRING, ARRAY, MAP)
 	fe.SetReturn("result", ANY...)
 	return fe
 }
 
-func builtinCoalesce(args ...*Object) *Object {
+func builtinCoalesceOld(args ...*Object) *Object {
 	if res, ok := IsArgCountEqual(2, args); !ok {
 		return res
 	}
@@ -480,15 +813,15 @@ func builtinCoalesce(args ...*Object) *Object {
 }
 
 // fallback (catch errors or nulls)
-func builtinFallbackEntry() *functionEntry {
-	fe := NewFunctionEntryOld("fallback", builtinFallback)
+func builtinFallbackEntryOld() *functionEntry {
+	fe := NewFunctionEntryOld("fallback", builtinFallbackOld)
 	fe.SetArgument("target", ANY...)
 	fe.SetArgument("fallback", BOOLEAN, INTEGER, FLOAT, STRING, ARRAY, MAP)
 	fe.SetReturn("result", ANY...)
 	return fe
 }
 
-func builtinFallback(args ...*Object) *Object {
+func builtinFallbackOld(args ...*Object) *Object {
 	if res, ok := IsArgCountEqual(2, args); !ok {
 		return res
 	}
@@ -796,14 +1129,14 @@ func builtinAppend(args ...*Object) *Object {
 }
 
 // time
-func builtinTimeEntry() *functionEntry {
-	fe := NewFunctionEntryOld("time", builtinTime)
+func builtinTimeEntryOld() *functionEntry {
+	fe := NewFunctionEntryOld("time", builtinTimeOld)
 	fe.SetArgument("input", TIME, INTEGER, FLOAT, STRING)
 	fe.SetReturn("result", TIME)
 	return fe
 }
 
-func builtinTime(args ...*Object) *Object {
+func builtinTimeOld(args ...*Object) *Object {
 	if res, ok := IsArgCountEqual(1, args); !ok {
 		return res
 	}

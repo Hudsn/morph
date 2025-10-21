@@ -105,7 +105,7 @@ func (fe *FunctionEntry) fullName() string {
 }
 
 // returns the function signature string
-func (fe *FunctionEntry) signature() string {
+func (fe *FunctionEntry) Signature() string {
 	argStrList := []string{}
 	for _, a := range fe.Args {
 		argStrList = append(argStrList, a.typesString())
@@ -120,7 +120,7 @@ func (fe *FunctionEntry) signature() string {
 
 func (fe *FunctionEntry) run(ctx context.Context, args ...object) object {
 	if len(args) < len(fe.Args) {
-		return newObjectErrWithoutLC("function %q too few arguments supplied. want=%d got=%d\n\tfunction signature: %s", fe.fullName(), len(fe.Args), len(args), fe.signature())
+		return newObjectErrWithoutLC("function %q too few arguments supplied. want=%d got=%d\n\tfunction signature: %s", fe.fullName(), len(fe.Args), len(args), fe.Signature())
 	}
 
 	for argIdx, wantArg := range fe.Args {
@@ -129,7 +129,7 @@ func (fe *FunctionEntry) run(ctx context.Context, args ...object) object {
 		}
 		arg := args[argIdx]
 		if !slices.Contains(wantArg.Types, PublicType(arg.getType())) {
-			return newObjectErrWithoutLC("function %q invalid argument type for %q. want=%s. got=%s\n\tfunction signature: %s", fe.fullName(), wantArg.Name, wantArg.typesString(), arg.getType(), fe.signature())
+			return newObjectErrWithoutLC("function %q invalid argument type for %q. want=%s. got=%s\n\tfunction signature: %s", fe.fullName(), wantArg.Name, wantArg.typesString(), arg.getType(), fe.Signature())
 		}
 	}
 	if err := fe.checkVariadic(args...); err != nil {
@@ -141,7 +141,7 @@ func (fe *FunctionEntry) run(ctx context.Context, args ...object) object {
 	}
 	if fe.Return != nil {
 		if !slices.Contains(fe.Return.Types, PublicType(ret.getType())) {
-			return newObjectErr("function %q invalid return type. want=%s got=%s\n\tfunction signature: %s", fe.Name, fe.Return.typesString(), ret.getType(), fe.signature())
+			return newObjectErrWithoutLC("function %q invalid return type. want=%s got=%s\n\tfunction signature: %s", fe.Name, fe.Return.typesString(), ret.getType(), fe.Signature())
 		}
 	}
 	return ret
@@ -202,6 +202,7 @@ func WithTags(tags ...FunctionTag) functionEntryOpt {
 			fe.Tags = tags
 			return
 		}
+		// if multiple tags apply, also add the General tag
 		fe.Tags = append([]FunctionTag{"General"}, tags...)
 	}
 }
@@ -239,7 +240,7 @@ func (fa FunctionArg) typesString() string {
 	isBasic := true
 	for _, t := range BASIC {
 		if !slices.Contains(fa.Types, t) {
-			isAny = false
+			isBasic = false
 			break
 		}
 	}
@@ -274,7 +275,17 @@ func (fr *FunctionReturn) typesString() string {
 		}
 	}
 	if isAny {
-		return "ANY_BASIC"
+		return "ANY"
+	}
+	isBasic := true
+	for _, t := range BASIC {
+		if !slices.Contains(fr.Types, t) {
+			isBasic = false
+			break
+		}
+	}
+	if isBasic {
+		return "BASIC"
 	}
 	strs := []string{}
 	for _, t := range fr.Types {
@@ -295,6 +306,7 @@ const (
 	FUNCTION_TAG_GENERAL         FunctionTag = "General"
 	FUNCTION_TAG_TYPE_COERCION   FunctionTag = "Type Coercion"
 	FUNCTION_TAG_ERR_NULL_CHECKS FunctionTag = "Error and Null Checks"
+	FUNCTION_TAG_FLOW_CONTROL    FunctionTag = "Flow Control"
 )
 
 type ProgramExample struct {
