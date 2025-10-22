@@ -38,7 +38,8 @@ const (
 	ERROR     PublicType = PublicType(t_error)
 )
 
-var BASIC = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, TIME, ERROR, NULL}
+var BASIC_WITHOUT_ERROR = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, TIME, NULL}
+var BASIC = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, TIME, NULL, ERROR}
 var ANY = []PublicType{INTEGER, FLOAT, BOOLEAN, STRING, MAP, ARRAY, TIME, ERROR, NULL, ARROWFUNC}
 
 func (o *Object) AsAny() (interface{}, error) {

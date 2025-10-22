@@ -264,6 +264,15 @@ func (p *parser) parseMapLiteral() expression {
 		if p.hasErrors() {
 			return nil
 		}
+
+		// switch v := key.(type) {
+		// case *stringLiteral:
+		// case *identifierExpression:
+		// case *templateExpression:
+		// default:
+		// 	p.err(fmt.Sprintf("map keys must be a string literal, a template literal, or an identifier. got=%s", v.token().tokenType), key.position().start)
+		// }
+
 		strNode, ok := key.(*stringLiteral)
 		if !ok {
 			p.err("map key expression must be a string literal", key.position().start)
