@@ -520,7 +520,7 @@ func TestBuiltinAppend(t *testing.T) {
 	testConvertObject(t, res, want)
 }
 
-func TestBuiltinLen(t *testing.T) {
+func TestBuiltinLenOld(t *testing.T) {
 	fnStore := newBuiltinFuncStore()
 	env := newEnvironment(fnStore)
 	arr := convertArrayToObject([]interface{}{"a", "b", "c"}, false)

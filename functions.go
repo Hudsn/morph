@@ -184,7 +184,7 @@ func (fe *functionEntry) run(ctx context.Context, args ...object) object {
 		}
 		arg := args[argIdx]
 		if !slices.Contains(wantArg.types, PublicType(arg.getType())) {
-			return newObjectErrWithoutLC("function %q invalid argument type for %q. want=%s. got=%s\n\tfunction signature: %s", fe.name, wantArg.name, wantArg.typesString(), arg.getType(), fe.string())
+			return newObjectErrWithoutLC("OLD function %q invalid argument type for %q. want=%s. got=%s\n\tfunction signature: %s", fe.name, wantArg.name, wantArg.typesString(), arg.getType(), fe.string())
 		}
 	}
 	if err := fe.checkVariadic(args...); err != nil {

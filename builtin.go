@@ -27,6 +27,9 @@ func newBuiltinFunctionStore() *FunctionStore {
 	store.Register(builtinDropEntry())
 	store.Register(builtinEmitEntry())
 
+	//general
+	store.Register(builtinLenEntry())
+
 	return store
 }
 
@@ -57,32 +60,32 @@ The argument can also be an arrow function callback, where the target error stri
 		WithTags(FUNCTION_TAG_ERR_NULL_CHECKS),
 		WithExamples(
 			NewProgramExample(
-				``,
+				`null`,
 				`//using the target (no error)
 SET @out.result = catch("hello world", "goodbye world")`,
 				`{"result": "hello world"}`,
 			),
 			NewProgramExample(
-				``,
+				`null`,
 				`//using the fallback (error)
 SET @out.result = catch(int("goodbye world"), "saved the world")`,
 				`{"result": "saved the world"}`,
 			),
 			NewProgramExample(
-				``,
+				`null`,
 				`//using pipe syntax
 SET @out.result = int("goodbye world") | catch("saved the world")`,
 				`{"result": "saved the world"}`,
 			),
 			NewProgramExample(
-				``,
+				`null`,
 				`//using arrow callback syntax
 SET @out.result = catch(int("goodbye world"), err ~> {
 	SET return = {
 		"err_msg": err
 	} 
 })`,
-				`{"result": {"err_msg": "unable to convert item to INTEGER. invalid input type: STRING"}}`,
+				`{"result": {"err_msg": "unable to cast string as INTEGER. invalid string"}}`,
 			),
 		),
 	)
@@ -120,7 +123,7 @@ func builtinCatch(ctx context.Context, args ...*Object) *Object {
 }
 func builtinFallbackEntry() *FunctionEntry {
 	return NewFunctionEntry(
-		"coalesce",
+		"fallback",
 		"Checks if target item is null or an error. If the item is null or evaluates to null, the fallback is returned. If not, the item is returned",
 		builtinFallback,
 		WithArgs(
@@ -144,26 +147,26 @@ func builtinFallbackEntry() *FunctionEntry {
 		WithTags(FUNCTION_TAG_ERR_NULL_CHECKS),
 		WithExamples(
 			NewProgramExample(
-				``,
+				`null`,
 				`//using the target (no null or error)
 SET this_exists = "hello world"
 SET @out.result = fallback(this_exists, "goodbye world")`,
 				`{"result": "hello world"}`,
 			),
 			NewProgramExample(
-				``,
+				`null`,
 				`//using the fallback (error)
 SET @out.result = fallback(int("goodbye world"), "saved the world")`,
 				`{"result": "saved the world"}`,
 			),
 			NewProgramExample(
-				``,
+				`null`,
 				`//using the fallback (null)
 SET @out.result = fallback(this.doesnt.exist, "saved the world")`,
 				`{"result": "saved the world"}`,
 			),
 			NewProgramExample(
-				``,
+				`null`,
 				`//using pipe syntax
 SET @out.result = this.doesnt.exist | fallback("saved the world")`,
 				`{"result": "saved the world"}`,
@@ -210,20 +213,20 @@ func builtinCoalesceEntry() *FunctionEntry {
 		WithTags(FUNCTION_TAG_ERR_NULL_CHECKS),
 		WithExamples(
 			NewProgramExample(
-				``,
+				`null`,
 				`//using the target (no null)
 SET this_exists = "hello world"
 SET @out.result = coalesce(this_exists, "goodbye world")`,
 				`{"result": "hello world"}`,
 			),
 			NewProgramExample(
-				``,
+				`null`,
 				`//using the fallback (null)
 SET @out.result = coalesce(this.doesnt.exist, "saved the world")`,
 				`{"result": "saved the world"}`,
 			),
 			NewProgramExample(
-				``,
+				`null`,
 				`//using pipe syntax
 SET @out.result = this.doesnt.exist | coalesce("saved the world")`,
 				`{"result": "saved the world"}`,
@@ -267,7 +270,7 @@ func builtinIntEntry() *FunctionEntry {
 		WithTags(FUNCTION_TAG_TYPE_COERCION),
 		WithExamples(
 			NewProgramExample(
-				``,
+				`null`,
 				`SET @out.result = int("5")`,
 				`{"result": 5}`,
 			),
@@ -320,7 +323,7 @@ func builtinFloatEntry() *FunctionEntry {
 		WithTags(FUNCTION_TAG_TYPE_COERCION),
 		WithExamples(
 			NewProgramExample(
-				``,
+				`null`,
 				`SET @out.result = float("5.5")`,
 				`{"result": 5.5}`,
 			),
@@ -350,7 +353,7 @@ func builtinStringEntry() *FunctionEntry {
 		WithTags(FUNCTION_TAG_TYPE_COERCION),
 		WithExamples(
 			NewProgramExample(
-				``,
+				`null`,
 				`SET @out.result = string(5.5)`,
 				`{"result": "5.5"}`,
 			),
@@ -396,7 +399,7 @@ Floats must represent UNIX time in seconds with nanosecond precision`,
 			NewProgramExample(
 				`{"int_unix": 1759782264}`,
 				`//parse an integer as unix time in seconds
-SET @out.result = time(@src.int_unix) | string()`,
+SET @out.result = time(@in.int_unix) | string()`,
 				`{"result": "2025-10-06T20:24:24Z"}`,
 			),
 		),
@@ -404,19 +407,19 @@ SET @out.result = time(@src.int_unix) | string()`,
 			NewProgramExample(
 				`{"float_unix": 1759782264.0}`,
 				`//parse a float as unix time in seconds w/ nanosecond precision
-SET @out.result = time(@src.float_unix) | string()`,
+SET @out.result = time(@in.float_unix) | string()`,
 				`{"result": "2025-10-06T20:24:24Z"}`,
 			),
 			NewProgramExample(
-				`{string": "2025-10-06T20:24:24Z"}`,
+				`{"string": "2025-10-06T20:24:24Z"}`,
 				`//parse an RFC3339 string
-SET @out.result = time(@src.string) | string()`,
+SET @out.result = time(@in.string) | catch(err ~> { SET return = err }) | string()  `,
 				`{"result": "2025-10-06T20:24:24Z"}`,
 			),
 			NewProgramExample(
-				`{string_unix": "1759782264"}`,
+				`{"string_unix": "1759782264"}`,
 				`//parse a string as unix time in seconds
-SET @out.result = time(@src.string_unix) | string()`,
+SET @out.result = time(@in.string_unix) | string()`,
 				`{"result": "2025-10-06T20:24:24Z"}`,
 			),
 		),
@@ -443,7 +446,7 @@ func builtinDropEntry() *FunctionEntry {
 		WithTags(FUNCTION_TAG_FLOW_CONTROL),
 		WithExamples(
 			NewProgramExample(
-				``,
+				`null`,
 				`SET @out.result = 100
 drop()`,
 				`null`,
@@ -466,7 +469,7 @@ func builtinEmitEntry() *FunctionEntry {
 		WithTags(FUNCTION_TAG_FLOW_CONTROL),
 		WithExamples(
 			NewProgramExample(
-				``,
+				`null`,
 				`SET @out.result = 100
 emit()
 SET @out.result = 0`,
@@ -480,6 +483,81 @@ func builtinEmit(ctx context.Context, args ...*Object) *Object {
 		return ret
 	}
 	return ObjectTerminate
+}
+
+func builtinLenEntry() *FunctionEntry {
+	return NewFunctionEntry(
+		"len",
+		"Gets the length of the target string, array, or map",
+		builtinLen,
+
+		WithArgs(
+			NewFunctionArg(
+				"target",
+				"The item to check for length",
+				STRING, ARRAY, MAP,
+			),
+		),
+		WithReturn(
+			NewFunctionReturn(
+				"The length of the target",
+				INTEGER,
+			),
+		),
+		WithTags(FUNCTION_TAG_GENERAL, FUNCTION_TAG_MAPS, FUNCTION_TAG_ARRAYS, FUNCTION_TAG_STRINGS),
+		WithExamples(
+			NewProgramExample(
+				`null`,
+				`//len of string
+SET @out.result = len("car")`,
+				`{"result": 3}`,
+			),
+			NewProgramExample(
+				`null`,
+				`//len of array
+SET @out.result = len(["a", "b", "c"])`,
+				`{"result": 3}`,
+			),
+			NewProgramExample(
+				`{"k1": "v1", "k2": "v2", "k3": "v3"}`,
+				`//len of map
+SET @out.result = len(@in)`,
+				`{"result": 3}`,
+			),
+		),
+	)
+}
+func builtinLen(ctx context.Context, args ...*Object) *Object {
+	if len(args) != 1 {
+		return ObjectError("function len() requires a single argument. got=%d", len(args))
+	}
+	arg := args[0]
+	acceptableTypes := []string{string(ARRAY), string(STRING), string(MAP)}
+	if !slices.Contains(acceptableTypes, arg.Type()) {
+		return ObjectError("invalid argument type. Expect one of STRING, ARRAY, or MAP. got=%s", arg.Type())
+	}
+	ret := 0
+	switch arg.Type() {
+	case string(STRING):
+		s, err := arg.AsString()
+		if err != nil {
+			ObjectError(err.Error())
+		}
+		ret = len(s)
+	case string(ARRAY):
+		a, err := arg.AsArray()
+		if err != nil {
+			return ObjectError(err.Error())
+		}
+		ret = len(a)
+	case string(MAP):
+		m, err := arg.AsMap()
+		if err != nil {
+			return ObjectError(err.Error())
+		}
+		ret = len(m)
+	}
+	return CastInt(ret)
 }
 
 //
@@ -499,8 +577,9 @@ func newBuiltinFuncStore() *functionStore {
 	store.Register(builtinIntEntryOld())
 	store.Register(builtinFloatEntryOld())
 	store.Register(builtinStringEntryOld())
+	store.Register(builtinTimeEntryOld())
 
-	store.Register(builtinLenEntry())
+	store.Register(builtinLenEntryOld())
 	store.Register(builtinMinEntry())
 	store.Register(builtinMaxEntry())
 
@@ -511,7 +590,6 @@ func newBuiltinFuncStore() *functionStore {
 	store.Register(builtinFilterEntry())
 	store.Register(builtinReduceEntry())
 
-	store.Register(builtinTimeEntryOld())
 	store.Register(builtinNowEntry())
 	store.Register(builtinParseTimeEntry())
 
@@ -519,14 +597,14 @@ func newBuiltinFuncStore() *functionStore {
 }
 
 // len
-func builtinLenEntry() *functionEntry {
-	l := NewFunctionEntryOld("len", builtinLen)
+func builtinLenEntryOld() *functionEntry {
+	l := NewFunctionEntryOld("len", builtinLenOld)
 	l.SetArgument("target", STRING, ARRAY, MAP)
 	l.SetReturn("length", INTEGER)
 	return l
 }
 
-func builtinLen(args ...*Object) *Object {
+func builtinLenOld(args ...*Object) *Object {
 	if len(args) != 1 {
 		return ObjectError("function len() requires a single argument. got=%d", len(args))
 	}

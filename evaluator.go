@@ -190,7 +190,6 @@ func (c *callExpression) eval(env *environment) object {
 	var err error
 	switch v := c.name.(type) {
 	case *identifierExpression:
-		// fnEntry, err = env.functions.get(v.value)
 		fnEntry, err = env.getFunction(v.value)
 		if err != nil {
 			return newObjectErr(v.token().lineCol, err.Error())
@@ -225,7 +224,6 @@ func evalResolvePathForFunction(pathExpr *pathExpression, key string, env *envir
 	switch v := pathExpr.left.(type) {
 	case *identifierExpression:
 		namespace := v.value
-		// return env.functions.getNamespace(namespace, key)
 		return env.getFunctionByNamespace(namespace, key)
 	}
 	return nil, fmt.Errorf("function path must be composed of valid identifiers")

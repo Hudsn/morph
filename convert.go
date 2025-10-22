@@ -16,7 +16,7 @@ func convertBytesToObject(bytes []byte) object {
 	var raw interface{}
 	err := json.Unmarshal(bytes, &raw)
 	if err != nil {
-		return newObjectErr("invalid json: %s", err.Error())
+		return newObjectErrWithoutLC("invalid json: %s", err.Error())
 	}
 	obj := convertAnyToObjectJSON(raw)
 	if isObjectErr(obj) {

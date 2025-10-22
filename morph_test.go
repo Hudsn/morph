@@ -636,7 +636,7 @@ func testMorphCustomFn999(args ...*Object) *Object {
 }
 
 func checkTestMorphParseError(t *testing.T, tt testMorphError, fnStore *functionStore) error {
-	_, err := New(tt.program, WithFunctionStore(fnStore))
+	_, err := New(tt.program, WithFunctionStoreOld(fnStore))
 	if err == nil {
 		t.Fatalf("expected error to contain %q. instead got no error", tt.wantErrContains)
 	}
@@ -654,7 +654,7 @@ func checkTestMorphParseError(t *testing.T, tt testMorphError, fnStore *function
 }
 
 func checkTestMorphCase(t *testing.T, tt testMorphCase, fnStore *functionStore) bool {
-	m, err := New(tt.program, WithFunctionStore(fnStore))
+	m, err := New(tt.program, WithFunctionStoreOld(fnStore))
 	if err != nil {
 		t.Fatal(err)
 	}

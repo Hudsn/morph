@@ -296,7 +296,7 @@ Converts the target item to a time.
 Argument type must be `INTEGER`, `FLOAT`, or `STRING`
 String must be in RFC3339 format or directly convertible to a number representing UNIX time in seconds. Integer must represent UNIX time in seconds. Float must represent Unix time in seconds with nanosecond precision.
 
-### time_format(item, format_string): time
+### parse_time(item, format_string): time
 Parses the target item to a time using the specified format:
 - Format `rfc_3339` and `rfc_3339_nano` nano must be in `STRING` format
 - Format `unix` must be an `INTEGER` or `FLOAT` representing UNIX time in seconds, or their convertible `STRING` representation

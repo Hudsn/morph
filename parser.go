@@ -205,7 +205,7 @@ func (p *parser) parsePipeCall(left expression) expression {
 	right := p.parseExpression(precedence)
 	rightFunc, ok := right.(*callExpression)
 	if !ok {
-		p.err("invalid pipe call. right side of pipe must be a function call", right.position().start)
+		p.err("invalid pipe call. right side of pipe must be a function call", ret.pipeTok.start)
 		return nil
 	}
 	ret.tok = rightFunc.tok
