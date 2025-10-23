@@ -238,7 +238,6 @@ func TestLexComma(t *testing.T) {
 			rangeValue: "2",
 			line:       1,
 			col:        25,
-			// `[1, "asdf", '${myvar}', 2]`
 		},
 		{
 			tokenType:  tok_rsquare,
@@ -809,10 +808,6 @@ func TestLexSingleQuoteInterp(t *testing.T) {
 		},
 	}
 	checkLexTestCase(t, input, tests)
-	// l := newLexer([]rune(input))
-	// for range tests {
-	// 	l.tokenize()
-	// }
 }
 func TestLexSingleQuoteEscapeError(t *testing.T) {
 	input := `'mystring\v'`
@@ -1184,7 +1179,7 @@ type testCase struct {
 	col        int
 }
 
-//helepr
+//helper
 
 func checkLexTestCase(t *testing.T, input string, cases []testCase) {
 	lexer := newLexer([]rune(input))

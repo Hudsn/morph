@@ -2,17 +2,17 @@ package morph
 
 import (
 	"context"
+	"fmt"
 )
 
 type environment struct {
 	ctx           context.Context
 	store         map[string]object
-	functions     *functionStore
 	functionStore *FunctionStore
 }
 
-func newEnvironment(fstore *functionStore, opts ...newEnvArg) *environment {
-	e := &environment{functions: fstore, store: make(map[string]object)}
+func newEnvironment(fstore *FunctionStore, opts ...newEnvArg) *environment {
+	e := &environment{functionStore: fstore, store: make(map[string]object)}
 	for _, fn := range opts {
 		fn(e)
 	}
@@ -27,12 +27,6 @@ func EnvWithContext(ctx context.Context) newEnvArg {
 	}
 }
 
-func EnvWithNewFNStore(fnStore *FunctionStore) newEnvArg {
-	return func(e *environment) {
-		e.functionStore = fnStore
-	}
-}
-
 func (e *environment) get(name string) (object, bool) {
 	ret, ok := e.store[name]
 	return ret, ok
@@ -43,19 +37,14 @@ func (e *environment) set(name string, val object) object {
 	return val
 }
 
-type runnableFN interface {
-	run(ctx context.Context, args ...object) object
+func (e *environment) getFunction(name string) (*FunctionEntry, error) {
+	return e.functionStore.get("std", name)
 }
-
-func (e *environment) getFunction(name string) (runnableFN, error) {
-	if e.functionStore != nil {
-		return e.functionStore.get("", name)
+func (e *environment) getFunctionByNamespace(namespace string, name string) (*FunctionEntry, error) {
+	r, err := e.functionStore.get(namespace, name)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
 	}
-	return e.functions.get(name)
-}
-func (e *environment) getFunctionByNamespace(namespace string, name string) (runnableFN, error) {
-	if e.functionStore != nil {
-		return e.functionStore.get(namespace, name)
-	}
-	return e.functions.getNamespace(namespace, name)
+	return r, nil
 }

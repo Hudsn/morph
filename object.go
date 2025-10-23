@@ -139,7 +139,7 @@ func (b *objectBoolean) isTruthy() bool { return b.value }
 type objectArrowFunction struct {
 	paramName  string
 	statements []statement
-	functions  *functionStore
+	functions  *FunctionStore
 }
 
 func (af *objectArrowFunction) getType() objectType { return t_arrow }

@@ -3,22 +3,15 @@ package morph
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 )
 
 type morph struct {
-	program          *program
-	functionStoreOld *functionStore
-	functionStore    *FunctionStore
+	program       *program
+	functionStore *FunctionStore
 }
 
 type Opt func(*morph)
 
-func WithFunctionStoreOld(fstore *functionStore) func(*morph) {
-	return func(m *morph) {
-		m.functionStoreOld = fstore
-	}
-}
 func WithFunctionStore(fstore *FunctionStore) func(*morph) {
 	return func(m *morph) {
 		m.functionStore = fstore
@@ -35,8 +28,8 @@ func New(input string, opts ...Opt) (*morph, error) {
 	}
 
 	m := &morph{
-		program:          program,
-		functionStoreOld: NewDefaultFunctionStore(),
+		program:       program,
+		functionStore: newBuiltinFunctionStore(),
 	}
 
 	for _, fn := range opts {
@@ -48,10 +41,9 @@ func New(input string, opts ...Opt) (*morph, error) {
 func (m *morph) ToAny(inputData []byte) (interface{}, error) {
 	inputObject := convertBytesToObject(inputData)
 	if isObjectErr(inputObject) {
-		fmt.Println("SDKJSDFKJ")
 		return nil, objectToError(inputObject)
 	}
-	env := newEnvironment(m.functionStoreOld)
+	env := newEnvironment(m.functionStore)
 	if m.functionStore != nil {
 		env.functionStore = m.functionStore
 	}

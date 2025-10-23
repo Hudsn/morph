@@ -1,6 +1,7 @@
 package morph
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -23,13 +24,13 @@ func TestMorphBasicExample(t *testing.T) {
 		"🙂"
 		`,
 	}
-	checkTestMorphCase(t, test, NewEmptyFunctionStore())
+	checkTestMorphCase(t, test, NewFunctionStore())
 }
 
 func TestMorphCustomFunction(t *testing.T) {
 
-	fs := NewDefaultFunctionStore()
-	funcEntry := NewFunctionEntryOld("mycoolfunc", testMorphCustomFn999)
+	fs := DefaultFunctionStore()
+	funcEntry := NewFunctionEntry("mycoolfunc", "does come cool custom stuff", testMorphCustomFn999)
 	fs.RegisterToNamespace("myfuncs", funcEntry)
 	fs.RegisterToNamespace("std", funcEntry)
 	test := testMorphCase{
@@ -70,7 +71,7 @@ func TestMorphComments(t *testing.T) {
 		// another comment`,
 		wantJSON: `10`,
 	}
-	checkTestMorphCase(t, test, NewDefaultFunctionStore())
+	checkTestMorphCase(t, test, DefaultFunctionStore())
 }
 
 func TestMorphInvalidPathErr(t *testing.T) {
@@ -83,7 +84,7 @@ func TestMorphInvalidPathErr(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		if err := checkTestMorphParseError(t, tt, NewEmptyFunctionStore()); err != nil {
+		if err := checkTestMorphParseError(t, tt, NewFunctionStore()); err != nil {
 			t.Error(err.Error())
 		}
 	}
@@ -105,7 +106,7 @@ func TestMorphSetInErr(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		if err := checkTestMorphParseError(t, tt, NewEmptyFunctionStore()); err != nil {
+		if err := checkTestMorphParseError(t, tt, NewFunctionStore()); err != nil {
 			t.Error(err.Error())
 		}
 	}
@@ -137,7 +138,7 @@ func TestMorphPathWithStrings(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		checkTestMorphCase(t, tt, NewDefaultFunctionStore())
+		checkTestMorphCase(t, tt, DefaultFunctionStore())
 	}
 }
 
@@ -159,7 +160,7 @@ func TestMorphIfMulti(t *testing.T) {
 		`,
 		wantJSON: `5`,
 	}
-	checkTestMorphCase(t, test, NewDefaultFunctionStore())
+	checkTestMorphCase(t, test, DefaultFunctionStore())
 }
 
 func TestMorphIfErr(t *testing.T) {
@@ -172,7 +173,7 @@ func TestMorphIfErr(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		if err := checkTestMorphParseError(t, tt, NewEmptyFunctionStore()); err != nil {
+		if err := checkTestMorphParseError(t, tt, NewFunctionStore()); err != nil {
 			t.Error(err.Error())
 		}
 	}
@@ -198,7 +199,7 @@ func TestMorphReturnNull(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		checkTestMorphCase(t, tt, NewDefaultFunctionStore())
+		checkTestMorphCase(t, tt, DefaultFunctionStore())
 	}
 }
 
@@ -228,7 +229,7 @@ func TestMorphExclamationOnIndirectBool(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		checkTestMorphCase(t, tt, NewDefaultFunctionStore())
+		checkTestMorphCase(t, tt, DefaultFunctionStore())
 	}
 }
 
@@ -241,7 +242,7 @@ func TestMorphTemplateStrings(t *testing.T) {
 		program:  `SET @out = 'my ${1300 + 37} ${"str" + "ing"}'`,
 		wantJSON: `"my 1337 string"`,
 	}
-	checkTestMorphCase(t, test, NewDefaultFunctionStore())
+	checkTestMorphCase(t, test, DefaultFunctionStore())
 
 }
 
@@ -303,7 +304,7 @@ func TestMorphPipes(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		checkTestMorphCase(t, tt, NewDefaultFunctionStore())
+		checkTestMorphCase(t, tt, DefaultFunctionStore())
 	}
 
 }
@@ -326,13 +327,13 @@ func TestMorphTheCoolerDaniel(t *testing.T) {
 			"name": "The cooler Daniel"
 		}`,
 	}
-	checkTestMorphCase(t, test, NewDefaultFunctionStore())
+	checkTestMorphCase(t, test, DefaultFunctionStore())
 
 }
 
 func TestMorphMapEdgeCase(t *testing.T) {
 	test := testMorphCase{
-		description: "check edge case for map() key re-assignment to pre-existing key",
+		description: "check edge case for map() key re-assignment to pre-existing key does not work",
 		srcJSON: `
 			{
 				"a": 1,
@@ -342,8 +343,8 @@ func TestMorphMapEdgeCase(t *testing.T) {
 			`,
 		program: `
 			SET @out = map(@in, entry ~> {
-				IF entry.value == 3 :: SET return.key = "a"
-				IF entry.value == 3 :: SET return.value = 3
+				IF entry.value == 3 :: SET entry.key = "a"
+				IF entry.value == 3 :: SET entry.value = 3
 			})
 			`,
 		wantJSON: `{
@@ -352,7 +353,7 @@ func TestMorphMapEdgeCase(t *testing.T) {
 			"c": 3
 		}`,
 	}
-	checkTestMorphCase(t, test, NewDefaultFunctionStore())
+	checkTestMorphCase(t, test, DefaultFunctionStore())
 }
 
 func TestMorphFilter(t *testing.T) {
@@ -393,7 +394,7 @@ func TestMorphFilter(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		checkTestMorphCase(t, tt, NewDefaultFunctionStore())
+		checkTestMorphCase(t, tt, DefaultFunctionStore())
 	}
 }
 
@@ -438,7 +439,7 @@ func TestMorphReduce(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		checkTestMorphCase(t, tt, NewDefaultFunctionStore())
+		checkTestMorphCase(t, tt, DefaultFunctionStore())
 	}
 }
 
@@ -499,7 +500,7 @@ func TestMorphComparisonChecks(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		checkTestMorphCase(t, tt, NewDefaultFunctionStore())
+		checkTestMorphCase(t, tt, DefaultFunctionStore())
 	}
 }
 
@@ -515,7 +516,7 @@ func TestMorphMultiLineDQuoteStringError(t *testing.T) {
 		`,
 		wantErrContains: []string{"string literal not terminated"},
 	}
-	if err := checkTestMorphParseError(t, test, NewDefaultFunctionStore()); err != nil {
+	if err := checkTestMorphParseError(t, test, DefaultFunctionStore()); err != nil {
 		t.Error(err.Error())
 	}
 }
@@ -569,7 +570,7 @@ func TestMorphDropArrow(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		checkTestMorphCase(t, tt, NewDefaultFunctionStore())
+		checkTestMorphCase(t, tt, DefaultFunctionStore())
 	}
 }
 
@@ -586,7 +587,7 @@ func TestMorphDrop(t *testing.T) {
 		`,
 		wantJSON: `null`,
 	}
-	checkTestMorphCase(t, test, NewDefaultFunctionStore())
+	checkTestMorphCase(t, test, DefaultFunctionStore())
 }
 
 func TestMorphEmit(t *testing.T) {
@@ -602,7 +603,7 @@ func TestMorphEmit(t *testing.T) {
 		`,
 		wantJSON: `"holy smokes"`,
 	}
-	checkTestMorphCase(t, test, NewDefaultFunctionStore())
+	checkTestMorphCase(t, test, DefaultFunctionStore())
 }
 
 func TestMorphSetByValue(t *testing.T) {
@@ -624,19 +625,19 @@ func TestMorphSetByValue(t *testing.T) {
 		[5, 1]
 		`,
 	}
-	checkTestMorphCase(t, test, NewEmptyFunctionStore())
+	checkTestMorphCase(t, test, NewFunctionStore())
 }
 
 // helpers
-func testMorphCustomFn999(args ...*Object) *Object {
+func testMorphCustomFn999(ctx context.Context, args ...*Object) *Object {
 	if ret, ok := IsArgCountEqual(0, args); !ok {
 		return ret
 	}
 	return CastInt(999)
 }
 
-func checkTestMorphParseError(t *testing.T, tt testMorphError, fnStore *functionStore) error {
-	_, err := New(tt.program, WithFunctionStoreOld(fnStore))
+func checkTestMorphParseError(t *testing.T, tt testMorphError, fnStore *FunctionStore) error {
+	_, err := New(tt.program)
 	if err == nil {
 		t.Fatalf("expected error to contain %q. instead got no error", tt.wantErrContains)
 	}
@@ -653,8 +654,8 @@ func checkTestMorphParseError(t *testing.T, tt testMorphError, fnStore *function
 	return nil
 }
 
-func checkTestMorphCase(t *testing.T, tt testMorphCase, fnStore *functionStore) bool {
-	m, err := New(tt.program, WithFunctionStoreOld(fnStore))
+func checkTestMorphCase(t *testing.T, tt testMorphCase, fnStore *FunctionStore) bool {
+	m, err := New(tt.program, WithFunctionStore(fnStore))
 	if err != nil {
 		t.Fatal(err)
 	}

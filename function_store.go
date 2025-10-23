@@ -23,12 +23,18 @@ func newFunctionNamespace(name string) *functionNamespace {
 	}
 }
 
+// creates an empty function store with an empty "std" namespace.
 func NewFunctionStore() *FunctionStore {
 	s := &FunctionStore{
 		namespaces: make(map[string]*functionNamespace),
 	}
 	s.namespaces["std"] = newFunctionNamespace("std")
 	return s
+}
+
+// creates a function store using the default builtin functions occupying the "std" namespace
+func DefaultFunctionStore() *FunctionStore {
+	return newBuiltinFunctionStore()
 }
 
 func (fs *FunctionStore) get(namespace string, name string) (*FunctionEntry, error) {
@@ -55,14 +61,19 @@ func (fs *FunctionStore) register(namespace string, fe *FunctionEntry) {
 	if len(namespace) == 0 {
 		namespace = "std"
 	}
+	if len(fe.namespace) != 0 { //it was already assigned to antoher namespace, so clone it
+		cloned := *fe
+		cloned.namespace = namespace
+		fe = &cloned
+	}
 	fe.namespace = namespace
 	if ns, ok := fs.namespaces[namespace]; ok {
 		ns.functions[fe.Name] = fe
 		return
 	}
-	ns := newFunctionNamespace(namespace)
-	ns.functions[fe.Name] = fe
-	fs.namespaces[namespace] = ns
+	newNs := newFunctionNamespace(namespace)
+	newNs.functions[fe.Name] = fe
+	fs.namespaces[namespace] = newNs
 }
 
 // function entries contain documentation information AND runnable instances of functions

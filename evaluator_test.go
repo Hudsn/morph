@@ -23,7 +23,7 @@ func TestEvalDel(t *testing.T) {
 	//and we should get all are null, setting result to 'true'
 	set result = val == null && val_2.b == val && val_2.b == val_2.c.d
 	`
-	env := newEnvironment(newBuiltinFuncStore())
+	env := newEnvironment(newBuiltinFunctionStore())
 	parser := setupEvalTestParser(input)
 	program, err := parser.parseProgram()
 	if err != nil {
@@ -44,7 +44,7 @@ func TestEvalPipe(t *testing.T) {
 	input := `
 	set result = append([1, 2, "3"], 4) | append(5)
 	`
-	env := newEnvironment(newBuiltinFuncStore())
+	env := newEnvironment(newBuiltinFunctionStore())
 	parser := setupEvalTestParser(input)
 	program, err := parser.parseProgram()
 	if err != nil {

@@ -186,7 +186,7 @@ func (e *expressionStatement) eval(env *environment) object {
 //call expression
 
 func (c *callExpression) eval(env *environment) object {
-	var fnEntry runnableFN
+	var fnEntry *FunctionEntry
 	var err error
 	switch v := c.name.(type) {
 	case *identifierExpression:
@@ -212,7 +212,7 @@ func (c *callExpression) eval(env *environment) object {
 	return ret
 }
 
-func evalFunctionNamePath(pathExpr *pathExpression, env *environment) (runnableFN, error) {
+func evalFunctionNamePath(pathExpr *pathExpression, env *environment) (*FunctionEntry, error) {
 	switch v := pathExpr.attribute.(type) {
 	case *identifierExpression:
 		return evalResolvePathForFunction(pathExpr, v.value, env)
@@ -220,7 +220,7 @@ func evalFunctionNamePath(pathExpr *pathExpression, env *environment) (runnableF
 	return nil, fmt.Errorf("function path must be composed of valid identifiers")
 }
 
-func evalResolvePathForFunction(pathExpr *pathExpression, key string, env *environment) (runnableFN, error) {
+func evalResolvePathForFunction(pathExpr *pathExpression, key string, env *environment) (*FunctionEntry, error) {
 	switch v := pathExpr.left.(type) {
 	case *identifierExpression:
 		namespace := v.value
@@ -401,8 +401,6 @@ func (i *infixExpression) eval(env *environment) object {
 		return objectFromBoolean(leftObj.isTruthy() && rightObj.isTruthy())
 	case i.operator == "||":
 		return objectFromBoolean(leftObj.isTruthy() || rightObj.isTruthy())
-	// case leftObj.getType() != rightObj.getType():
-	// 	return newObjectErr()
 	default:
 		return newObjectErr(i.tok.lineCol, "invalid operator for types: %s %s %s", leftObj.getType(), i.operator, rightObj.getType())
 	}
@@ -538,7 +536,7 @@ func (a *arrowFunctionExpression) eval(env *environment) object {
 	return &objectArrowFunction{
 		paramName:  a.paramName.value,
 		statements: a.block,
-		functions:  env.functions,
+		functions:  env.functionStore,
 	}
 }
 
