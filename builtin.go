@@ -207,7 +207,7 @@ func builtinFallback(ctx context.Context, args ...*Object) *Object {
 func builtinCoalesceEntry() *FunctionEntry {
 	return NewFunctionEntry(
 		"coalesce",
-		"Checks if target item is null. If the item is null or evaluates to null, the fallback is returned. If not, the item is returned",
+		"Checks if target item is null. If the item is null or evaluates to an error, the fallback is returned. If not, the item is returned",
 		builtinCoalesce,
 		WithArgs(
 			NewFunctionArg(

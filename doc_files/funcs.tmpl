@@ -1,0 +1,24 @@
+{{define "functions"}}
+    <hr>
+    <h2>Functions</h2>
+    {{range .Sections}}
+
+        <h3 id="namespace_{{.Name}}">Namespace "{{.Name}}"</h3>
+        {{range .FunctionSections}}
+
+            <div class="fn-tag-contents">
+            <h4 id="{{.Namespace}}_tag_{{.Tag}}">{{.Tag}} Functions:</h4>
+            {{range .Functions}}
+                <hr>
+                <details name="function" open>
+                <summary class="fn-entry-name">{{.Name}}</summary>
+                <code>{{.Signature}}</code>
+                <p class="fn-entry-text">{{.Description}}</p>
+                </details>
+            {{end}}
+            </div>
+
+        {{end}}
+    {{end}}
+
+{{end}}

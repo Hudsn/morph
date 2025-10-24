@@ -1,0 +1,17 @@
+.fn-tag-contents {
+    padding: 1rem;
+    border: 1px solid white;
+    border-radius:0.5rem;
+    margin-top: 0.5rem;
+}
+
+.fn-entry-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.fn-entry-text {
+    font-size: 1rem;
+}
+

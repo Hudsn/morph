@@ -238,29 +238,33 @@ func NewFunctionArg(name string, description string, types ...PublicType) Functi
 }
 
 func (fa FunctionArg) typesString() string {
+	strs := []string{}
 	isAny := true
+	isBasic := true
 	for _, t := range ANY {
 		if !slices.Contains(fa.Types, t) {
 			isAny = false
 			break
 		}
 	}
-	if isAny {
-		return "ANY"
-	}
-	isBasic := true
+
 	for _, t := range BASIC {
 		if !slices.Contains(fa.Types, t) {
 			isBasic = false
 			break
 		}
 	}
+
 	if isBasic {
-		return "BASIC"
+		strs = []string{"BASIC"}
 	}
-	strs := []string{}
-	for _, t := range fa.Types {
-		strs = append(strs, string(t))
+	if isAny {
+		strs = []string{"ANY"}
+	}
+	if !isAny && !isBasic {
+		for _, t := range fa.Types {
+			strs = append(strs, string(t))
+		}
 	}
 	return fmt.Sprintf("%s:%s", fa.Name, strings.Join(strs, "|"))
 }
@@ -316,10 +320,10 @@ type FunctionTag string
 const (
 	FUNCTION_TAG_GENERAL         FunctionTag = "General"
 	FUNCTION_TAG_TYPE_COERCION   FunctionTag = "Type Coercion"
-	FUNCTION_TAG_ERR_NULL_CHECKS FunctionTag = "Error and Null Checks"
+	FUNCTION_TAG_ERR_NULL_CHECKS FunctionTag = "Error and Null Check"
 	FUNCTION_TAG_FLOW_CONTROL    FunctionTag = "Flow Control"
 	FUNCTION_TAG_TIME            FunctionTag = "Time"
-	FUNCTION_TAG_HIGHER_ORDER    FunctionTag = "Higher Order Functions"
+	FUNCTION_TAG_HIGHER_ORDER    FunctionTag = "Higher Order"
 	FUNCTION_TAG_NUMBERS         FunctionTag = "Numbers"
 	FUNCTION_TAG_STRINGS         FunctionTag = "Strings"
 	FUNCTION_TAG_MAPS            FunctionTag = "Maps"
