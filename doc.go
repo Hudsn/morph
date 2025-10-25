@@ -44,6 +44,21 @@ type docFnEntry struct {
 	Examples    []ProgramExample    `json:"examples"`
 }
 
+func (dfn *docFnEntry) JoinedTags() string {
+	tagList := []string{}
+	for _, entry := range dfn.Tags {
+		tagList = append(tagList, string(entry))
+	}
+	return strings.Join(tagList, ", ")
+}
+
+func (dfn *docFnEntry) FormatReturn() string {
+	if dfn.Return == nil {
+		return "No usable or assignable object is returned from this function"
+	}
+	return dfn.Return.Description
+}
+
 func (d *FunctionDocs) RenderJSON(functions *FunctionStore) ([]byte, error) {
 	return json.Marshal(d)
 }

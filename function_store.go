@@ -214,7 +214,11 @@ func WithTags(tags ...FunctionTag) functionEntryOpt {
 			return
 		}
 		// if multiple tags apply, also add the General tag
-		fe.Tags = append([]FunctionTag{"General"}, tags...)
+		if !slices.Contains(tags, FUNCTION_TAG_GENERAL) {
+			tags = append([]FunctionTag{"General"}, tags...)
+		}
+		fe.Tags = tags
+
 	}
 }
 func WithExamples(examples ...ProgramExample) functionEntryOpt {

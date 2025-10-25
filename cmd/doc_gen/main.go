@@ -41,7 +41,11 @@ func generateHTML() {
 	router := http.NewServeMux()
 
 	fileHandler := http.FileServer(http.Dir("doc_files/out"))
-	router.HandleFunc("GET /", fileHandler.ServeHTTP)
+	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("cache-control", "no-cache")
+		fileHandler.ServeHTTP(w, r)
+
+	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

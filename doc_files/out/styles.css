@@ -11,7 +11,20 @@
     text-decoration: underline;
 }
 
-.fn-entry-text {
-    font-size: 1rem;
+.fn-signature {
+    margin-left: 1rem;
+}
+
+.fn-inner-block {
+    padding: 0.5rem;
+    border: 1px solid white;
+    margin: 1rem;
+}
+
+.fn-arg-text{
+    font-size: .9rem;
+    color: whitesmoke;
+    padding: 0rem;
+    margin: 0rem;
 }
 

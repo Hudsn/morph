@@ -1256,7 +1256,7 @@ func builtinNowEntry() *FunctionEntry {
 		builtinNow,
 		WithReturn(
 			NewFunctionReturn(
-				"The map or array containing the newly filtered values",
+				"An object representing the current time",
 				TIME,
 			),
 		),

@@ -11,9 +11,33 @@
             {{range .Functions}}
                 <hr>
                 <details name="function" open>
-                <summary class="fn-entry-name">{{.Name}}</summary>
-                <code>{{.Signature}}</code>
-                <p class="fn-entry-text">{{.Description}}</p>
+                <summary class="fn-entry-name">{{.Name}} <code class="fn-signature">{{.Signature}}</code></summary>
+                <p>{{.Description}}</p>
+                <p><strong>Tags:</strong> {{.JoinedTags}}</p>
+                <p><strong>Params:</strong></p> 
+                {{range .Args}} 
+                    <div class="fn-inner-block">
+                            <p class="fn-arg-text"><strong>{{.Name}}</strong></p>
+                            <p class="fn-arg-text">{{.Description}}</p>
+                    </div>
+                {{end}}
+                <p><strong>Return:</strong></p>
+                <div class="fn-inner-block">
+                    <p class="fn-arg-text"><strong>Description:</strong> {{.FormatReturn}}</p>
+                </div>
+                <p><strong>Examples:</strong></p>
+                {{range .Examples}}
+                    <pre>
+//input
+{{.In}}
+
+//program
+{{.Program}}
+
+//output
+{{.Out}}
+                    </pre>
+                {{end}}
                 </details>
             {{end}}
             </div>
