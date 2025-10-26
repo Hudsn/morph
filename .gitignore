@@ -1,2 +1,2 @@
-doc_files/out/*
-!doc_files/out/*css
+doc/out/*
+!doc/out/*css
