@@ -112,7 +112,7 @@ IF @in.text == "sad" :: SET @out.emoji = "☹️"
 
 ## Types
 
-Morph has 8 main types that are available to be used as a part of any expression or statement:
+Morph has a few `BASIC` types that are available to be used as a part of any expression or statement:
 
 - Boolean
     -  `true` or `false`
@@ -145,11 +145,22 @@ Morph has 8 main types that are available to be used as a part of any expression
     - a non-value; empty, like my soul when writing documentation, expressed as a keyword `NULL` or `null`
     - commonly encountered when referencing variables that don't exist. For example: `@in.doesnt_exist` would return `NULL`
     - always `falsey`
+- ERROR
+    - an item representing an error that happened during the execution of a morph program.
+    - uncaught/unhandled errors will exit the current run of the morph program, and the calling `morph.ToJSON` or `morph.ToAny` will return an error to be handled by your Go application as you see fit.
+    - the default builtin funciton store provides basic tools to handle errors thrown by morph expressions
 
+The above types are all included in the `BASIC` and `ANY` function signature types.
 
+### Arrow Functions
+Morph also has a special type: the `Arrow Function`.  
 
-Note: There is also an **internal** `Error` type. When an uncaught error (see builtin `catch` or `fallback` functions for how to catch them) is encountered by Morph, the program will stop, and the calling `morph.ToJSON` or `morph.ToAny` will return an error to be handled by your Go application as you see fit.
+Arrow functions are used in higher-order builtin functions like `map()`, `filter()` and `reduce()`, and allow the function caller to invoke a user-defined sub-sequence of Morph statements as part of that function. This is a useful pattern for working with maps and arrays.
 
+Arrow functions are only usable as function arguments where specified, and are **NOT** directly callable in a basic morph statement. 
+Any function that specifies a parameter can be of type `ARROW` or `ANY` can use.
+
+The `ARROW` type is included in the `ANY` function signature type.
 
 ## Operators
 

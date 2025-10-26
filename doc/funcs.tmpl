@@ -1,13 +1,11 @@
 {{define "functions"}}
-    <hr>
-    <h2>Functions</h2>
     {{range .Sections}}
 
-        <h3 id="namespace_{{.Name}}">Namespace "{{.Name}}"</h3>
+        <h2 id="namespace_{{.Name}}">Namespace "{{.Name}}"</h2>
         {{range .FunctionSections}}
 
             <div class="fn-tag-contents">
-            <h4 id="{{.Namespace}}_tag_{{.Tag}}">{{.Tag}} Functions:</h4>
+            <h3 id="{{.Namespace}}_tag_{{.Tag}}">{{.Tag}} Functions:</h3>
             {{range .Functions}}
                 <hr>
                 <details name="function" open>

@@ -1,4 +1,4 @@
-package docfiles
+package doc
 
 import (
 	"embed"

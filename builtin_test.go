@@ -17,24 +17,24 @@ func TestBuiltins(t *testing.T) {
 
 func testBuiltinStore(fs *FunctionStore) error {
 	nsList := []string{}
-	for _, ns := range fs.namespaces {
-		nsList = append(nsList, ns.name)
+	for _, ns := range fs.Namespaces {
+		nsList = append(nsList, ns.Name)
 	}
 	slices.Sort(nsList)
 	for _, nsName := range nsList {
-		ns := fs.namespaces[nsName]
+		ns := fs.Namespaces[nsName]
 		fnList := []string{}
-		for _, fn := range ns.functions {
+		for _, fn := range ns.Functions {
 			fnList = append(fnList, fn.Name)
 		}
 		slices.Sort(fnList)
 
 		for _, fnName := range fnList {
-			fn := ns.functions[fnName]
+			fn := ns.Functions[fnName]
 			for idx, exEntry := range fn.Examples {
 				err := testBuiltinFE(fs, exEntry.In, exEntry.Program, exEntry.Out)
 				if err != nil {
-					return fmt.Errorf("error testing example #%d with %s.%s: %w", idx+1, ns.name, fn.Name, err)
+					return fmt.Errorf("error testing example #%d with %s.%s: %w", idx+1, ns.Name, fn.Name, err)
 				}
 			}
 		}

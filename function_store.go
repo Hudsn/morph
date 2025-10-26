@@ -8,27 +8,27 @@ import (
 )
 
 type FunctionStore struct {
-	namespaces map[string]*functionNamespace
+	Namespaces map[string]*functionNamespace
 }
 
 type functionNamespace struct {
-	name      string
-	functions map[string]*FunctionEntry
+	Name      string
+	Functions map[string]*FunctionEntry
 }
 
 func newFunctionNamespace(name string) *functionNamespace {
 	return &functionNamespace{
-		name:      name,
-		functions: make(map[string]*FunctionEntry),
+		Name:      name,
+		Functions: make(map[string]*FunctionEntry),
 	}
 }
 
 // creates an empty function store with an empty "std" namespace.
 func NewFunctionStore() *FunctionStore {
 	s := &FunctionStore{
-		namespaces: make(map[string]*functionNamespace),
+		Namespaces: make(map[string]*functionNamespace),
 	}
-	s.namespaces["std"] = newFunctionNamespace("std")
+	s.Namespaces["std"] = newFunctionNamespace("std")
 	return s
 }
 
@@ -41,11 +41,11 @@ func (fs *FunctionStore) get(namespace string, name string) (*FunctionEntry, err
 	if len(namespace) == 0 {
 		namespace = "std"
 	}
-	ns, ok := fs.namespaces[namespace]
+	ns, ok := fs.Namespaces[namespace]
 	if !ok {
 		return nil, fmt.Errorf("function namespace %q does not exist", namespace)
 	}
-	fn, ok := ns.functions[name]
+	fn, ok := ns.Functions[name]
 	if !ok {
 		return nil, fmt.Errorf("function %q in namespace %q does not exist", name, namespace)
 	}
@@ -61,24 +61,24 @@ func (fs *FunctionStore) register(namespace string, fe *FunctionEntry) {
 	if len(namespace) == 0 {
 		namespace = "std"
 	}
-	if len(fe.namespace) != 0 { //it was already assigned to antoher namespace, so clone it
+	if len(fe.Namespace) != 0 { //it was already assigned to antoher namespace, so clone it
 		cloned := *fe
-		cloned.namespace = namespace
+		cloned.Namespace = namespace
 		fe = &cloned
 	}
-	fe.namespace = namespace
-	if ns, ok := fs.namespaces[namespace]; ok {
-		ns.functions[fe.Name] = fe
+	fe.Namespace = namespace
+	if ns, ok := fs.Namespaces[namespace]; ok {
+		ns.Functions[fe.Name] = fe
 		return
 	}
 	newNs := newFunctionNamespace(namespace)
-	newNs.functions[fe.Name] = fe
-	fs.namespaces[namespace] = newNs
+	newNs.Functions[fe.Name] = fe
+	fs.Namespaces[namespace] = newNs
 }
 
 // function entries contain documentation information AND runnable instances of functions
 type FunctionEntry struct {
-	namespace   string // populated when the function is registered.
+	Namespace   string // populated when the function is registered.
 	Name        string
 	Description string
 	Fn          Function
@@ -92,7 +92,7 @@ type FunctionEntry struct {
 func NewFunctionEntry(name string, description string, fn Function, opts ...functionEntryOpt) *FunctionEntry {
 	ret := &FunctionEntry{
 		Name:        name,
-		namespace:   "",
+		Namespace:   "",
 		Description: description,
 		Fn:          fn,
 		Args:        []FunctionArg{},
@@ -109,10 +109,10 @@ func NewFunctionEntry(name string, description string, fn Function, opts ...func
 
 // retruns functions namespace.name as a string
 func (fe *FunctionEntry) fullName() string {
-	if len(fe.namespace) == 0 {
+	if len(fe.Namespace) == 0 {
 		return fe.Name
 	}
-	return fmt.Sprintf("%s.%s", fe.namespace, fe.Name)
+	return fmt.Sprintf("%s.%s", fe.Namespace, fe.Name)
 }
 
 // returns the function signature string

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/hudsn/morph"
-	docfiles "github.com/hudsn/morph/doc_files"
+	"github.com/hudsn/morph/doc"
 )
 
 func main() {
@@ -19,14 +19,14 @@ func main() {
 }
 
 func generateHTML() {
-	tt, err := template.ParseFS(docfiles.DocFS, "*.tmpl")
+	tt, err := template.ParseFS(doc.DocFS, "*.tmpl")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	templateData := morph.NewFunctionDocs(morph.DefaultFunctionStore())
+	templateData := doc.NewFunctionDocs(morph.DefaultFunctionStore())
 
-	out, err := os.Create("doc_files/out/index.html")
+	out, err := os.Create("doc/out/index.html")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func generateHTML() {
 
 	router := http.NewServeMux()
 
-	fileHandler := http.FileServer(http.Dir("doc_files/out"))
+	fileHandler := http.FileServer(http.Dir("doc/out"))
 	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("cache-control", "no-cache")
 		fileHandler.ServeHTTP(w, r)
