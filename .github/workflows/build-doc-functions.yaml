@@ -3,7 +3,11 @@ run-name: Building HTML for functions documentation
 on:
   push:
     branches: [main]
-    paths-ignore: 'doc/out/index.html'
+    paths:
+      - "builtin.go"
+      - "doc/doc.go"
+      - "!static/index.html"
+    paths-ignore: 
 
 jobs:
   function_docs:
@@ -20,7 +24,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v6
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
       - run: go run cmd/doc_gen/main.go
 
       - name: Commit and push generated doc page
@@ -31,6 +35,6 @@ jobs:
         run: | 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f doc/out/index.html
+          git add -f static/index.html
           git commit -m "[bot] Update function docs HTML"
           git push

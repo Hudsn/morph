@@ -21,7 +21,7 @@ func generateHTML() {
 
 	templateData := doc.NewFunctionDocs(morph.DefaultFunctionStore())
 
-	out, err := os.Create("doc/out/index.html")
+	out, err := os.Create("static/index.html")
 	if err != nil {
 		os.Exit(1)
 	}

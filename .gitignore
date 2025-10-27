@@ -1,2 +1,1 @@
-doc/out/*
-!doc/out/*css
+static/index.html
