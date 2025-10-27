@@ -6,6 +6,8 @@ on:
     paths:
       - "builtin.go"
       - "doc/doc.go"
+      - "README.md"
+      - "doc/**"
       - "!static/index.html"
     paths-ignore: 
 
