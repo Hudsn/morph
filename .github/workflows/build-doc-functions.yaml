@@ -14,7 +14,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
-        with: 
 
       - name: Set up go
         uses: actions/setup-go@v6
