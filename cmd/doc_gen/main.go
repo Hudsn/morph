@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/hudsn/morph"
-	"github.com/hudsn/morph/doc"
+	"github.com/hudsn/morph/docgen"
 )
 
 func main() {
@@ -14,12 +14,12 @@ func main() {
 }
 
 func generateHTML() {
-	tt, err := template.ParseFS(doc.DocFS, "*.tmpl")
+	tt, err := template.ParseFS(docgen.DefaultDocTemplates, "*.tmpl")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	templateData := doc.NewFunctionDocs(morph.DefaultFunctionStore())
+	templateData := docgen.NewFunctionDocs(morph.DefaultFunctionStore())
 
 	out, err := os.Create("static/index.html")
 	if err != nil {

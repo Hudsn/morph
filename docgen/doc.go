@@ -1,4 +1,4 @@
-package doc
+package docgen
 
 import (
 	"encoding/json"
