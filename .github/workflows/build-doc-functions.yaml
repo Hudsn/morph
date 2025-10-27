@@ -22,11 +22,13 @@ jobs:
       - run: go run cmd/doc_gen/main.go
 
       - name: Commit and push generated doc page
-        run: | 
-          git config user.name "github-actions[bot]"
+
           # to derive email:
           # https://docs.github.com/en/account-and-profile/reference/email-addresses-reference
           # https://api.github.com/users/github-actions%5Bbot%5D
+        run: | 
+          git config user.name "github-actions[bot]"
+
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com"
           git add -f doc/out/index.html
           git commit -m "[bot] Update function docs HTML"
