@@ -18,7 +18,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v6
         with:
-          go-version-file: 'path/to/go.mod'
+          go-version-file: 'go.mod'
       - run: go run cmd/doc_gen/main.go
 
       - name: Commit and push generated doc page
