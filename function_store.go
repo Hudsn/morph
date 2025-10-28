@@ -131,7 +131,8 @@ func (fe *FunctionEntry) Signature() string {
 
 func (fe *FunctionEntry) run(ctx context.Context, args ...object) object {
 	if len(args) < len(fe.Args) {
-		return newObjectErrWithoutLC("function %q too few arguments supplied. want=%d got=%d\n\tfunction signature: %s", fe.fullName(), len(fe.Args), len(args), fe.Signature())
+		msg := fmt.Sprintf("function %q too few arguments supplied. want=%d got=%d\n\tfunction signature: %s", fe.fullName(), len(fe.Args), len(args), fe.Signature())
+		return newObjectErrWithoutLC(msg)
 	}
 
 	for argIdx, wantArg := range fe.Args {
@@ -140,7 +141,8 @@ func (fe *FunctionEntry) run(ctx context.Context, args ...object) object {
 		}
 		arg := args[argIdx]
 		if !slices.Contains(wantArg.Types, PublicType(arg.getType())) {
-			return newObjectErrWithoutLC("function %q invalid argument type for %q. want=%s. got=%s\n\tfunction signature: %s", fe.fullName(), wantArg.Name, wantArg.typesString(), arg.getType(), fe.Signature())
+			msg := fmt.Sprintf("function %q invalid argument type for %q. want=%s. got=%s\n\tfunction signature: %s", fe.fullName(), wantArg.Name, wantArg.typesString(), arg.getType(), fe.Signature())
+			return newObjectErrWithoutLC(msg)
 		}
 	}
 	if err := fe.checkVariadic(args...); err != nil {
@@ -152,7 +154,8 @@ func (fe *FunctionEntry) run(ctx context.Context, args ...object) object {
 	}
 	if fe.Return != nil {
 		if !slices.Contains(fe.Return.Types, PublicType(ret.getType())) {
-			return newObjectErrWithoutLC("function %q invalid return type. want=%s got=%s\n\tfunction signature: %s", fe.Name, fe.Return.typesString(), ret.getType(), fe.Signature())
+			msg := fmt.Sprintf("function %q invalid return type. want=%s got=%s\n\tfunction signature: %s", fe.Name, fe.Return.typesString(), ret.getType(), fe.Signature())
+			return newObjectErrWithoutLC(msg)
 		}
 	}
 	return ret

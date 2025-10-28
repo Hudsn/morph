@@ -2,13 +2,13 @@ package morph
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// WIP, unused.
 func newBuiltinFunctionStore() *FunctionStore {
 	store := NewFunctionStore()
 
@@ -302,7 +302,8 @@ func builtinInt(ctx context.Context, args ...*Object) *Object {
 	a := args[0]
 	val, err := a.AsAny()
 	if err != nil {
-		return ObjectError("unable to cast item as INTEGER. invalid input type: %s", a.Type())
+		msg := fmt.Sprintf("unable to cast item as INTEGER. invalid input type: %s", a.Type())
+		return ObjectError(msg)
 	}
 	return CastInt(val)
 }
@@ -314,7 +315,8 @@ func builtinFloat(ctx context.Context, args ...*Object) *Object {
 	a := args[0]
 	val, err := a.AsAny()
 	if err != nil {
-		return ObjectError("unable to cast item as FLOAT. invalid input type: %s", a.Type())
+		msg := fmt.Sprintf("error calling map(): data issue with first argument of type %s", args[0].Type())
+		return ObjectError(msg)
 	}
 	return CastFloat(val)
 }
@@ -384,7 +386,8 @@ func builtinString(ctx context.Context, args ...*Object) *Object {
 	a := args[0]
 	val, err := a.AsAny()
 	if err != nil {
-		return ObjectError("unable to convert item to STRING. invalid input type: %s", a.Type())
+		msg := fmt.Sprintf("unable to convert item to STRING. invalid input type: %s", a.Type())
+		return ObjectError(msg)
 	}
 	return CastString(val)
 }
@@ -449,7 +452,8 @@ func builtinTime(ctx context.Context, args ...*Object) *Object {
 	a := args[0]
 	val, err := a.AsAny()
 	if err != nil {
-		return ObjectError("unable to convert item to TIME. invalid input type: %s", a.Type())
+		msg := fmt.Sprintf("unable to convert item to TIME. invalid input type: %s", a.Type())
+		return ObjectError(msg)
 	}
 	return CastTime(val)
 }
@@ -547,12 +551,14 @@ SET @out.result = len(@in)`,
 
 func builtinLen(ctx context.Context, args ...*Object) *Object {
 	if len(args) != 1 {
-		return ObjectError("function len() requires a single argument. got=%d", len(args))
+		msg := fmt.Sprintf("function len() requires a single argument. got=%d", len(args))
+		return ObjectError(msg)
 	}
 	arg := args[0]
 	acceptableTypes := []string{string(ARRAY), string(STRING), string(MAP)}
 	if !slices.Contains(acceptableTypes, arg.Type()) {
-		return ObjectError("invalid argument type. Expect one of STRING, ARRAY, or MAP. got=%s", arg.Type())
+		msg := fmt.Sprintf("invalid argument type. Expect one of STRING, ARRAY, or MAP. got=%s", arg.Type())
+		return ObjectError(msg)
 	}
 	ret := 0
 	switch arg.Type() {
@@ -628,7 +634,8 @@ SET @out.result = min(1.5, 100)`,
 
 func builtinMin(ctx context.Context, args ...*Object) *Object {
 	if len(args) != 2 {
-		return ObjectError("function min() requires a single argument. got=%d", len(args))
+		msg := fmt.Sprintf("function min() requires a single argument. got=%d", len(args))
+		return ObjectError(msg)
 	}
 	bothInt := (args[0].Type() == args[1].Type()) && (args[0].Type() == string(INTEGER))
 
@@ -638,13 +645,15 @@ func builtinMin(ctx context.Context, args ...*Object) *Object {
 		case string(INTEGER):
 			i, err := arg.AsInt()
 			if err != nil {
-				return ObjectError("min(): argument at position %d is an invalid INTEGER", idx+1)
+				msg := fmt.Sprintf("min(): argument at position %d is an invalid INTEGER", idx+1)
+				return ObjectError(msg)
 			}
 			cmpList = append(cmpList, float64(i))
 		case string(FLOAT):
 			f, err := arg.AsFloat()
 			if err != nil {
-				return ObjectError("min(): argument at position %d is an invalid INTEGER", idx+1)
+				msg := fmt.Sprintf("min(): argument at position %d is an invalid INTEGER", idx+1)
+				return ObjectError(msg)
 			}
 			cmpList = append(cmpList, f)
 		}
@@ -714,13 +723,15 @@ func builtinMax(ctx context.Context, args ...*Object) *Object {
 		case string(INTEGER):
 			i, err := arg.AsInt()
 			if err != nil {
-				return ObjectError("min(): argument at position %d is an invalid INTEGER", idx+1)
+				msg := fmt.Sprintf("max(): argument at position %d is an invalid INTEGER", idx+1)
+				return ObjectError(msg)
 			}
 			cmpList = append(cmpList, float64(i))
 		case string(FLOAT):
 			f, err := arg.AsFloat()
 			if err != nil {
-				return ObjectError("min(): argument at position %d is an invalid INTEGER", idx+1)
+				msg := fmt.Sprintf("max(): argument at position %d is an invalid FLOAT", idx+1)
+				return ObjectError(msg)
 			}
 			cmpList = append(cmpList, f)
 		}
@@ -797,7 +808,8 @@ func builtinContains(ctx context.Context, args ...*Object) *Object {
 	switch main.Type() {
 	case string(STRING):
 		if sub.Type() != string(STRING) {
-			return ObjectError("second argument of contains() cannot be a non-string, if the first argument is a string. got type=%s", sub.Type())
+			msg := fmt.Sprintf("second argument of contains() cannot be a non-string, if the first argument is a string. got type=%s", sub.Type())
+			return ObjectError(msg)
 		}
 		mainString, err := main.AsString()
 		if err != nil {
@@ -861,11 +873,13 @@ func builtinAppend(ctx context.Context, args ...*Object) *Object {
 	}
 	arr, err := args[0].AsArray()
 	if err != nil {
-		return ObjectError("append() invalid array argument of type %s", args[0].Type())
+		msg := fmt.Sprintf("append() invalid array argument of type %s", args[0].Type())
+		return ObjectError(msg)
 	}
 	toAdd, err := args[1].AsAny()
 	if err != nil {
-		return ObjectError("append() invalid second argument of type %s", args[1].Type())
+		msg := fmt.Sprintf("append() invalid second argument of type %s", args[1].Type())
+		return ObjectError(msg)
 	}
 	arr = append(arr, toAdd)
 	return CastArray(arr)
@@ -925,13 +939,15 @@ func builtinMap(ctx context.Context, args ...*Object) *Object {
 	}
 	arrowFn, err := args[1].AsArrowFunction()
 	if err != nil {
-		return ObjectError("invalid argument for map(): second argument must be a valid ARROWFUNC. got type of %s", args[1].Type())
+		msg := fmt.Sprintf("invalid argument for map(): second argument must be a valid ARROWFUNC. got type of %s", args[1].Type())
+		return ObjectError(msg)
 	}
 	switch args[0].Type() {
 	case string(MAP):
 		in, err := args[0].AsMap()
 		if err != nil {
-			return ObjectError("error calling map(): data issue with first argument of type %s", args[0].Type())
+			msg := fmt.Sprintf("error calling map(): data issue with first argument of type %s", args[0].Type())
+			return ObjectError(msg)
 		}
 		ret := make(map[string]interface{})
 		keyList := []string{}
@@ -963,7 +979,8 @@ func builtinMap(ctx context.Context, args ...*Object) *Object {
 	case string(ARRAY):
 		in, err := args[0].AsArray()
 		if err != nil {
-			return ObjectError("error calling map(): data issue with first argument of type %s", args[0].Type())
+			msg := fmt.Sprintf("error calling map(): data issue with first argument of type %s", args[0].Type())
+			return ObjectError(msg)
 		}
 		ret := []interface{}{}
 		for idx, entry := range in {
@@ -988,7 +1005,8 @@ func builtinMap(ctx context.Context, args ...*Object) *Object {
 
 		return CastArray(ret)
 	default:
-		return ObjectError("invalid argument for map(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())
+		msg := fmt.Sprintf("invalid argument for map(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())
+		return ObjectError(msg)
 	}
 }
 func builtinFilterEntry() *FunctionEntry {
@@ -1046,14 +1064,16 @@ func builtinFilter(ctx context.Context, args ...*Object) *Object {
 	}
 	arrowFn, err := args[1].AsArrowFunction()
 	if err != nil {
-		return ObjectError("filter() second argument must be a valid ARROWFUNC. got type of %s", args[1].Type())
+		msg := fmt.Sprintf("filter() second argument must be a valid ARROWFUNC. got type of %s", args[1].Type())
+		return ObjectError(msg)
 	}
 
 	switch args[0].Type() {
 	case string(MAP):
 		in, err := args[0].AsMap()
 		if err != nil {
-			return ObjectError("filter() input data argument issue. type is not compatible with map operation: %s", args[0].Type())
+			msg := fmt.Sprintf("filter() input data argument issue. type is not compatible with map operation: %s", args[0].Type())
+			return ObjectError(msg)
 		}
 		keyList := []string{}
 		for k := range in {
@@ -1088,7 +1108,8 @@ func builtinFilter(ctx context.Context, args ...*Object) *Object {
 	case string(ARRAY):
 		in, err := args[0].AsArray()
 		if err != nil {
-			return ObjectError("filter() input data argument issue. type is not compatible with array operation: %s", args[0].Type())
+			msg := fmt.Sprintf("filter() input data argument issue. type is not compatible with array operation: %s", args[0].Type())
+			return ObjectError(msg)
 		}
 		ret := []interface{}{}
 		for idx, entry := range in {
@@ -1115,7 +1136,8 @@ func builtinFilter(ctx context.Context, args ...*Object) *Object {
 		}
 		return CastAuto(ret)
 	default:
-		return ObjectError("invalid argument for filter(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())
+		msg := fmt.Sprintf("invalid argument for filter(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())
+		return ObjectError(msg)
 	}
 }
 func builtinReduceEntry() *FunctionEntry {
@@ -1182,7 +1204,8 @@ func builtinReduce(ctx context.Context, args ...*Object) *Object {
 	}
 	arrowFn, err := args[2].AsArrowFunction()
 	if err != nil {
-		return ObjectError("reduce() third argument must be a valid ARROWFUNC. got type of %s", args[2].Type())
+		msg := fmt.Sprintf("reduce() third argument must be a valid ARROWFUNC. got type of %s", args[2].Type())
+		return ObjectError(msg)
 	}
 
 	acc, err := args[1].AsAny()
@@ -1194,7 +1217,8 @@ func builtinReduce(ctx context.Context, args ...*Object) *Object {
 	case string(MAP):
 		in, err := args[0].AsMap()
 		if err != nil {
-			return ObjectError("reduce() input data argument issue. type is not compatible with MAP operations: %s", args[0].Type())
+			msg := fmt.Sprintf("reduce() input data argument issue. type is not compatible with MAP operations: %s", args[0].Type())
+			return ObjectError(msg)
 		}
 		ret := acc
 		keyList := []string{}
@@ -1224,7 +1248,8 @@ func builtinReduce(ctx context.Context, args ...*Object) *Object {
 	case string(ARRAY):
 		in, err := args[0].AsArray()
 		if err != nil {
-			return ObjectError("reduce() input data argument issue. type is not compatible with array operation: %s", args[0].Type())
+			msg := fmt.Sprintf("reduce() input data argument issue. type is not compatible with array operation: %s", args[0].Type())
+			return ObjectError(msg)
 		}
 		ret := acc
 		for idx, entry := range in {
@@ -1246,7 +1271,8 @@ func builtinReduce(ctx context.Context, args ...*Object) *Object {
 		}
 		return CastAuto(ret)
 	default:
-		return ObjectError("invalid argument for reduce(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())
+		msg := fmt.Sprintf("invalid argument for reduce(): first argument must be an ARRAY or MAP. got type of %s", args[0].Type())
+		return ObjectError(msg)
 	}
 }
 func builtinNowEntry() *FunctionEntry {
@@ -1357,27 +1383,32 @@ func builtinParseTime(ctx context.Context, args ...*Object) *Object {
 	a2 := args[1]
 	fmtString, err := a2.AsString()
 	if err != nil {
-		return ObjectError("unable to convert item to TIME. invalid input type for second argument. got=%s", a2.Type())
+		msg := fmt.Sprintf("unable to convert item to TIME. invalid input type for second argument. got=%s", a2.Type())
+		return ObjectError(msg)
 	}
 	switch strings.ToLower(fmtString) {
 	case "rfc_3339":
 		inputString, err := a1.AsString()
 		if err != nil {
-			return ObjectError("unable to convert item to TIME. parsing the time format from rfc_3339 requires the first argument to be a STRING type. got=%s", a1.Type())
+			msg := fmt.Sprintf("unable to convert item to TIME. parsing the time format from rfc_3339 requires the first argument to be a STRING type. got=%s", a1.Type())
+			return ObjectError(msg)
 		}
 		t, err := time.Parse(time.RFC3339, inputString)
 		if err != nil {
-			return ObjectError("unable to convert item to TIME. invalid TIME string: %s", inputString)
+			msg := fmt.Sprintf("unable to convert item to TIME. invalid TIME string: %s", inputString)
+			return ObjectError(msg)
 		}
 		return CastTime(t)
 	case "rfc_3339_nano":
 		inputString, err := a1.AsString()
 		if err != nil {
-			return ObjectError("unable to convert item to TIME. parsing the time format from rfc_3339 requires the first argument to be a STRING type. got=%s", a1.Type())
+			msg := fmt.Sprintf("unable to convert item to TIME. parsing the time format from rfc_3339_nano requires the first argument to be a STRING type. got=%s", a1.Type())
+			return ObjectError(msg)
 		}
 		t, err := time.Parse(time.RFC3339Nano, inputString)
 		if err != nil {
-			return ObjectError("unable to convert item to TIME. invalid TIME string: %s", inputString)
+			msg := fmt.Sprintf("unable to convert item to TIME. invalid TIME string: %s", inputString)
+			return ObjectError(msg)
 		}
 		return CastTime(t)
 	case "unix":
@@ -1389,7 +1420,8 @@ func builtinParseTime(ctx context.Context, args ...*Object) *Object {
 		case string(INTEGER), string(FLOAT), string(STRING):
 			return CastTime(arg1Any)
 		default:
-			return ObjectError("unable to convert item to TIME. parsing the time from unix seconds requires the first argument to be an INT, FLOAT, or STRING type: %s", a1.Type())
+			msg := fmt.Sprintf("unable to convert item to TIME. parsing the time from unix seconds requires the first argument to be an INT, FLOAT, or STRING type: %s", a1.Type())
+			return ObjectError(msg)
 		}
 	case "unix_micro":
 		if argInt, err := a1.AsInt(); err == nil {
@@ -1398,7 +1430,8 @@ func builtinParseTime(ctx context.Context, args ...*Object) *Object {
 		if argStr, err := a1.AsString(); err == nil {
 			asInt, err := strconv.ParseInt(argStr, 10, 64)
 			if err != nil {
-				return ObjectError("unable to convert item to TIME. invalid TIME string: %s", argStr)
+				msg := fmt.Sprintf("unable to convert item to TIME. invalid TIME string: %s", argStr)
+				return ObjectError(msg)
 			}
 			return CastTime(time.UnixMicro(asInt).UTC())
 		}
@@ -1410,7 +1443,8 @@ func builtinParseTime(ctx context.Context, args ...*Object) *Object {
 		if argStr, err := a1.AsString(); err == nil {
 			asInt, err := strconv.ParseInt(argStr, 10, 64)
 			if err != nil {
-				return ObjectError("unable to convert item to TIME. invalid TIME string: %s", argStr)
+				msg := fmt.Sprintf("unable to convert item to TIME. invalid TIME string: %s", argStr)
+				return ObjectError(msg)
 			}
 			return CastTime(time.UnixMilli(asInt).UTC())
 		}
@@ -1422,7 +1456,8 @@ func builtinParseTime(ctx context.Context, args ...*Object) *Object {
 		if argStr, err := a1.AsString(); err == nil {
 			asInt, err := strconv.ParseInt(argStr, 10, 64)
 			if err != nil {
-				return ObjectError("unable to convert item to TIME. invalid TIME string: %s", argStr)
+				msg := fmt.Sprintf("unable to convert item to TIME. invalid TIME string: %s", argStr)
+				return ObjectError(msg)
 			}
 			return CastTime(time.Unix(0, asInt).UTC())
 		}
@@ -1430,11 +1465,13 @@ func builtinParseTime(ctx context.Context, args ...*Object) *Object {
 	default:
 		inputString, err := a1.AsString()
 		if err != nil {
-			return ObjectError("unable to convert item to TIME. parsing an arbitrary time format requires the first argument to be a STRING tpye. got=%s", a1.Type())
+			msg := fmt.Sprintf("unable to convert item to TIME. parsing an arbitrary time format requires the first argument to be a STRING tpye. got=%s", a1.Type())
+			return ObjectError(msg)
 		}
 		t, err := time.Parse(fmtString, inputString)
 		if err != nil {
-			return ObjectError("unable to convert item to TIME. issue parsing time %s with format string %s: %s", inputString, fmtString, err.Error())
+			msg := fmt.Sprintf("unable to convert item to TIME. issue parsing time %s with format string %s: %s", inputString, fmtString, err.Error())
+			return ObjectError(msg)
 		}
 		return CastTime(t)
 	}

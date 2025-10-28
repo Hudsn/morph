@@ -3,6 +3,7 @@ package morph
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -11,7 +12,6 @@ import (
 )
 
 type Function func(ctx context.Context, args ...*Object) *Object
-type FunctionOld func(args ...*Object) *Object
 
 // public wrapper of object to be used for implementing custom functions
 type Object struct {
@@ -70,15 +70,15 @@ func (o *Object) AsAny() (interface{}, error) {
 func (o *Object) AsError() (error, error) {
 	e, ok := o.inner.(*objectError)
 	if !ok {
-		return nil, fmt.Errorf("unable to convert object to error: underlying structure is not an integer type. got=%s", o.inner.getType())
+		return nil, fmt.Errorf("unable to convert object to error: underlying structure is not an error type. got=%s", o.inner.getType())
 	}
-	return fmt.Errorf(e.message), nil
+	return errors.New(e.message), nil
 }
 
 func (o *Object) AsTime() (time.Time, error) {
 	t, ok := o.inner.(*objectTime)
 	if !ok {
-		return time.Time{}, fmt.Errorf("unable to convert object to Time: underlying structure is not an integer type. got=%s", o.inner.getType())
+		return time.Time{}, fmt.Errorf("unable to convert object to Time: underlying structure is not a time type. got=%s", o.inner.getType())
 	}
 	return t.value, nil
 }
@@ -230,9 +230,9 @@ var ObjectNull = &Object{inner: obj_global_null}
 var ObjectTerminate = &Object{inner: obj_global_term}
 var ObjectTerminateDrop = &Object{inner: obj_global_term_drop}
 
-func ObjectError(msg string, args ...interface{}) *Object {
+func ObjectError(msg string) *Object {
 	return &Object{
-		inner: newObjectErrWithoutLC(msg, args...),
+		inner: newObjectErrWithoutLC(msg),
 	}
 }
 
@@ -379,7 +379,7 @@ func CastFloat(value interface{}) *Object {
 	case string:
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			return ObjectError("unable to cast string as FLOAT. invalid string: %s", v)
+			return ObjectError("unable to cast string as FLOAT. invalid string")
 		}
 		ret.inner = &objectFloat{value: f}
 	default:
@@ -507,7 +507,8 @@ func CastAuto(value interface{}) *Object {
 // checks minimum function argument count. useful for variadic functions
 func IsArgCountAtLeast(count int, args []*Object) (*Object, bool) {
 	if len(args) < count {
-		return ObjectError("function requires at least %d args. got=%d", count, len(args)), false
+		msg := fmt.Sprintf("function requires at least %d args. got=%d", count, len(args))
+		return ObjectError(msg), false
 	}
 	return ObjectNull, true
 }
@@ -515,7 +516,8 @@ func IsArgCountAtLeast(count int, args []*Object) (*Object, bool) {
 // checks function argument count
 func IsArgCountEqual(count int, args []*Object) (*Object, bool) {
 	if len(args) != count {
-		return ObjectError("function requires %d args. got=%d", count, len(args)), false
+		msg := fmt.Sprintf("function requires %d args. got=%d", count, len(args))
+		return ObjectError(msg), false
 	}
 	return ObjectNull, true
 }

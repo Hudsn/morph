@@ -2,7 +2,6 @@ package morph
 
 import (
 	"context"
-	"fmt"
 )
 
 type environment struct {
@@ -12,7 +11,7 @@ type environment struct {
 }
 
 func newEnvironment(fstore *FunctionStore, opts ...newEnvArg) *environment {
-	e := &environment{functionStore: fstore, store: make(map[string]object)}
+	e := &environment{functionStore: fstore, store: make(map[string]object), ctx: context.Background()}
 	for _, fn := range opts {
 		fn(e)
 	}
@@ -21,7 +20,7 @@ func newEnvironment(fstore *FunctionStore, opts ...newEnvArg) *environment {
 
 type newEnvArg func(*environment)
 
-func EnvWithContext(ctx context.Context) newEnvArg {
+func WithContext(ctx context.Context) newEnvArg {
 	return func(e *environment) {
 		e.ctx = ctx
 	}
@@ -43,7 +42,6 @@ func (e *environment) getFunction(name string) (*FunctionEntry, error) {
 func (e *environment) getFunctionByNamespace(namespace string, name string) (*FunctionEntry, error) {
 	r, err := e.functionStore.get(namespace, name)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	return r, nil

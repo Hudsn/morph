@@ -8,15 +8,11 @@ import (
 
 // helpers for accessing objects from arbitrary types
 
-func newObjectFromAny(t interface{}) object {
-	return convertAnyToObject(t, false)
-}
-
 func convertBytesToObject(bytes []byte) object {
 	var raw interface{}
 	err := json.Unmarshal(bytes, &raw)
 	if err != nil {
-		return newObjectErrWithoutLC("invalid json: %s", err.Error())
+		return newObjectErrWithoutLC(fmt.Sprintf("invalid json: %s", err.Error()))
 	}
 	obj := convertAnyToObjectJSON(raw)
 	if isObjectErr(obj) {
@@ -52,7 +48,8 @@ func convertAnyToObject(rawData interface{}, isJSON bool) object {
 	case []interface{}:
 		return convertArrayToObject(v, isJSON)
 	default:
-		return newObjectErrWithoutLC("unable to read data into object: %+v", v)
+		msg := fmt.Sprintf("unable to read data into object: %+v", v)
+		return newObjectErrWithoutLC(msg)
 	}
 }
 
@@ -102,7 +99,8 @@ func convertNumberToObject(num interface{}, isJSON bool) object {
 		}
 		return &objectFloat{value: float64(v)}
 	default:
-		return newObjectErrWithoutLC("unsupported number type: %T", v) // should only occur in custom functions
+		msg := fmt.Sprintf("unsupported number type: %T", v)
+		return newObjectErrWithoutLC(msg) // should only occur in custom functions
 	}
 }
 
