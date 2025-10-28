@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/hudsn/morph"
 	"github.com/hudsn/morph/docgen"
+	"github.com/hudsn/morph/lang"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func generateHTML() {
 		log.Fatal(err)
 	}
 
-	templateData := docgen.NewFunctionDocs(morph.DefaultFunctionStore())
+	templateData := docgen.NewFunctionDocs(lang.DefaultFunctionStore())
 
 	out, err := os.Create("docs/index.html")
 	if err != nil {

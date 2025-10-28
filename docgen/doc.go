@@ -5,15 +5,15 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hudsn/morph"
+	"github.com/hudsn/morph/lang"
 )
 
 type DocFunctionRenderer interface {
-	RenderJSON(functions *morph.FunctionStore) []byte
+	RenderJSON(functions *lang.FunctionStore) []byte
 }
 
 // public type to facilitate reading and parsing function information, for the purpose of building doc files
-func NewFunctionDocs(fs *morph.FunctionStore) *FunctionDocs {
+func NewFunctionDocs(fs *lang.FunctionStore) *FunctionDocs {
 	ret := &FunctionDocs{}
 	ret.buildSections(fs)
 	return ret
@@ -35,15 +35,15 @@ type docFnSection struct {
 }
 
 type docFnEntry struct {
-	Name        string                    `json:"name"`
-	Namespace   string                    `json:"namespace"`
-	Signature   string                    `json:"signature"`
-	Description string                    `json:"description"`
-	Tags        []morph.FunctionTag       `json:"tags"`
-	Args        []morph.FunctionArg       `json:"args"`
-	Return      *morph.FunctionReturn     `json:"return"`
-	Attributes  []morph.FunctionAttribute `json:"attributes"`
-	Examples    []morph.ProgramExample    `json:"examples"`
+	Name        string                   `json:"name"`
+	Namespace   string                   `json:"namespace"`
+	Signature   string                   `json:"signature"`
+	Description string                   `json:"description"`
+	Tags        []lang.FunctionTag       `json:"tags"`
+	Args        []lang.FunctionArg       `json:"args"`
+	Return      *lang.FunctionReturn     `json:"return"`
+	Attributes  []lang.FunctionAttribute `json:"attributes"`
+	Examples    []lang.ProgramExample    `json:"examples"`
 }
 
 func (dfn *docFnEntry) JoinedTags() string {
@@ -61,24 +61,24 @@ func (dfn *docFnEntry) FormatReturn() string {
 	return dfn.Return.Description
 }
 
-func (d *FunctionDocs) RenderJSON(functions *morph.FunctionStore) ([]byte, error) {
+func (d *FunctionDocs) RenderJSON(functions *lang.FunctionStore) ([]byte, error) {
 	return json.Marshal(d)
 }
 
-var orderedTagList = []morph.FunctionTag{
-	morph.FUNCTION_TAG_GENERAL,
-	morph.FUNCTION_TAG_ERR_NULL_CHECKS,
-	morph.FUNCTION_TAG_TYPE_COERCION,
-	morph.FUNCTION_TAG_FLOW_CONTROL,
-	morph.FUNCTION_TAG_NUMBERS,
-	morph.FUNCTION_TAG_STRINGS,
-	morph.FUNCTION_TAG_ARRAYS,
-	morph.FUNCTION_TAG_MAPS,
-	morph.FUNCTION_TAG_TIME,
-	morph.FUNCTION_TAG_HIGHER_ORDER,
+var orderedTagList = []lang.FunctionTag{
+	lang.FUNCTION_TAG_GENERAL,
+	lang.FUNCTION_TAG_ERR_NULL_CHECKS,
+	lang.FUNCTION_TAG_TYPE_COERCION,
+	lang.FUNCTION_TAG_FLOW_CONTROL,
+	lang.FUNCTION_TAG_NUMBERS,
+	lang.FUNCTION_TAG_STRINGS,
+	lang.FUNCTION_TAG_ARRAYS,
+	lang.FUNCTION_TAG_MAPS,
+	lang.FUNCTION_TAG_TIME,
+	lang.FUNCTION_TAG_HIGHER_ORDER,
 }
 
-func (d *FunctionDocs) buildSections(fs *morph.FunctionStore) {
+func (d *FunctionDocs) buildSections(fs *lang.FunctionStore) {
 	//list namespaces by starting with "std", but then use alphabetical order after
 	nsNameList := []string{}
 	for nsName := range fs.Namespaces {

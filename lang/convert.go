@@ -1,4 +1,4 @@
-package morph
+package lang
 
 import (
 	"encoding/json"
@@ -120,6 +120,8 @@ func convertNumberToObjectJSON(num float64) object {
 // converts objects to their go-native type. needs to be asserted to use properly after calling this func
 func convertObjectToNative(o object) (interface{}, error) {
 	switch v := o.(type) {
+	case *objectNull:
+		return nil, nil
 	case *objectMap:
 		return convertMapToNative(v)
 	case *objectArray:
@@ -136,8 +138,6 @@ func convertObjectToNative(o object) (interface{}, error) {
 		return v.value, nil
 	case *objectError:
 		return nil, objectToError(o)
-	case *objectNull:
-		return nil, nil
 	default:
 		return nil, fmt.Errorf("unsupported object type: %s", o.getType())
 	}

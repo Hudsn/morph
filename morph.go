@@ -1,68 +1,40 @@
 package morph
 
 import (
-	"encoding/json"
-	"errors"
+	"github.com/hudsn/morph/lang"
 )
 
 type morph struct {
-	program       *program
-	functionStore *FunctionStore
+	program       *lang.Program
+	functionStore *lang.FunctionStore
 }
 
 type Opt func(*morph)
 
-func WithFunctionStore(fstore *FunctionStore) func(*morph) {
+func WithFunctionStore(fstore *lang.FunctionStore) func(*morph) {
 	return func(m *morph) {
 		m.functionStore = fstore
 	}
 }
 
 func New(input string, opts ...Opt) (*morph, error) {
-	inputRunes := []rune(input)
-	l := newLexer(inputRunes)
-	p := newParser(l)
-	program, err := p.parseProgram()
-	if err != nil {
-		return nil, err
-	}
-
 	m := &morph{
-		program:       program,
-		functionStore: newBuiltinFunctionStore(),
+		functionStore: lang.DefaultFunctionStore(),
 	}
 
 	for _, fn := range opts {
 		fn(m)
 	}
-	return m, nil
-}
 
-func (m *morph) ToAny(inputData []byte) (interface{}, error) {
-	inputObject := convertBytesToObject(inputData)
-	if isObjectErr(inputObject) {
-		return nil, objectToError(inputObject)
-	}
-	env := newEnvironment(m.functionStore)
-	if m.functionStore != nil {
-		env.functionStore = m.functionStore
-	}
-	env.set("@in", convertBytesToObject(inputData))
-	res := m.program.eval(env)
-	if isObjectErr(res) {
-		return nil, errors.New(res.inspect())
-	}
-	res, ok := env.get("@out")
-	if !ok {
-		return nil, nil
-	}
-	return convertObjectToNative(res)
-}
-
-func (m *morph) ToJSON(inputData []byte) ([]byte, error) {
-	out, err := m.ToAny(inputData)
+	program, err := lang.NewProgram(input, m.functionStore)
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(out)
+	m.program = program
+
+	return m, nil
+}
+
+func (m *morph) Exec(inputData []byte) ([]byte, error) {
+	return m.program.Run(inputData)
 }

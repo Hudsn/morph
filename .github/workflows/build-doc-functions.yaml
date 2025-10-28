@@ -4,12 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - "README.md"
-      - "builtin.go"
+      - "lang/builtin.go"
       - "docgen/**"
       - "docs/**"
-      - "!docs/index.html"
-    paths-ignore: 
+      - "!docs/index.html" 
 
 jobs:
   function_docs:

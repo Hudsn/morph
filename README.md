@@ -63,14 +63,15 @@ Run a minimal program:
 
 ```go
 jsonIn := []byte(`{"hello": "world"}`)
-input := `
+
+programContents := `
 SET @out.message = "hello " + @in.hello
 `
-m, err := morph.New(input)
+m, err := morph.New(programContents)
 if err != nil {
     log.Fatal(err)
 }
-jsonBytes, err := m.ToJSON(jsonIn)
+jsonBytes, err := m.Exec(jsonIn)
 if err != nil {
     log.Fatal(err)
 }

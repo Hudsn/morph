@@ -1,4 +1,4 @@
-package morph
+package lang
 
 import (
 	"slices"
