@@ -60,38 +60,6 @@ func testBuiltinFunctionEntry(fstore *FunctionStore, in string, programContents 
 		return err
 	}
 
-	// gotCast, ok := gotAny.(map[string]interface{})
-	// if !ok {
-	// 	log.Fatal("askdjfkasjfd")
-	// }
-	// arr, ok := gotCast["result"]
-	// if !ok {
-	// 	log.Fatal("lkkjdfakjfkajfdk")
-	// }
-	// arrCast, ok := arr.([]interface{})
-	// if !ok {
-	// 	log.Fatal("kjasdfkjasfafd")
-	// }
-	// for _, entry := range arrCast {
-	// 	fmt.Printf("GOT:: %T :: %#v\n", entry, entry)
-	// }
-
-	// wantCast, ok := want.(map[string]interface{})
-	// if !ok {
-	// 	log.Fatal("askdjfkasjfd")
-	// }
-	// arr, ok = wantCast["result"]
-	// if !ok {
-	// 	log.Fatal("lkkjdfakjfkajfdk")
-	// }
-	// arrCast, ok = arr.([]interface{})
-	// if !ok {
-	// 	log.Fatal("kjasdfkjasfafd")
-	// }
-	// for _, entry := range arrCast {
-	// 	fmt.Printf("WANT:: %T :: %#v\n", entry, entry)
-	// }
-
 	var got interface{}
 	err = json.Unmarshal([]byte(gotJSON), &got)
 	if err != nil {
