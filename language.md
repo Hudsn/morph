@@ -255,7 +255,7 @@ Morph exposes multiple builtin functions (with more to be added) to handle commo
 
 These functions have their own dedicated page that is automatically generated from the source repository.
 
-You can access the builtin function docs [here]("https://hudsn.github.io/morph/").
+You can access the builtin function docs [here](https://hudsn.github.io/morph/). 
 
 ### Custom Functions 
 
