@@ -21,15 +21,16 @@ var (
 func (p *program) eval(env *environment) object {
 	for _, stmt := range p.statements {
 		obj := stmt.eval(env)
-		if isObjectErr(obj) {
-			return unWrapErr(stmt.token().lineCol, obj)
-		}
-		if obj.getType() == t_terminate {
-			term := obj.(*objectTerminate)
-			if term.shouldReturnNull {
-				env.store = map[string]object{}
+		obj, ok := checkEvalResultLC(obj, stmt.token().lineCol)
+		if !ok {
+			if obj.getType() == t_terminate {
+				term := obj.(*objectTerminate)
+				if term.shouldReturnNull {
+					env.store = map[string]object{}
+				}
+				return obj_global_null
 			}
-			break
+			return obj
 		}
 	}
 	return obj_global_null
@@ -40,8 +41,9 @@ func (p *program) eval(env *environment) object {
 
 func (s *setStatement) eval(env *environment) object {
 	valToSet := s.value.eval(env)
-	if isObjectErr(valToSet) {
-		return unWrapErr(s.value.token().lineCol, valToSet)
+	obj, ok := checkEvalResultLC(valToSet, s.value.token().lineCol)
+	if !ok {
+		return obj
 	}
 	valToSet = valToSet.clone()
 
@@ -51,13 +53,15 @@ func (s *setStatement) eval(env *environment) object {
 		switch currentPath.stepType {
 		case assign_step_env:
 			objHandle = evalSetStatementHandleENV(currentPath, valToSet, env)
-			if isObjectErr(objHandle) {
-				return unWrapErr(s.target.token().lineCol, objHandle)
+			objHandle, ok := checkEvalResultLC(objHandle, s.target.token().lineCol)
+			if !ok {
+				return objHandle
 			}
 		case assign_step_map_key:
 			objHandle = evalSetStatementHandleMAP(objHandle, currentPath, valToSet)
-			if isObjectErr(objHandle) {
-				return unWrapErr(s.target.token().lineCol, objHandle)
+			objHandle, ok := checkEvalResultLC(objHandle, s.target.token().lineCol)
+			if !ok {
+				return objHandle
 			}
 		default:
 			return newObjectErr(s.target.token().lineCol, "invalid path part for SET statement")
@@ -114,9 +118,13 @@ func (d *delStatement) eval(env *environment) object {
 		delete(env.store, v.value)
 	case *pathExpression:
 		leftObj := v.left.eval(env)
-		if isObjectErr(leftObj) {
-			return unWrapErr(v.left.token().lineCol, leftObj)
+		leftObj, ok := checkEvalResultLC(leftObj, v.left.token().lineCol)
+		if !ok {
+			return leftObj
 		}
+		// if isObjectErr(leftObj) {
+		// 	return unWrapErr(v.left.token().lineCol, leftObj)
+		// }
 		if leftObj == obj_global_null {
 			return leftObj
 		}
@@ -126,8 +134,9 @@ func (d *delStatement) eval(env *environment) object {
 			return newObjectErr(v.left.token().lineCol, msg)
 		}
 		attrString, errObj := evalMapPathAttributeToString(v.attribute, env)
+
 		if errObj != obj_global_null {
-			return unWrapErr(v.attribute.token().lineCol, errObj)
+			return wrapErr(v.attribute.token().lineCol, errObj)
 		}
 		delete(leftMap.kvPairs, attrString)
 	}
@@ -142,9 +151,13 @@ func evalMapPathAttributeToString(attribute pathPartExpression, env *environment
 		return v.value, obj_global_null
 	case *templateExpression:
 		str := v.eval(env)
-		if isObjectErr(str) {
-			return "", unWrapErr(v.tok.lineCol, str)
+		str, ok := checkEvalResultLC(str, v.tok.lineCol)
+		if !ok {
+			return "", str
 		}
+		// if isObjectErr(str) {
+		// 	return "", unWrapErr(v.tok.lineCol, str)
+		// }
 		if strVal, ok := str.(*objectString); ok {
 			return strVal.value, obj_global_null
 		}
@@ -162,16 +175,24 @@ func evalMapPathAttributeToString(attribute pathPartExpression, env *environment
 
 func (i *ifStatement) eval(env *environment) object {
 	conditionObj := i.condition.eval(env)
-	if isObjectErr(conditionObj) {
-		return unWrapErr(i.condition.token().lineCol, conditionObj)
+	conditionObj, ok := checkEvalResultLC(conditionObj, i.condition.token().lineCol)
+	if !ok {
+		return conditionObj
 	}
+	// if isObjectErr(conditionObj) {
+	// 	return unWrapErr(i.condition.token().lineCol, conditionObj)
+	// }
 
 	if conditionObj.isTruthy() {
 		for _, c := range i.consequence {
 			res := c.eval(env)
-			if isObjectErr(res) {
-				return unWrapErr(c.token().lineCol, res)
+			res, ok := checkEvalResultLC(res, c.token().lineCol)
+			if !ok {
+				return res
 			}
+			// if isObjectErr(res) {
+			// 	return unWrapErr(c.token().lineCol, res)
+			// }
 		}
 	}
 	return obj_global_null
@@ -182,9 +203,13 @@ func (i *ifStatement) eval(env *environment) object {
 
 func (e *expressionStatement) eval(env *environment) object {
 	res := e.expression.eval(env)
-	if isObjectErr(res) {
-		return unWrapErr(e.expression.token().lineCol, res)
+	res, ok := checkEvalResultLC(res, e.expression.token().lineCol)
+	if !ok {
+		return res
 	}
+	// if isObjectErr(res) {
+	// 	return unWrapErr(e.expression.token().lineCol, res)
+	// }
 	return res
 }
 
@@ -212,9 +237,13 @@ func (c *callExpression) eval(env *environment) object {
 		args = append(args, toAdd)
 	}
 	ret := fnEntry.run(env.ctx, args...)
-	if isObjectErr(ret) {
-		return unWrapErr(c.name.token().lineCol, ret)
+	ret, ok := checkEvalResultLC(ret, c.name.token().lineCol)
+	if !ok {
+		return ret
 	}
+	// if isObjectErr(ret) {
+	// 	return unWrapErr(c.name.token().lineCol, ret)
+	// }
 	return ret
 }
 
@@ -250,26 +279,42 @@ func (p *pathExpression) eval(env *environment) object {
 	switch v := p.attribute.(type) {
 	case *stringLiteral:
 		ret := evalResolvePathEntryForKey(p, v.value, env)
-		if isObjectErr(ret) {
-			return unWrapErr(v.tok.lineCol, ret)
+		ret, ok := checkEvalResultLC(ret, v.tok.lineCol)
+		if !ok {
+			return ret
 		}
+		// if isObjectErr(ret) {
+		// 	return unWrapErr(v.tok.lineCol, ret)
+		// }
 		return ret
 	case *identifierExpression:
 		ret := evalResolvePathEntryForKey(p, v.value, env)
-		if isObjectErr(ret) {
-			return unWrapErr(v.tok.lineCol, ret)
+		ret, ok := checkEvalResultLC(ret, v.tok.lineCol)
+		if !ok {
+			return ret
 		}
+		// if isObjectErr(ret) {
+		// 	return unWrapErr(v.tok.lineCol, ret)
+		// }
 		return ret
 	case *templateExpression:
 		str := v.eval(env)
-		if isObjectErr(str) {
-			return unWrapErr(v.tok.lineCol, str)
+		str, ok := checkEvalResultLC(str, v.tok.lineCol)
+		if !ok {
+			return str
 		}
+		// if isObjectErr(str) {
+		// 	return unWrapErr(v.tok.lineCol, str)
+		// }
 		if strVal, ok := str.(*objectString); ok {
 			ret := evalResolvePathEntryForKey(p, strVal.value, env)
-			if isObjectErr(ret) {
-				return unWrapErr(v.tok.lineCol, ret)
+			ret, ok := checkEvalResultLC(ret, v.tok.lineCol)
+			if !ok {
+				return ret
 			}
+			// if isObjectErr(ret) {
+			// 	return unWrapErr(v.tok.lineCol, ret)
+			// }
 			return ret
 		}
 		msg := fmt.Sprintf("invalid path part: %s", v.string())
@@ -283,9 +328,13 @@ func (p *pathExpression) eval(env *environment) object {
 
 func evalResolvePathEntryForKey(pathExpr *pathExpression, key string, env *environment) object {
 	leftObj := pathExpr.left.eval(env)
-	if isObjectErr(leftObj) {
-		return unWrapErr(pathExpr.left.token().lineCol, leftObj)
+	leftObj, ok := checkEvalResultLC(leftObj, pathExpr.left.token().lineCol)
+	if !ok {
+		return leftObj
 	}
+	// if isObjectErr(leftObj) {
+	// 	return unWrapErr(pathExpr.left.token().lineCol, leftObj)
+	// }
 	if leftObj == obj_global_null {
 		return leftObj
 	}
@@ -306,9 +355,13 @@ func (t *templateExpression) eval(env *environment) object {
 	stringParts := []string{}
 	for _, entry := range t.parts {
 		res := entry.eval(env)
-		if isObjectErr(res) {
-			return unWrapErr(entry.token().lineCol, res)
+		res, ok := checkEvalResultLC(res, entry.token().lineCol)
+		if !ok {
+			return res
 		}
+		// if isObjectErr(res) {
+		// 	return unWrapErr(entry.token().lineCol, res)
+		// }
 		stringParts = append(stringParts, res.inspect())
 	}
 	return &objectString{value: strings.Join(stringParts, "")}
@@ -319,21 +372,33 @@ func (t *templateExpression) eval(env *environment) object {
 
 func (p *prefixExpression) eval(env *environment) object {
 	rightObj := p.right.eval(env)
-	if isObjectErr(rightObj) {
-		return unWrapErr(p.right.token().lineCol, rightObj)
+	rightObj, ok := checkEvalResultLC(rightObj, p.right.token().lineCol)
+	if !ok {
+		return rightObj
 	}
+	// if isObjectErr(rightObj) {
+	// 	return unWrapErr(p.right.token().lineCol, rightObj)
+	// }
 	switch p.operator {
 	case "!":
 		ret := evalHandlePrefixExclamation(p, rightObj)
-		if isObjectErr(ret) {
-			return unWrapErr(p.tok.lineCol, ret)
+		ret, ok := checkEvalResultLC(ret, p.tok.lineCol)
+		if !ok {
+			return ret
 		}
+		// if isObjectErr(ret) {
+		// 	return unWrapErr(p.tok.lineCol, ret)
+		// }
 		return ret
 	case "-":
 		ret := evalHandlePrefixMinus(p, rightObj)
-		if isObjectErr(ret) {
-			return unWrapErr(p.tok.lineCol, ret)
+		ret, ok := checkEvalResultLC(ret, p.tok.lineCol)
+		if !ok {
+			return ret
 		}
+		// if isObjectErr(ret) {
+		// 	return unWrapErr(p.tok.lineCol, ret)
+		// }
 		return ret
 	default:
 		msg := fmt.Sprintf("unknown operator: %s", p.operator)
@@ -368,31 +433,51 @@ func evalHandlePrefixMinus(rightExpr *prefixExpression, rightObj object) object 
 
 func (i *infixExpression) eval(env *environment) object {
 	leftObj := i.left.eval(env)
-	if isObjectErr(leftObj) {
-		return unWrapErr(i.left.token().lineCol, leftObj)
+	leftObj, ok := checkEvalResultLC(leftObj, i.left.token().lineCol)
+	if !ok {
+		return leftObj
 	}
+	// if isObjectErr(leftObj) {
+	// 	return unWrapErr(i.left.token().lineCol, leftObj)
+	// }
 	rightObj := i.right.eval(env)
-	if isObjectErr(rightObj) {
-		return unWrapErr(i.right.token().lineCol, rightObj)
+	rightObj, ok = checkEvalResultLC(rightObj, i.right.token().lineCol)
+	if !ok {
+		return rightObj
 	}
+	// if isObjectErr(rightObj) {
+	// 	return unWrapErr(i.right.token().lineCol, rightObj)
+	// }
 	switch {
 	case slices.Contains([]objectType{t_integer, t_float}, leftObj.getType()) && slices.Contains([]objectType{t_integer, t_float}, rightObj.getType()):
 		ret := evalNumberInfixExpression(leftObj, i.operator, rightObj)
-		if isObjectErr(ret) {
-			return unWrapErr(i.token().lineCol, ret)
+		ret, ok := checkEvalResultLC(ret, i.tok.lineCol)
+		if !ok {
+			return ret
 		}
+		// if isObjectErr(ret) {
+		// 	return unWrapErr(i.token().lineCol, ret)
+		// }
 		return ret
 	case leftObj.getType() == t_string && rightObj.getType() == t_string:
 		ret := evalStringInfixExpression(leftObj, i.operator, rightObj)
-		if isObjectErr(ret) {
-			return unWrapErr(i.token().lineCol, ret)
+		ret, ok := checkEvalResultLC(ret, i.token().lineCol)
+		if !ok {
+			return ret
 		}
+		// if isObjectErr(ret) {
+		// 	return unWrapErr(i.token().lineCol, ret)
+		// }
 		return ret
 	case leftObj.getType() == t_array && rightObj.getType() == t_array:
 		ret := evalArrayInfixExpression(leftObj, i.operator, rightObj)
-		if isObjectErr(ret) {
-			return unWrapErr(i.token().lineCol, ret)
+		ret, ok := checkEvalResultLC(ret, i.token().lineCol)
+		if !ok {
+			return ret
 		}
+		// if isObjectErr(ret) {
+		// 	return unWrapErr(i.token().lineCol, ret)
+		// }
 		return ret
 	case i.operator == "==":
 		if leftObj.getType() != rightObj.getType() {
@@ -515,9 +600,13 @@ func evalArrayInfixExpression(leftObj object, operator string, rightObj object) 
 
 func (i *indexExpression) eval(env *environment) object {
 	identResult := i.left.eval(env)
-	if isObjectErr(identResult) {
-		return unWrapErr(i.left.token().lineCol, identResult)
+	identResult, ok := checkEvalResultLC(identResult, i.left.token().lineCol)
+	if !ok {
+		return identResult
 	}
+	// if isObjectErr(identResult) {
+	// 	return unWrapErr(i.left.token().lineCol, identResult)
+	// }
 
 	if identResult == obj_global_null {
 		return identResult
@@ -529,9 +618,13 @@ func (i *indexExpression) eval(env *environment) object {
 	}
 
 	indexObj := i.index.eval(env)
-	if isObjectErr(indexObj) {
-		return unWrapErr(i.index.token().lineCol, indexObj)
+	indexObj, ok = checkEvalResultLC(indexObj, i.index.token().lineCol)
+	if !ok {
+		return indexObj
 	}
+	// if isObjectErr(indexObj) {
+	// 	return unWrapErr(i.index.token().lineCol, indexObj)
+	// }
 	if indexObj.getType() != t_integer {
 		msg := fmt.Sprintf("index is not of type %s. got=%s", t_integer, indexObj.getType())
 		return newObjectErr(i.index.token().lineCol, msg)
@@ -604,9 +697,13 @@ func (m *mapLiteral) eval(env *environment) object {
 	objPairs := make(map[string]object)
 	for key, expr := range m.pairs {
 		objectToAdd := expr.eval(env)
-		if isObjectErr(objectToAdd) {
-			return unWrapErr(expr.token().lineCol, objectToAdd)
+		objectToAdd, ok := checkEvalResultLC(objectToAdd, expr.token().lineCol)
+		if !ok {
+			return objectToAdd
 		}
+		// if isObjectErr(objectToAdd) {
+		// 	return unWrapErr(expr.token().lineCol, objectToAdd)
+		// }
 		objPairs[key] = objectToAdd
 	}
 	return &objectMap{kvPairs: objPairs}
@@ -616,15 +713,38 @@ func (a *arrayLiteral) eval(env *environment) object {
 	objEntries := []object{}
 	for _, entryExpr := range a.entries {
 		toAdd := entryExpr.eval(env)
-		if isObjectErr(toAdd) {
-			return unWrapErr(entryExpr.token().lineCol, toAdd)
+		toAdd, ok := checkEvalResultLC(toAdd, entryExpr.token().lineCol)
+		if !ok {
+			return toAdd
 		}
+		// if isObjectErr(toAdd) {
+		// 	return unWrapErr(entryExpr.token().lineCol, toAdd)
+		// }
 		objEntries = append(objEntries, toAdd)
 	}
 	return &objectArray{entries: objEntries}
 }
 
 // helpers
+
+// checks whether the object is an error or termination signal
+// returns the object, and whether the object is a type other than an error or termination command
+func checkEvalResult(obj object) (result object, ok bool) {
+	if slices.Contains([]objectType{t_error, t_terminate}, obj.getType()) {
+		return obj, false
+	}
+	return obj, true
+}
+
+func checkEvalResultLC(obj object, lc string) (result object, ok bool) {
+	if obj.getType() == t_error {
+		return wrapErr(lc, obj), false
+	}
+	if obj.getType() == t_terminate {
+		return obj, false
+	}
+	return obj, true
+}
 
 func objectFromBoolean(b bool) *objectBoolean {
 	if b {
@@ -665,7 +785,7 @@ func isObjectErr(o object) bool {
 
 // takes a nested error and attaches a linecol if one does not already exist
 // used to "bubble up" error messages from things like internal functions or helpers to the calling AST node
-func unWrapErr(outerLC string, innerObj object) object {
+func wrapErr(outerLC string, innerObj object) object {
 	objErr, ok := innerObj.(*objectError)
 	if !ok {
 		return innerObj

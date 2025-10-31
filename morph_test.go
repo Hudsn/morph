@@ -592,7 +592,7 @@ func TestMorphDropBase(t *testing.T) {
 	checkTestMorphCase(t, test, lang.DefaultFunctionStore())
 }
 
-func TestMorphEmit(t *testing.T) {
+func TestMorphEmitBase(t *testing.T) {
 	test := testMorphCase{
 		description: "emit function returns @out",
 		srcJSON: `
@@ -604,6 +604,33 @@ func TestMorphEmit(t *testing.T) {
 		SET @out = "no way dude"
 		`,
 		wantJSON: `"holy smokes"`,
+	}
+	checkTestMorphCase(t, test, lang.DefaultFunctionStore())
+}
+
+func TestMorphDropAssign(t *testing.T) {
+	test := testMorphCase{
+		description: "assigning a drop function exits early and returns null",
+		srcJSON: `
+		{}
+		`,
+		program:  `SET @out = drop()`,
+		wantJSON: `null`,
+	}
+	checkTestMorphCase(t, test, lang.DefaultFunctionStore())
+}
+
+func TestMorphEmitAssign(t *testing.T) {
+	test := testMorphCase{
+		description: "assigning an emit function exits early and returns existing state",
+		srcJSON: `
+		{"str": "hello world"}
+		`,
+		program: `
+		SET @out.extra = @in.str
+		SET @out = emit()
+		`,
+		wantJSON: `{"extra": "hello world"}`,
 	}
 	checkTestMorphCase(t, test, lang.DefaultFunctionStore())
 }
