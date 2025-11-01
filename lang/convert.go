@@ -114,9 +114,6 @@ func convertNumberToObjectJSON(num float64) object {
 
 // obj -> type helpers
 
-// converts objects to a byte array of its json representation. This mostly maps with convertObjectToNative, with the exception of time.Time, which will be in RFC3339 format (rather than RFC3339Nano which is the default for json.Marshal)
-// func convertObjectToJSON(o object)
-
 // converts objects to their go-native type. needs to be asserted to use properly after calling this func
 func convertObjectToNative(o object) (interface{}, error) {
 	switch v := o.(type) {

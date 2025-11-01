@@ -122,9 +122,6 @@ func (d *delStatement) eval(env *environment) object {
 		if !ok {
 			return leftObj
 		}
-		// if isObjectErr(leftObj) {
-		// 	return unWrapErr(v.left.token().lineCol, leftObj)
-		// }
 		if leftObj == obj_global_null {
 			return leftObj
 		}
@@ -155,9 +152,6 @@ func evalMapPathAttributeToString(attribute pathPartExpression, env *environment
 		if !ok {
 			return "", str
 		}
-		// if isObjectErr(str) {
-		// 	return "", unWrapErr(v.tok.lineCol, str)
-		// }
 		if strVal, ok := str.(*objectString); ok {
 			return strVal.value, obj_global_null
 		}
@@ -179,9 +173,6 @@ func (i *ifStatement) eval(env *environment) object {
 	if !ok {
 		return conditionObj
 	}
-	// if isObjectErr(conditionObj) {
-	// 	return unWrapErr(i.condition.token().lineCol, conditionObj)
-	// }
 
 	if conditionObj.isTruthy() {
 		for _, c := range i.consequence {
@@ -190,9 +181,6 @@ func (i *ifStatement) eval(env *environment) object {
 			if !ok {
 				return res
 			}
-			// if isObjectErr(res) {
-			// 	return unWrapErr(c.token().lineCol, res)
-			// }
 		}
 	}
 	return obj_global_null
@@ -207,9 +195,7 @@ func (e *expressionStatement) eval(env *environment) object {
 	if !ok {
 		return res
 	}
-	// if isObjectErr(res) {
-	// 	return unWrapErr(e.expression.token().lineCol, res)
-	// }
+
 	return res
 }
 
@@ -241,9 +227,7 @@ func (c *callExpression) eval(env *environment) object {
 	if !ok {
 		return ret
 	}
-	// if isObjectErr(ret) {
-	// 	return unWrapErr(c.name.token().lineCol, ret)
-	// }
+
 	return ret
 }
 
@@ -283,9 +267,7 @@ func (p *pathExpression) eval(env *environment) object {
 		if !ok {
 			return ret
 		}
-		// if isObjectErr(ret) {
-		// 	return unWrapErr(v.tok.lineCol, ret)
-		// }
+
 		return ret
 	case *identifierExpression:
 		ret := evalResolvePathEntryForKey(p, v.value, env)
@@ -293,9 +275,7 @@ func (p *pathExpression) eval(env *environment) object {
 		if !ok {
 			return ret
 		}
-		// if isObjectErr(ret) {
-		// 	return unWrapErr(v.tok.lineCol, ret)
-		// }
+
 		return ret
 	case *templateExpression:
 		str := v.eval(env)
@@ -303,18 +283,14 @@ func (p *pathExpression) eval(env *environment) object {
 		if !ok {
 			return str
 		}
-		// if isObjectErr(str) {
-		// 	return unWrapErr(v.tok.lineCol, str)
-		// }
+
 		if strVal, ok := str.(*objectString); ok {
 			ret := evalResolvePathEntryForKey(p, strVal.value, env)
 			ret, ok := checkEvalResultLC(ret, v.tok.lineCol)
 			if !ok {
 				return ret
 			}
-			// if isObjectErr(ret) {
-			// 	return unWrapErr(v.tok.lineCol, ret)
-			// }
+
 			return ret
 		}
 		msg := fmt.Sprintf("invalid path part: %s", v.string())
@@ -332,9 +308,7 @@ func evalResolvePathEntryForKey(pathExpr *pathExpression, key string, env *envir
 	if !ok {
 		return leftObj
 	}
-	// if isObjectErr(leftObj) {
-	// 	return unWrapErr(pathExpr.left.token().lineCol, leftObj)
-	// }
+
 	if leftObj == obj_global_null {
 		return leftObj
 	}
@@ -359,9 +333,7 @@ func (t *templateExpression) eval(env *environment) object {
 		if !ok {
 			return res
 		}
-		// if isObjectErr(res) {
-		// 	return unWrapErr(entry.token().lineCol, res)
-		// }
+
 		stringParts = append(stringParts, res.inspect())
 	}
 	return &objectString{value: strings.Join(stringParts, "")}
@@ -376,9 +348,7 @@ func (p *prefixExpression) eval(env *environment) object {
 	if !ok {
 		return rightObj
 	}
-	// if isObjectErr(rightObj) {
-	// 	return unWrapErr(p.right.token().lineCol, rightObj)
-	// }
+
 	switch p.operator {
 	case "!":
 		ret := evalHandlePrefixExclamation(p, rightObj)
@@ -386,9 +356,7 @@ func (p *prefixExpression) eval(env *environment) object {
 		if !ok {
 			return ret
 		}
-		// if isObjectErr(ret) {
-		// 	return unWrapErr(p.tok.lineCol, ret)
-		// }
+
 		return ret
 	case "-":
 		ret := evalHandlePrefixMinus(p, rightObj)
@@ -396,9 +364,7 @@ func (p *prefixExpression) eval(env *environment) object {
 		if !ok {
 			return ret
 		}
-		// if isObjectErr(ret) {
-		// 	return unWrapErr(p.tok.lineCol, ret)
-		// }
+
 		return ret
 	default:
 		msg := fmt.Sprintf("unknown operator: %s", p.operator)
@@ -437,17 +403,13 @@ func (i *infixExpression) eval(env *environment) object {
 	if !ok {
 		return leftObj
 	}
-	// if isObjectErr(leftObj) {
-	// 	return unWrapErr(i.left.token().lineCol, leftObj)
-	// }
+
 	rightObj := i.right.eval(env)
 	rightObj, ok = checkEvalResultLC(rightObj, i.right.token().lineCol)
 	if !ok {
 		return rightObj
 	}
-	// if isObjectErr(rightObj) {
-	// 	return unWrapErr(i.right.token().lineCol, rightObj)
-	// }
+
 	switch {
 	case slices.Contains([]objectType{t_integer, t_float}, leftObj.getType()) && slices.Contains([]objectType{t_integer, t_float}, rightObj.getType()):
 		ret := evalNumberInfixExpression(leftObj, i.operator, rightObj)
@@ -455,9 +417,7 @@ func (i *infixExpression) eval(env *environment) object {
 		if !ok {
 			return ret
 		}
-		// if isObjectErr(ret) {
-		// 	return unWrapErr(i.token().lineCol, ret)
-		// }
+
 		return ret
 	case leftObj.getType() == t_string && rightObj.getType() == t_string:
 		ret := evalStringInfixExpression(leftObj, i.operator, rightObj)
@@ -465,9 +425,7 @@ func (i *infixExpression) eval(env *environment) object {
 		if !ok {
 			return ret
 		}
-		// if isObjectErr(ret) {
-		// 	return unWrapErr(i.token().lineCol, ret)
-		// }
+
 		return ret
 	case leftObj.getType() == t_array && rightObj.getType() == t_array:
 		ret := evalArrayInfixExpression(leftObj, i.operator, rightObj)
@@ -604,9 +562,6 @@ func (i *indexExpression) eval(env *environment) object {
 	if !ok {
 		return identResult
 	}
-	// if isObjectErr(identResult) {
-	// 	return unWrapErr(i.left.token().lineCol, identResult)
-	// }
 
 	if identResult == obj_global_null {
 		return identResult
@@ -701,9 +656,7 @@ func (m *mapLiteral) eval(env *environment) object {
 		if !ok {
 			return objectToAdd
 		}
-		// if isObjectErr(objectToAdd) {
-		// 	return unWrapErr(expr.token().lineCol, objectToAdd)
-		// }
+
 		objPairs[key] = objectToAdd
 	}
 	return &objectMap{kvPairs: objPairs}
@@ -729,13 +682,6 @@ func (a *arrayLiteral) eval(env *environment) object {
 
 // checks whether the object is an error or termination signal
 // returns the object, and whether the object is a type other than an error or termination command
-func checkEvalResult(obj object) (result object, ok bool) {
-	if slices.Contains([]objectType{t_error, t_terminate}, obj.getType()) {
-		return obj, false
-	}
-	return obj, true
-}
-
 func checkEvalResultLC(obj object, lc string) (result object, ok bool) {
 	if obj.getType() == t_error {
 		return wrapErr(lc, obj), false
